@@ -1,0 +1,108 @@
+{{#fillContent 'js'}}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    document.querySelector("#frmSignup").addEventListener("submit", handleSubmit);
+
+    function handleSubmit(event) {
+        event.preventDefault();
+
+        const fullName = document.querySelector("#txtFullName").value.trim();
+        if (fullName.length === 0) {
+            Swal.fire({ title: 'Error', text: 'Full name is required', icon: 'error' });
+            return;
+        }
+
+        const email = document.querySelector("#txtEmail").value.trim();
+        if (email.length === 0) {
+            Swal.fire({ title: 'Error', text: 'Email is required', icon: 'error' });
+            return;
+        }
+
+        const password = document.querySelector("#txtPassword").value;
+        if (password.length < 6) {
+            Swal.fire({ title: 'Error', text: 'Password must be at least 6 characters', icon: 'error' });
+            return;
+        }
+
+        const confirm = document.querySelector("#txtConfirm").value;
+        if (confirm !== password) {
+            Swal.fire({ title: 'Error', text: 'Passwords do not match', icon: 'error' });
+            return;
+        }
+
+        // Ensure role selected
+        const role = document.querySelector('input[name="role"]:checked');
+        if (!role) {
+            Swal.fire({ title: 'Error', text: 'Please select account type (Student or Instructor)', icon: 'error' });
+            return;
+        }
+
+        // Check email availability
+        const url = `/account/is-email-available?email=${encodeURIComponent(email)}`;
+        fetch(url)
+            .then(res => res.json())
+            .then(data => {
+                if (data === false) {
+                    Swal.fire({ title: 'Error', text: 'Email is already registered', icon: 'error' });
+                } else {
+                    event.target.submit();
+                }
+            })
+            .catch(err => {
+                Swal.fire({ title: 'Error', text: 'An error occurred', icon: 'error' });
+            });
+    }
+</script>
+{{/fillContent}}
+
+<div class="card">
+    <h5 class="card-header">Account Registration</h5>
+    <div class="card-body">
+        {{#if success}}
+            <div class="alert alert-success">Registration successful. You can now <a href="/account/signin">sign in</a>.</div>
+        {{/if}}
+        {{#if errorMessages._global}}
+            <div class="alert alert-danger">{{errorMessages._global.[0]}}</div>
+        {{/if}}
+        <form id="frmSignup" method="post" action="/account/signup">
+            <div class="mb-3">
+                <label for="txtFullName" class="form-label">Full name</label>
+                <input type="text" class="form-control {{#if errorMessages.fullName}}is-invalid{{/if}}" id="txtFullName" name="fullName" value="{{oldData.fullName}}" autofocus>
+                {{#if errorMessages.fullName}}<div class="invalid-feedback">{{errorMessages.fullName.[0]}}</div>{{/if}}
+            </div>
+            <div class="mb-3">
+                <label for="txtEmail" class="form-label">Email address</label>
+                <input type="email" class="form-control {{#if errorMessages.email}}is-invalid{{/if}}" id="txtEmail" name="email" value="{{oldData.email}}" aria-describedby="emailHelp">
+                <div id="emailHelp" class="form-text">We'll never share your email with anyone else.</div>
+                {{#if errorMessages.email}}<div class="invalid-feedback">{{errorMessages.email.[0]}}</div>{{/if}}
+            </div>
+            <div class="mb-3">
+                <label for="txtPassword" class="form-label">Password</label>
+                <input type="password" class="form-control {{#if errorMessages.password}}is-invalid{{/if}}" id="txtPassword" name="password">
+                {{#if errorMessages.password}}<div class="invalid-feedback">{{errorMessages.password.[0]}}</div>{{/if}}
+            </div>
+            <div class="mb-3">
+                <label for="txtConfirm" class="form-label">Confirm Password</label>
+                <input type="password" class="form-control {{#if errorMessages.confirm_password}}is-invalid{{/if}}" id="txtConfirm" name="confirm_password">
+                {{#if errorMessages.confirm_password}}<div class="invalid-feedback">{{errorMessages.confirm_password.[0]}}</div>{{/if}}
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Account type <span class="text-danger">*</span></label>
+                <div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input {{#if errorMessages.role}}is-invalid{{/if}}" type="radio" name="role" id="roleStudent" value="student" {{#ifEq oldData.role "student"}}checked{{/ifEq}} required>
+                        <label class="form-check-label" for="roleStudent">Student</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input {{#if errorMessages.role}}is-invalid{{/if}}" type="radio" name="role" id="roleInstructor" value="instructor" {{#ifEq oldData.role "instructor"}}checked{{/ifEq}}>
+                        <label class="form-check-label" for="roleInstructor">Instructor</label>
+                    </div>
+                </div>
+                {{#if errorMessages.role}}<div class="invalid-feedback d-block">{{errorMessages.role.[0]}}</div>{{/if}}
+            </div>
+            <button type="submit" class="btn btn-primary"><i class="bi bi-file-person"></i> Submit</button>
+            <button type="reset" class="btn btn-info"><i class="bi bi-file-earmark-x"></i> Reset</button>
+        </form>
+    </div>
+</div>

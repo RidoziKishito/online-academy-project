@@ -1,0 +1,31 @@
+<div class="card">
+    <h5 class="card-header d-flex justify-content-between">
+        Categories
+        <a name="" id="" class="btn btn-primary btn-sm" href="/admin/categories/add" role="button">
+            <i class="bi bi-plus-circle"></i>
+            New Category
+        </a>
+    </h5>
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th scope="col" class="text-center">#</th>
+                <th scope="col">Category</th>
+                <th scope="col" class="text-end">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{#each categories}}
+            <tr>
+                <th scope="row" class="text-center">{{catid}}</th>
+                <td>{{catname}}</td>
+                <td class="text-end">
+                    <a name="" id="" class="btn btn-outline-primary btn-sm" href="/admin/categories/edit?id={{catid}}" role="button">
+                        <i class="bi bi-pencil-square"></i>
+                    </a>
+                </td>
+            </tr>
+            {{/each}}
+        </tbody>
+    </table>
+</div>

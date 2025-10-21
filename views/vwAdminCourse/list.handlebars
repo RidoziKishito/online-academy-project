@@ -1,0 +1,35 @@
+<div class="card">
+    <h5 class="card-header d-flex justify-content-between">
+        Courses
+        <a name="" id="" class="btn btn-primary btn-sm" href="/admin/courses/create" role="button">
+            <i class="bi bi-plus-circle"></i>
+            New Course
+        </a>
+    </h5>
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th scope="col" class="text-center">#</th>
+                <th scope="col">Course</th>
+                <th scope="col">Price</th>
+                <th scope="col">Quantity</th>
+                <th scope="col" class="text-end">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{#each courses}}
+            <tr>
+                <th scope="row" class="text-center">{{course_id}}</th>
+                <td>{{title}}</td>
+                <td>{{format_number current_price}}</td>
+                <td>{{enrollment_count}}</td>
+                <td class="text-end">
+                    <a name="" id="" class="btn btn-outline-primary btn-sm" href="/admin/courses/edit?id={{course_id}}" role="button">
+                        <i class="bi bi-pencil-square"></i>
+                    </a>
+                </td>
+            </tr>
+            {{/each}}
+        </tbody>
+    </table>
+</div>

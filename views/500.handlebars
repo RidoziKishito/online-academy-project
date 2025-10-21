@@ -1,0 +1,97 @@
+<div class="row justify-content-center">
+    <div class="col-lg-8 col-md-10">
+        <div class="text-center py-5">
+            <!-- Error Icon -->
+            <div class="mb-4">
+                <i class="bi bi-exclamation-octagon text-danger" style="font-size: 6rem;"></i>
+            </div>
+
+            <!-- Error Code -->
+            <h1 class="display-1 fw-bold text-danger mb-3">500</h1>
+
+            <!-- Error Title -->
+            <h2 class="h3 mb-4 text-dark">Internal Server Error</h2>
+
+            <!-- Error Description -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-body py-4">
+                    <p class="card-text fs-5 text-muted mb-3">
+                        <i class="bi bi-tools text-info me-2"></i>
+                        Oops! Something went wrong on our end.
+                    </p>
+                    <p class="card-text text-muted">
+                        We've encountered an unexpected issue. This is not your fault.
+                    </p>
+                    <ul class="list-unstyled text-muted text-start d-inline-block">
+                        <li class="mb-2">
+                            <i class="bi bi-dot text-danger"></i>
+                            Our team has been automatically notified
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-dot text-danger"></i>
+                            We are working to fix the problem
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-dot text-danger"></i>
+                            Please try again in a few moments
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="d-flex flex-column flex-sm-row gap-3 justify-content-center">
+                <a href="/" class="btn btn-primary btn-lg">
+                    <i class="bi bi-house-fill me-2"></i>
+                    Go Home
+                </a>
+                <button onclick="location.reload()" class="btn btn-outline-success btn-lg">
+                    <i class="bi bi-arrow-clockwise me-2"></i>
+                    Reload Page
+                </button>
+                <button onclick="history.back()" class="btn btn-outline-dark btn-lg">
+                    <i class="bi bi-arrow-left me-2"></i>
+                    Go Back
+                </button>
+            </div>
+
+            <!-- Additional Help -->
+            <div class="mt-5 pt-4 border-top">
+                <p class="text-muted small">
+                    <i class="bi bi-headset me-1"></i>
+                    If the problem persists, please 
+                    <a href="/contact" class="text-decoration-none">contact our support team</a>.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .bi-exclamation-octagon {
+        animation: wobble 2.5s infinite;
+    }
+
+    @keyframes wobble {
+        0% { transform: rotate(0deg); }
+        15% { transform: rotate(-5deg); }
+        30% { transform: rotate(5deg); }
+        45% { transform: rotate(-3deg); }
+        60% { transform: rotate(3deg); }
+        75% { transform: rotate(-1deg); }
+        100% { transform: rotate(0deg); }
+    }
+
+    .card {
+        transition: transform 0.2s ease-in-out;
+    }
+
+    .btn {
+        transition: all 0.3s ease;
+    }
+
+    .btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+</style>

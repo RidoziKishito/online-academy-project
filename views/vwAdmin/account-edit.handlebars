@@ -1,0 +1,64 @@
+{{!-- Admin Account Edit/Create --}}
+<div class="container py-4">
+  <div class="card">
+    <div class="card-header">
+      <h4 class="mb-0">{{#if user}}Edit Account{{else}}Create Account{{/if}}</h4>
+    </div>
+    <div class="card-body">
+      <form method="post" action="/admin/accounts/patch">
+        <input type="hidden" name="user_id" value="{{#if user}}{{user.user_id}}{{/if}}" />
+
+        <div class="mb-3">
+          <label class="form-label">ID</label>
+          <input class="form-control bg-light text-muted" readonly value="{{#if user}}{{user.user_id}}{{else}}(auto){{/if}}">
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Full name</label>
+          <input name="full_name" class="form-control" value="{{#if user}}{{user.full_name}}{{/if}}" required />
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Email</label>
+          <input name="email" type="email" class="form-control" value="{{#if user}}{{user.email}}{{/if}}" required />
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Password</label>
+          {{#if user}}
+            <input name="password" type="password" class="form-control {{#if errorMessages.password}}is-invalid{{/if}}" placeholder="Leave blank to keep current password" />
+            {{#if errorMessages.password}}<div class="invalid-feedback">{{errorMessages.password.[0]}}</div>{{/if}}
+          {{else}}
+            <input name="password" type="password" class="form-control {{#if errorMessages.password}}is-invalid{{/if}}" required />
+            {{#if errorMessages.password}}<div class="invalid-feedback">{{errorMessages.password.[0]}}</div>{{/if}}
+          {{/if}}
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Confirm Password</label>
+          {{#if user}}
+            <input name="confirm_password" type="password" class="form-control {{#if errorMessages.confirm_password}}is-invalid{{/if}}" placeholder="Leave blank to keep current password" />
+            {{#if errorMessages.confirm_password}}<div class="invalid-feedback">{{errorMessages.confirm_password.[0]}}</div>{{/if}}
+          {{else}}
+            <input name="confirm_password" type="password" class="form-control {{#if errorMessages.confirm_password}}is-invalid{{/if}}" required />
+            {{#if errorMessages.confirm_password}}<div class="invalid-feedback">{{errorMessages.confirm_password.[0]}}</div>{{/if}}
+          {{/if}}
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Role</label>
+          <select name="role" class="form-select">
+            <option value="student" {{#ifEq user.role "student"}}selected{{/ifEq}}>Student</option>
+            <option value="instructor" {{#ifEq user.role "instructor"}}selected{{/ifEq}}>Instructor</option>
+            <option value="admin" {{#ifEq user.role "admin"}}selected{{/ifEq}}>Admin</option>
+          </select>
+        </div>
+
+        <div class="d-flex gap-2">
+          <button class="btn btn-primary" type="submit">Save</button>
+          <a class="btn btn-outline-secondary" href="/admin/accounts">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

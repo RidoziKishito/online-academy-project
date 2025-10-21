@@ -1,0 +1,28 @@
+<form action="" method="post">
+    <div class="card">
+        <div class="card-header">Profile</div>
+        <div class="card-body">
+            {{#if success}}
+                <div class="alert alert-success">Profile updated.</div>
+            {{/if}}
+            <div class="mb-3">
+                <label for="txtId" class="form-label">#</label>
+                <input type="text" class="form-control bg-light text-muted" id="txtId" name="user_id" readonly value="{{authUser.user_id}}">
+            </div>
+            <div class="mb-3">
+                <label for="txtName" class="form-label">Full name</label>
+                <input type="text" class="form-control" id="txtName" name="fullName" autofocus value="{{authUser.full_name}}">
+            </div>
+            <div class="mb-3">
+                <label for="txtEmail" class="form-label">Email</label>
+                <input type="email" class="form-control" id="txtEmail" name="email" value="{{authUser.email}}">
+            </div>
+        </div>
+        <div class="card-footer text-muted">
+            <button type="submit" class="btn btn-outline-success">
+                <i class="bi bi-save"></i>
+                Save
+            </button>
+        </div>
+    </div>
+</form>

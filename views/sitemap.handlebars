@@ -1,0 +1,26 @@
+{{!-- Simple HTML sitemap --}}
+<div class="container py-4">
+  <div class="card">
+    <div class="card-header">
+      <h3 class="mb-0">Sitemap</h3>
+    </div>
+    <div class="card-body">
+      <p class="lead">Quick links</p>
+      <ul>
+        <li><a href="/">Home</a></li>
+        <li><a href="/courses">Courses</a></li>
+        <li><a href="/contact">Contact</a></li>
+        <li><a href="/account/signin">Sign in</a></li>
+        <li><a href="/account/signup">Sign up</a></li>
+        <li><a href="/admin/accounts">Admin: Accounts</a> (admin only)</li>
+      </ul>
+
+      <h5 class="mt-4">Categories</h5>
+      <ul>
+        {{#each globalCategories}}
+          <li><a href="/courses/by-category/{{category_id}}">{{name}}</a></li>
+        {{/each}}
+      </ul>
+    </div>
+  </div>
+</div>

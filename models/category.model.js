@@ -1,0 +1,23 @@
+import db from '../utils/db.js';
+
+const TABLE_NAME = 'categories';
+
+export function findAll() {
+  return db(TABLE_NAME);
+}
+
+export function add(category) {
+  return db(TABLE_NAME).insert(category);
+}
+
+export function findById(id) {
+  return db(TABLE_NAME).where('category_id', id).first();
+}
+
+export function del(id) {
+  return db(TABLE_NAME).where('category_id', id).del();
+}
+
+export function patch(id, category) {
+  return db(TABLE_NAME).where('category_id', id).update(category);
+}

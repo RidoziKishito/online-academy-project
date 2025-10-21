@@ -1,0 +1,74 @@
+{{#fillContent 'css'}}
+<style>
+    /* Add a little animation to feature cards */
+    .feature-card {
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    }
+    .feature-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+    }
+</style>
+{{/fillContent}}
+
+<!-- Hero Section -->
+<div class="container-fluid bg-light py-5 text-center">
+    <div class="py-5">
+        <h1 class="display-4 fw-bold text-primary">Unlock Your Potential</h1>
+        <p class="fs-4 text-muted mt-3 mb-4">
+            Explore thousands of high-quality courses taught by leading experts.
+        </p>
+        <a href="/courses" class="btn btn-primary btn-lg px-5 py-3">
+            <i class="bi bi-compass-fill me-2"></i>
+            Explore Now
+        </a>
+    </div>
+</div>
+
+<!-- Key Features -->
+<div class="container my-5">
+    <div class="row g-4">
+        <!-- Feature 1 -->
+        <div class="col-lg-4 col-md-6">
+            <div class="card h-100 border-0 shadow-sm feature-card">
+                <div class="card-body text-center p-4">
+                    <div class="mb-3">
+                        <i class="bi bi-person-video display-4 text-primary"></i>
+                    </div>
+                    <h5 class="card-title fw-bold">Expert Instructors</h5>
+                    <p class="card-text text-muted">
+                        Learn from professionals with years of real-world experience.
+                    </p>
+                </div>
+            </div>
+        </div>
+        <!-- Feature 2 -->
+        <div class="col-lg-4 col-md-6">
+            <div class="card h-100 border-0 shadow-sm feature-card">
+                <div class="card-body text-center p-4">
+                    <div class="mb-3">
+                        <i class="bi bi-infinity display-4 text-primary"></i>
+                    </div>
+                    <h5 class="card-title fw-bold">Lifetime Access</h5>
+                    <p class="card-text text-muted">
+                        Pay once, learn forever. Access your courses anytime.
+                    </p>
+                </div>
+            </div>
+        </div>
+        <!-- Feature 3 -->
+        <div class="col-lg-4 col-md-12">
+            <div class="card h-100 border-0 shadow-sm feature-card">
+                <div class="card-body text-center p-4">
+                    <div class="mb-3">
+                        <i class="bi bi-clock-history display-4 text-primary"></i>
+                    </div>
+                    <h5 class="card-title fw-bold">Flexible Learning</h5>
+                    <p class="card-text text-muted">
+                        Study anytime, anywhere, and at your own pace on any device.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

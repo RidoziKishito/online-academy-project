@@ -1,0 +1,30 @@
+<form id="frmAddCategory" method="post">
+    <div class="card">
+        <div class="card-header">New Category</div>
+        <div class="card-body">
+            <div class="mb-3">
+                <label for="txtCatId" class="form-label">#</label>
+                <input type="text" class="form-control" id="txtCatId" readonly name="catid" value="{{category.catid}}">
+            </div>
+            <div class="mb-3">
+                <label for="txtCatName" class="form-label">Category</label>
+                <input type="text" class="form-control" id="txtCatName" autofocus name="catname"
+                    value="{{category.catname}}">
+            </div>
+        </div>
+        <div class="card-footer text-muted">
+            <a class="btn btn-outline-success" href="/admin/categories" role="button">
+                <i class="bi bi-arrow-left"></i>
+                Back
+            </a>
+            <button type="submit" class="btn btn-danger" formaction="/admin/categories/del">
+                <i class="bi bi-trash"></i>
+                Delete
+            </button>
+            <button type="submit" class="btn btn-success" formaction="/admin/categories/patch">
+                <i class="bi bi-check2"></i>
+                Save
+            </button>
+        </div>
+    </div>
+</form>

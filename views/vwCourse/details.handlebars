@@ -1,0 +1,13 @@
+<div class="card">
+    <div class="card-header">Course Details</div>
+    <div class="card-body">
+        <img src="{{#if course.image_url}}{{course.image_url}}{{else}}https://via.placeholder.com/800x450?text=No+Image{{/if}}" alt="{{course.title}}" class="img-fluid mb-3">
+        <h4 class="card-title">{{course.title}}</h4>
+        <h5 class="card-text text-danger">Price: {{format_number course.current_price}}</h5>
+        <p class="card-text">Enrolled: {{course.enrollment_count}}</p>
+        <p class="card-text">
+            {{{course.description}}}
+        </p>
+    </div>
+    <div class="card-footer text-muted">Footer</div>
+</div>

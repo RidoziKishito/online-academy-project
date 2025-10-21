@@ -1,0 +1,71 @@
+{{#fillContent 'js'}}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    function handleSubmit(event) {
+        event.preventDefault();
+
+        const newPwd = document.querySelector('#txtNewPwd').value;
+        const confirm = document.querySelector('#txtConfirm').value;
+        if (newPwd.length < 6) {
+            Swal.fire({
+                title: 'Error!',
+                text: 'New Password must be at least 6 characters long.',
+                icon: 'error',
+                confirmButtonText: 'OK'
+            })
+            return;
+        }
+
+        if (newPwd !== confirm) {
+            Swal.fire({
+                title: 'Error!',
+                text: 'New Password and Confirm Password do not match.',
+                icon: 'error',
+                confirmButtonText: 'OK'
+            })
+            return;
+        }
+        event.target.submit();
+    }
+    document.querySelector('#frmChangePwd').addEventListener('submit', handleSubmit);
+</script>
+{{/fillContent}}
+
+<form id="frmChangePwd" action="/account/change-pwd" method="post">
+    <div class="card">
+        <div class="card-header">Change Password</div>
+        {{#if error}}
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            <strong>Error: </strong> {{error}}
+        </div>
+        {{/if}}
+        {{#if success}}
+        <div class="alert alert-success">Password changed successfully.</div>
+        {{/if}}
+        <div class="card-body">
+            <div class="mb-3">
+                <label for="txtId" class="form-label">#</label>
+                <input type="text" class="form-control bg-light text-muted" id="txtId" name="user_id" readonly value="{{authUser.user_id}}">
+            </div>
+            <div class="mb-3">
+                <label for="txtCurPwd" class="form-label">Current Password</label>
+                <input type="password" class="form-control" id="txtCurPwd" name="current_password">
+            </div>
+            <div class="mb-3">
+                <label for="txtNewPwd" class="form-label">New Password</label>
+                <input type="password" class="form-control" id="txtNewPwd" name="new_password">
+            </div>
+            <div class="mb-3">
+                <label for="txtConfirm" class="form-label">Confirm Password</label>
+                <input type="password" class="form-control" id="txtConfirm" name="confirm_password">
+            </div>
+        </div>
+        <div class="card-footer text-muted">
+            <button type="submit" class="btn btn-outline-success">
+                <i class="bi bi-save"></i>
+                Save
+            </button>
+        </div>
+    </div>
+</form>

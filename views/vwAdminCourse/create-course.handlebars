@@ -1,0 +1,159 @@
+{{#fillContent 'css'}}
+<link href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css" rel="stylesheet" />
+<link href="https://releases.transloadit.com/uppy/v5.1.5/uppy.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+{{/fillContent}}
+
+{{#fillContent 'js'}}
+<script src="https://cdn.jsdelivr.net/npm/cleave.js@1.6.0/dist/cleave.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
+<script>
+    // --- SỬA LỖI: Sửa ID cho đúng ---
+    new Cleave('#currentPrice', { // <-- Sửa từ #txtPrice
+        numeral: true,
+        numeralThousandsGroupStyle: 'thousand'
+    });
+
+    new Cleave('#originalPrice', { // <-- Sửa từ #txtQuantity
+        numeral: true,
+        numeralThousandsGroupStyle: 'thousand'
+    });
+    // -------------------------------
+
+    const quill = new Quill('#editor', {
+        theme: 'snow',
+        placeholder: 'Compose an epic...'
+    });
+
+    // On submit, copy quill html to hidden input so server receives full_description
+    document.querySelector('#frmAddCourse').addEventListener('submit', function(e) {
+        const html = quill.root.innerHTML;
+        document.querySelector('#full_description').value = html;
+    });
+</script>
+{{/fillContent}}
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-12">
+      <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <div>
+            <h5 class="mb-0"><i class="fa fa-plus-circle me-2"></i> Create New Course</h5>
+            <small class="text-muted">Fill in the information below to create a new course</small>
+          </div>
+        </div>
+        <div class="card-body">
+          <form id="frmAddCourse" method="post" action="/admin/courses/create">
+
+            {{#if errorMessages}}
+              <div class="alert alert-danger">Please check the fields below.</div>
+            {{/if}}
+
+            <div class="mb-3">
+              <label class="form-label">Course Title <span class="text-danger">*</span></label>
+              <input type="text" id="title" name="title" class="form-control" required value="{{oldData.title}}">
+              {{#if errorMessages.title}}<div class="text-danger small">{{errorMessages.title.[0]}}</div>{{/if}}
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Course Description <span class="text-danger">*</span></label>
+              <div id="editor">{{{oldData.full_description}}}</div>
+              <input type="hidden" id="full_description" name="full_description" />
+              {{#if errorMessages.description}}<div class="text-danger small">{{errorMessages.description.[0]}}</div>{{/if}}
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Course Image URL <span class="text-danger">*</span></label>
+              <input type="url" id="imageUrl" name="image_url" class="form-control" required value="{{oldData.image_url}}">
+              {{#if errorMessages.image_url}}<div class="text-danger small">{{errorMessages.image_url.[0]}}</div>{{/if}}
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Instructor <span class="text-danger">*</span></label>
+              <select id="instructorId" name="instructor_id" class="form-select" required>
+                <option value="">-- Select Instructor --</option>
+                <option value="1" {{#if (eq oldData.instructor_id "1")}}selected{{/if}}>Yash Thakker</option>
+                <option value="2" {{#if (eq oldData.instructor_id "2")}}selected{{/if}}>Scott Duffy (1,000,000+ Students)</option>
+                <option value="3" {{#if (eq oldData.instructor_id "3")}}selected{{/if}}>Tracey Barron</option>
+                <option value="4" {{#if (eq oldData.instructor_id "4")}}selected{{/if}}>DFA Course Academy</option>
+                <option value="5" {{#if (eq oldData.instructor_id "5")}}selected{{/if}}>Gopaluni Sai Karthik</option>
+                <option value="6" {{#if (eq oldData.instructor_id "6")}}selected{{/if}}>Anton Voroniuk</option>
+                <option value="7" {{#if (eq oldData.instructor_id "7")}}selected{{/if}}>Start-Tech Academy</option>
+              </select>
+              {{#if errorMessages.instructor_id}}<div class="text-danger small">{{errorMessages.instructor_id.[0]}}</div>{{/if}}
+            </div>
+
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Rating</label>
+                <input type="text" id="rating" name="rating" class="form-control" placeholder="4.5" value="{{oldData.rating}}">
+                {{#if errorMessages.rating}}<div class="text-danger small">{{errorMessages.rating.[0]}}</div>{{/if}}
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Total Reviews</label>
+                <input type="text" id="totalReviews" name="total_reviews" class="form-control" placeholder="150" value="{{oldData.total_reviews}}">
+                {{#if errorMessages.total_reviews}}<div class="text-danger small">{{errorMessages.total_reviews.[0]}}</div>{{/if}}
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Total Hours</label>
+                <input type="text" id="totalHours" name="total_hours" class="form-control" placeholder="10.5" value="{{oldData.total_hours}}">
+                {{#if errorMessages.total_hours}}<div class="text-danger small">{{errorMessages.total_hours.[0]}}</div>{{/if}}
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Total Lectures</label>
+                <input type="text" id="totalLectures" name="total_lectures" class="form-control" placeholder="45" value="{{oldData.total_lectures}}">
+                {{#if errorMessages.total_lectures}}<div class="text-danger small">{{errorMessages.total_lectures.[0]}}</div>{{/if}}
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Course Level</label>
+              <select id="level" name="level" class="form-select">
+                <option value="">-- Select Level --</option>
+                <option value="Beginner" {{#if (eq oldData.level "Beginner")}}selected{{/if}}>Beginner</option>
+                <option value="Intermediate" {{#if (eq oldData.level "Intermediate")}}selected{{/if}}>Intermediate</option>
+                <option value="Advanced" {{#if (eq oldData.level "Advanced")}}selected{{/if}}>Advanced</option>
+                <option value="All Levels" {{#if (eq oldData.level "All Levels")}}selected{{/if}}>All Levels</option>
+              </select>
+              {{#if errorMessages.level}}<div class="text-danger small">{{errorMessages.level.[0]}}</div>{{/if}}
+            </div>
+
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Current Price (VND)</label>
+                <div class="input-group">
+                  <span class="input-group-text">₫</span>
+                  <input type="text" id="currentPrice" name="current_price" class="form-control" placeholder="279,000" value="{{oldData.current_price}}">
+                </div>
+                {{#if errorMessages.current_price}}<div class="text-danger small">{{errorMessages.current_price.[0]}}</div>{{/if}}
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Original Price (VND)</label>
+                <div class="input-group">
+                  <span class="input-group-text">₫</span>
+                  <input type="text" id="originalPrice" name="original_price" class="form-control" placeholder="399,000" value="{{oldData.original_price}}">
+                </div>
+                {{#if errorMessages.original_price}}<div class="text-danger small">{{errorMessages.original_price.[0]}}</div>{{/if}}
+              </div>
+            </div>
+
+            <div class="form-check mb-4">
+              <input class="form-check-input" type="checkbox" id="isBestseller" name="is_bestseller" value="true" {{#if oldData.is_bestseller}}checked{{/if}}>
+              <label class="form-check-label" for="isBestseller"><i class="fa fa-crown text-warning me-1"></i> Mark as Bestseller</label>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2">
+              <a href="/courses" class="btn btn-outline-secondary">Back</a>
+              <button type="reset" class="btn btn-secondary">Reset</button>
+              <button type="submit" class="btn btn-primary"><i class="fa fa-save me-1"></i> Create Course</button>
+            </div>
+
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

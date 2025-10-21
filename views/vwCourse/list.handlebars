@@ -1,0 +1,67 @@
+{{#fillContent 'css'}}
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+{{/fillContent}}
+
+<div class="bg-gray-50 p-3 rounded">
+  <div class="container-fluid px-2 py-4">
+    <!-- Header with Create Button -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <div>
+        <h1 class="h3 mb-1">
+          <i class="fas fa-graduation-cap text-primary me-2"></i>
+          All Courses
+        </h1>
+        <p class="text-muted mb-0">Browse and explore our collection of courses</p>
+      </div>
+      <a href="/admin/courses/create" class="btn btn-primary btn-sm">
+        <i class="fas fa-plus-circle me-1"></i>
+        Create New Course
+      </a>
+    </div>
+
+    <!-- Courses list -->
+    <div class="row">
+      <div class="col-12">
+        {{!-- Example static cards converted to Bootstrap cards; you should replace with dynamic rendering from server data --}}
+        {{#if courses}}
+          {{#each courses}}
+            <div class="card mb-3">
+              <div class="row g-0">
+                <div class="col-md-4">
+                  <a href="/courses/detail/{{course_id}}">
+                    <img src="{{#if image_url}}{{image_url}}{{else}}https://via.placeholder.com/400x300?text=No+Image{{/if}}" class="img-fluid rounded-start" alt="{{title}}">
+                  </a>
+                </div>
+                <div class="col-md-8">
+                  <div class="card-body d-flex flex-column">
+                    <div>
+                      <h5 class="card-title">
+                        <a href="/courses/detail/{{course_id}}" class="text-decoration-none text-dark">{{title}}</a>
+                      </h5>
+                      <p class="card-text text-muted mb-1">{{description}}</p>
+                      <p class="card-text mb-1"><small class="text-muted">Instructor: {{instructor_name}}</small></p>
+                      <p class="card-text mb-1"><small class="text-muted">{{rating_avg}} • ({{rating_count}})</small></p>
+                      <p class="card-text mb-1 text-muted small">{{total_hours}} hours • {{total_lectures}} lectures</p>
+                    </div>
+
+                    <div class="mt-auto d-flex justify-content-end align-items-end gap-2">
+                      <div class="text-end">
+                        <div class="fs-5 fw-bold">₫{{format_number current_price}}</div>
+                        {{#if original_price}}
+                          <div class="text-muted text-decoration-line-through">₫{{format_number original_price}}</div>
+                        {{/if}}
+                      </div>
+                      <a href="/courses/detail/{{course_id}}" class="btn btn-outline-primary btn-sm align-self-end">View</a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          {{/each}}
+        {{else}}
+          <div class="alert alert-info">No courses found.</div>
+        {{/if}}
+      </div>
+    </div>
+  </div>
+</div>

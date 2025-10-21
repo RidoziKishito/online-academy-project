@@ -1,0 +1,134 @@
+<div class="row justify-content-center">
+    <div class="col-lg-8 col-md-10">
+        <div class="text-center py-5">
+            <!-- Error Icon -->
+            <div class="mb-4">
+                <i class="bi bi-question-circle text-warning" style="font-size: 6rem;"></i>
+            </div>
+
+            <!-- Error Code -->
+            <h1 class="display-1 fw-bold text-warning mb-3">404</h1>
+
+            <!-- Error Title -->
+            <h2 class="h3 mb-4 text-dark">Page Not Found</h2>
+
+            <!-- Error Description -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-body py-4">
+                    <p class="card-text fs-5 text-muted mb-3">
+                        <i class="bi bi-exclamation-diamond-fill text-info me-2"></i>
+                        Oops! The page you're looking for doesn't exist.
+                    </p>
+                    <p class="card-text text-muted">
+                        This could happen because:
+                    </p>
+                    <ul class="list-unstyled text-muted text-start d-inline-block">
+                        <li class="mb-2">
+                            <i class="bi bi-dot text-warning"></i>
+                            The URL was typed incorrectly
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-dot text-warning"></i>
+                            The page has been moved or deleted
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-dot text-warning"></i>
+                            You followed a broken or outdated link
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-dot text-warning"></i>
+                            The page is temporarily unavailable
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="d-flex flex-column flex-sm-row gap-3 justify-content-center">
+                <a href="/" class="btn btn-primary btn-lg">
+                    <i class="bi bi-house-fill me-2"></i>
+                    Go Home
+                </a>
+                <a href="/courses/by-category" class="btn btn-outline-info btn-lg">
+                    <i class="bi bi-shop me-2"></i>
+                    Browse Courses
+                </a>
+                <button onclick="history.back()" class="btn btn-outline-dark btn-lg">
+                    <i class="bi bi-arrow-left me-2"></i>
+                    Go Back
+                </button>
+            </div>
+
+            <!-- Search Section -->
+            <div class="mt-4">
+                <p class="text-muted mb-3">
+                    <i class="bi bi-search me-1"></i>
+                    Or try searching for what you need:
+                </p>
+                <div class="row justify-content-center">
+                    <div class="col-md-6">
+                        <form class="input-group" role="search" method="get" action="/courses/search">
+                            <input type="search" name="q" class="form-control form-control-lg" placeholder="Search courses..." aria-label="Search">
+                            <button class="btn btn-outline-secondary" type="submit">
+                                <i class="bi bi-search"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Additional Help -->
+            <div class="mt-5 pt-4 border-top">
+                <p class="text-muted small">
+                    <i class="bi bi-lightbulb me-1"></i>
+                    Still can't find what you're looking for?
+                    <a href="/contact" class="text-decoration-none">Contact our support team</a>
+                    or check our <a href="/sitemap" class="text-decoration-none">sitemap</a>.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .bi-question-circle {
+        animation: bounce 2s infinite;
+    }
+
+    @keyframes bounce {
+
+        0%,
+        20%,
+        50%,
+        80%,
+        100% {
+            transform: translateY(0);
+        }
+
+        40% {
+            transform: translateY(-10px);
+        }
+
+        60% {
+            transform: translateY(-5px);
+        }
+    }
+
+    .card {
+        transition: transform 0.2s ease-in-out;
+    }
+
+    .btn {
+        transition: all 0.3s ease;
+    }
+
+    .btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .input-group:hover .form-control {
+        border-color: #0d6efd;
+        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+    }
+</style>

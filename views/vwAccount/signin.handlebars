@@ -1,0 +1,26 @@
+<form action="" method="post">
+    <div class="card">
+        <div class="card-header">Sign In</div>
+        <div class="card-body">
+            {{#if error}}
+                    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                        <strong>Error!</strong> Your email or password is incorrect.
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+            {{/if}}
+            <div class="mb-3">
+                <label for="txtEmail" class="form-label">Email</label>
+                <input type="email" class="form-control" id="txtEmail" name="email" value="{{oldData.email}}" autofocus>
+            </div>
+            <div class="mb-3">
+                <label for="txtPassword" class="form-label">Password</label>
+                <input type="password" class="form-control" id="txtPassword" name="password">
+            </div>
+        </div>
+        <div class="card-footer text-muted">
+            <button type="submit" class="btn btn-outline-primary"><i class="bi bi-box-arrow-in-right"></i>
+                Sign in</button>
+        </div>
+    </div>
+
+</form>

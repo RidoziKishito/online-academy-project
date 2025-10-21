@@ -1,0 +1,101 @@
+<div class="row justify-content-center">
+    <div class="col-lg-8 col-md-10">
+        <div class="text-center py-5">
+            <!-- Error Icon -->
+            <div class="mb-4">
+                <i class="bi bi-shield-exclamation text-danger" style="font-size: 6rem;"></i>
+            </div>
+
+            <!-- Error Code -->
+            <h1 class="display-1 fw-bold text-danger mb-3">403</h1>
+
+            <!-- Error Title -->
+            <h2 class="h3 mb-4 text-dark">Access Denied</h2>
+
+            <!-- Error Description -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-body py-4">
+                    <p class="card-text fs-5 text-muted mb-3">
+                        <i class="bi bi-exclamation-triangle-fill text-warning me-2"></i>
+                        You don't have permission to access this resource.
+                    </p>
+                    <p class="card-text text-muted">
+                        This might be because:
+                    </p>
+                    <ul class="list-unstyled text-muted text-start d-inline-block">
+                        <li class="mb-2">
+                            <i class="bi bi-dot text-danger"></i>
+                            You're not logged in with the required permissions
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-dot text-danger"></i>
+                            Your account doesn't have access to this section
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-dot text-danger"></i>
+                            The page requires administrative privileges
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="d-flex flex-column flex-sm-row gap-3 justify-content-center">
+                <a href="/" class="btn btn-primary btn-lg">
+                    <i class="bi bi-house-fill me-2"></i>
+                    Go Home
+                </a>
+                <a href="/account/signin" class="btn btn-outline-secondary btn-lg">
+                    <i class="bi bi-box-arrow-in-right me-2"></i>
+                    Sign In
+                </a>
+                <button onclick="history.back()" class="btn btn-outline-dark btn-lg">
+                    <i class="bi bi-arrow-left me-2"></i>
+                    Go Back
+                </button>
+            </div>
+
+            <!-- Additional Help -->
+            <div class="mt-5 pt-4 border-top">
+                <p class="text-muted small">
+                    <i class="bi bi-info-circle me-1"></i>
+                    If you believe this is an error, please contact the administrator or
+                    <a href="/contact" class="text-decoration-none">get help</a>.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .bi-shield-exclamation {
+        animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+        0% {
+            transform: scale(1);
+        }
+
+        50% {
+            transform: scale(1.05);
+        }
+
+        100% {
+            transform: scale(1);
+        }
+    }
+
+    .card {
+        transition: transform 0.2s ease-in-out;
+    }
+
+    .btn {
+        transition: all 0.3s ease;
+    }
+
+    .btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+</style>
