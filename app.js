@@ -27,7 +27,7 @@ import sitemapRouter from './routes/sitemap.route.js';
 
 
 const app = express();
-const port = 3000;
+const PORT = 3000;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -137,6 +137,6 @@ app.use((err, req, res, next) => {
 });
 // =======================================================
 
-app.listen(port, () => {
-  console.log(`Application listening on port ${port}`);
+app.listen(PORT, () => {
+  console.log(`Application listening on port ${PORT}`);
 });

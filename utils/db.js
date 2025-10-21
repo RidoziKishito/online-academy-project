@@ -1,15 +1,15 @@
 import knex from 'knex';
-
+import dotenv from 'dotenv';
+dotenv.config();
 const db = knex({
     client: 'pg',
     connection: {
-        host: 'aws-1-ap-southeast-1.pooler.supabase.com',
-        port: 5432,
+        host: process.env.HOST,
+        port: process.env.PORT,
 
-        //lúc update lên github thì nhớ xóa user để k bị mất mã nguồn
-        user: 'postgres.zbmwdwbgdwzaxnfazjdx',
+        user: process.env.USER,
 
-        password: 'FinalProjectSPK@@',
+        password: process.env.PASSWORD,
         database: 'postgres',
         pool: { min: 0, max: 15 },
     },
