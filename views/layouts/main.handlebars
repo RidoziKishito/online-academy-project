@@ -107,13 +107,27 @@
                     </div>
                 </div>
                 <div class="card">
-                    <h5 class="card-header">Featured</h5>
-                    <div class="card-body">
-                        <h5 class="card-title">Special title treatment</h5>
-                        <p class="card-text">With supporting text below as a natural lead-in to additional content.</p>
-                        <a href="#" class="btn btn-primary">Go somewhere</a>
-                    </div>
-                </div>
+    <h5 class="card-header">
+        {{#if isAuthenticated}}My Learning{{else}}Featured{{/if}}
+    </h5>
+    <div class="card-body">
+        {{#if isAuthenticated}}
+            <div class="d-grid gap-2 mb-3">
+                <a href="/student/my-courses" class="btn btn-outline-primary btn-sm">
+                    <i class="bi bi-book"></i> My Courses
+                </a>
+                <a href="/student/my-wishlist" class="btn btn-outline-danger btn-sm">
+                    <i class="bi bi-heart"></i> Wishlist 
+                    <span class="badge bg-secondary">{{wishlistCount}}</span>
+                </a>
+            </div>
+        {{else}}
+            <h5 class="card-title">Start Learning Today</h5>
+            <p class="card-text">Join thousands of learners worldwide.</p>
+            <a href="/account/signup" class="btn btn-primary btn-sm">Sign Up Now</a>
+        {{/if}}
+    </div>
+</div>
             </div>
                         <div class="col-lg-9 col-md-8 col-sm-6">
                                 {{{body}}}
