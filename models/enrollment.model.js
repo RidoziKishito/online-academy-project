@@ -5,7 +5,16 @@ const TABLE_NAME = 'user_enrollments';
 export async function enroll(userId, courseId) {
   const existed = await db(TABLE_NAME).where({ user_id: userId, course_id: courseId }).first();
   if (existed) return existed;
-  const [id] = await db(TABLE_NAME).insert({ user_id: userId, course_id: courseId });
+  const insertResult = await db(TABLE_NAME).insert({ user_id: userId, course_id: courseId });
+  let id;
+  if (Array.isArray(insertResult) && insertResult.length) {
+    id = insertResult[0];
+  } else if (typeof insertResult === 'number') {
+    id = insertResult;
+  } else if (insertResult && typeof insertResult === 'object') {
+    id = insertResult.insertId || insertResult.id || insertResult.enrollment_id || null;
+  }
+
   return { enrollment_id: id, user_id: userId, course_id: courseId };
 }
 

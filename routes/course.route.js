@@ -157,7 +157,7 @@ router.get('/by-category/:id', async (req, res) =>
     total_lectures: c.total_lectures || 0,
   }));
 
-  res.render('vwCourse/byCategory', {
+  res.render('vwCourse/byCat', {
     category,
     courses,
     empty: courses.length === 0,
