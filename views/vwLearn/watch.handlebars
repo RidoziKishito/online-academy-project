@@ -1,0 +1,193 @@
+<div class="container-fluid p-0">
+    <div class="row g-0">
+        <!-- Video Player Section -->
+        <div class="col-lg-8">
+            <div class="video-container bg-dark position-relative">
+                {{#if currentLesson.video_url}}
+                <video id="mainVideo" class="w-100" controls style="height: 500px;">
+                    <source src="{{currentLesson.video_url}}" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+                {{else}}
+                <div class="d-flex align-items-center justify-content-center text-white" style="height: 500px;">
+                    <div class="text-center">
+                        <i class="bi bi-camera-video display-1 mb-3"></i>
+                        <h4>No video available</h4>
+                    </div>
+                </div>
+                {{/if}}
+
+                <!-- Video Controls Overlay -->
+                <div class="position-absolute bottom-0 start-0 end-0 p-3 bg-gradient"
+                    style="background: linear-gradient(transparent, rgba(0,0,0,0.7));">
+                    <div class="d-flex justify-content-between align-items-center text-white">
+                        <div>
+                            <h5 class="mb-1">{{currentLesson.title}}</h5>
+                            <small>{{course.title}}</small>
+                        </div>
+                        <div class="btn-group">
+                            {{#if prevLesson}}
+                            <a href="/learn/{{course.course_id}}/lesson/{{prevLesson.lesson_id}}"
+                                class="btn btn-outline-light btn-sm">
+                                <i class="bi bi-skip-backward"></i> Previous
+                            </a>
+                            {{/if}}
+                            {{#if nextLesson}}
+                            <a href="/learn/{{course.course_id}}/lesson/{{nextLesson.lesson_id}}"
+                                class="btn btn-primary btn-sm">
+                                Next <i class="bi bi-skip-forward"></i>
+                            </a>
+                            {{/if}}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lesson Info -->
+            <div class="p-4">
+                <div class="row">
+                    <div class="col-md-8">
+                        <h3>{{currentLesson.title}}</h3>
+                        <p class="text-muted">{{currentLesson.description}}</p>
+
+                        <!-- Lesson Content/Materials -->
+                        {{#if currentLesson.content}}
+                        <div class="mt-4">
+                            <h5>Lesson Materials</h5>
+                            <div class="border rounded p-3 bg-light">
+                                {{{currentLesson.content}}}
+                            </div>
+                        </div>
+                        {{/if}}
+                    </div>
+                    <div class="col-md-4">
+                        <!-- Progress Info -->
+                        <div class="card">
+                            <div class="card-body">
+                                <h6 class="card-title">Your Progress</h6>
+                                <div class="progress mb-2">
+                                    <div class="progress-bar" style="width: {{courseProgress}}%"></div>
+                                </div>
+                                <small class="text-muted">{{completedLessons}}/{{totalLessons}} lessons
+                                    completed</small>
+
+                                <div class="mt-3">
+                                    <button class="btn btn-success btn-sm w-100" id="markCompleteBtn" {{#if
+                                        currentLesson.is_completed}}disabled{{/if}}>
+                                        {{#if currentLesson.is_completed}}
+                                        <i class="bi bi-check-circle"></i> Completed
+                                        {{else}}
+                                        <i class="bi bi-check"></i> Mark as Complete
+                                        {{/if}}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Course Curriculum Sidebar -->
+        <div class="col-lg-4 bg-light border-start">
+            <div class="p-3 border-bottom bg-white">
+                <h5 class="mb-1">{{course.title}}</h5>
+                <small class="text-muted">{{totalLessons}} lessons</small>
+            </div>
+
+            <div class="curriculum-list" style="max-height: 600px; overflow-y: auto;">
+                {{#each lessons}}
+                <div
+                    class="lesson-item p-3 border-bottom {{#if is_current}}bg-primary text-white{{/if}} {{#if is_completed}}bg-success bg-opacity-10{{/if}}">
+                    <div class="d-flex align-items-start">
+                        <div class="me-2 mt-1">
+                            {{#if is_completed}}
+                            <i class="bi bi-check-circle text-success"></i>
+                            {{else if is_current}}
+                            <i class="bi bi-play-circle"></i>
+                            {{else}}
+                            <i class="bi bi-circle"></i>
+                            {{/if}}
+                        </div>
+                        <div class="flex-grow-1">
+                            {{#if is_accessible}}
+                            <a href="/learn/{{../course.course_id}}/lesson/{{lesson_id}}"
+                                class="text-decoration-none {{#if is_current}}text-white{{else}}text-dark{{/if}}">
+                                <h6 class="mb-1">{{title}}</h6>
+                            </a>
+                            {{else}}
+                            <h6 class="mb-1 text-muted">{{title}}</h6>
+                            <small class="text-muted"><i class="bi bi-lock"></i> Locked</small>
+                            {{/if}}
+                            {{#if duration}}
+                            <small class="text-muted d-block">{{duration}} minutes</small>
+                            {{/if}}
+                        </div>
+                    </div>
+                </div>
+                {{/each}}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const video = document.getElementById('mainVideo');
+    const markCompleteBtn = document.getElementById('markCompleteBtn');
+
+    // Track video progress
+    if (video) {
+        video.addEventListener('timeupdate', function() {
+            const progress = (video.currentTime / video.duration) * 100;
+            if (progress > 80) { // Auto-complete when 80% watched
+                markCompleteBtn.disabled = false;
+            }
+        });
+
+        // Save watch time periodically
+        setInterval(() => {
+            if (!video.paused) {
+                fetch('/learn/progress', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        courseId: {{course.course_id}},
+                        lessonId: {{currentLesson.lesson_id}},
+                        watchTime: Math.floor(video.currentTime)
+                    })
+                });
+            }
+        }, 30000); // Save every 30 seconds
+    }
+
+    // Mark lesson as complete
+    if (markCompleteBtn) {
+        markCompleteBtn.addEventListener('click', async function() {
+            try {
+                const response = await fetch('/learn/mark-complete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        courseId: {{course.course_id}},
+                        lessonId: {{currentLesson.lesson_id}}
+                    })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    if (result.nextLesson) {
+                        // Auto redirect to next lesson
+                        window.location.href = result.nextLesson;
+                    } else {
+                        // Course completed, reload or show completion message
+                        location.reload();
+                    }
+                }
+            } catch (error) {
+                console.error('Error marking lesson complete:', error);
+            }
+        });
+    }
+});
+</script>

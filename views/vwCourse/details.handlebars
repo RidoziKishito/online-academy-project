@@ -1,13 +1,276 @@
 <div class="card">
     <div class="card-header">Course Details</div>
     <div class="card-body">
-        <img src="{{#if course.image_url}}{{course.image_url}}{{else}}https://via.placeholder.com/800x450?text=No+Image{{/if}}" alt="{{course.title}}" class="img-fluid mb-3">
+        <!-- Existing course info -->
+        <img src="{{#if course.image_url}}{{course.image_url}}{{else}}https://via.placeholder.com/800x450?text=No+Image{{/if}}"
+            alt="{{course.title}}" class="img-fluid mb-3">
         <h4 class="card-title">{{course.title}}</h4>
+
+        <!-- Rating stats -->
+        <div class="mb-3">
+            <div class="d-flex align-items-center">
+                <div class="stars me-2">
+                    {{#repeat ratingStats.avg_rating}}⭐{{/repeat}}
+                </div>
+                <span class="text-muted">{{ratingStats.avg_rating}}/5 ({{ratingStats.total_reviews}} đánh giá)</span>
+            </div>
+        </div>
+
         <h5 class="card-text text-danger">Price: {{format_number course.current_price}}</h5>
         <p class="card-text">Enrolled: {{course.enrollment_count}}</p>
-        <p class="card-text">
-            {{{course.description}}}
-        </p>
+        <p class="card-text">{{{course.description}}}</p>
+
+        {{#if isEnrolled}}
+        <a class="btn btn-primary" href="/learn/{{course.course_id}}">Continue learning</a>
+        {{else}}
+        <form method="POST" action="/courses/detail/{{course.course_id}}/enroll">
+            <button type="submit" class="btn btn-success">Enroll now</button>
+        </form>
+        {{/if}}
     </div>
-    <div class="card-footer text-muted">Footer</div>
 </div>
+
+<!-- Review Section -->
+{{#if isEnrolled}}
+<div class="card mt-4">
+    <div class="card-header">
+        <h5>{{#if userReview}}Cập nhật đánh giá{{else}}Đánh giá khóa học{{/if}}</h5>
+    </div>
+    <div class="card-body">
+        <form id="reviewForm">
+            <div class="mb-3">
+                <label class="form-label">Rating:</label>
+                <div class="star-rating" style="font-size: 1.5rem;">
+                    <span class="star" data-rating="1" style="cursor: pointer; ">⭐</span>
+                    <span class="star" data-rating="2" style="cursor: pointer; ">⭐</span>
+                    <span class="star" data-rating="3" style="cursor: pointer; ">⭐</span>
+                    <span class="star" data-rating="4" style="cursor: pointer; ">⭐</span>
+                    <span class="star" data-rating="5" style="cursor: pointer; ">⭐</span>
+                </div>
+                <input type="hidden" id="rating" name="rating" value="0" required>
+            </div>
+            <div class="mb-3">
+                <label for="comment" class="form-label">Nhận xét:</label>
+                <textarea class="form-control" id="comment" name="comment" rows="4"
+                    placeholder="Chia sẻ trải nghiệm của bạn..."></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">
+                {{#if userReview}}Cập nhật đánh giá{{else}}Gửi đánh giá{{/if}}
+            </button>
+            {{#if userReview}}
+            <button type="button" class="btn btn-outline-danger" id="deleteReview">Xóa đánh giá</button>
+            {{/if}}
+        </form>
+    </div>
+</div>
+{{/if}}
+
+<!-- Reviews Display -->
+{{#if reviews}}
+<div class="card mt-4">
+    <div class="card-header">
+        <h5>Đánh giá từ học viên ({{ratingStats.total_reviews}})</h5>
+    </div>
+    <div class="card-body">
+        {{#each reviews}}
+        <div class="review-item border-bottom pb-3 mb-3">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <strong>{{user_name}}{{#if username}} (@{{username}}){{/if}}</strong>
+                    <div class="stars mb-2">
+                        {{#repeat rating}}⭐{{/repeat}}
+                    </div>
+                </div>
+                <small class="text-muted">{{formatDate created_at}}</small>
+            </div>
+            {{#if comment}}
+            <p class="mb-0">{{comment}}</p>
+            {{/if}}
+        </div>
+        {{/each}}
+    </div>
+</div>
+{{/if}}
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <h5 class="modal-title text-danger" id="deleteConfirmModalLabel">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>Xác nhận xóa
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <div class="mb-3">
+                    <i class="bi bi-trash3 text-danger" style="font-size: 3rem;"></i>
+                </div>
+                <h6>Bạn có chắc chắn muốn xóa đánh giá này không?</h6>
+                <p class="text-muted">Hành động này không thể hoàn tác.</p>
+            </div>
+            <div class="modal-footer border-0 justify-content-center">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-lg me-1"></i>Hủy
+                </button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
+                    <i class="bi bi-trash3 me-1"></i>Xóa đánh giá
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const stars = document.querySelectorAll('.star');
+    const ratingInput = document.getElementById('rating');
+    const reviewForm = document.getElementById('reviewForm');  
+    const deleteBtn = document.getElementById('deleteReview');
+
+    // Hàm hiển thị alert Bootstrap
+    function showAlert(message, type = 'success') {
+        // Xóa alert cũ nếu có
+        const existingAlert = document.querySelector('.alert');
+        if (existingAlert) {
+            existingAlert.remove();
+        }
+
+        const alertHtml = `
+            <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                <strong>${type === 'success' ? 'Thành công!' : (type === 'warning' ? 'Cảnh báo!' : 'Lỗi!')}</strong> ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        `;
+        
+        // Thêm alert vào đầu form
+        reviewForm.insertAdjacentHTML('beforebegin', alertHtml);
+        
+        // Tự động ẩn sau 5 giây
+        setTimeout(() => {
+            const alert = document.querySelector('.alert');
+            if (alert) {
+                alert.remove();
+            }
+        }, 5000);
+    }
+
+    // Hàm cập nhật màu sao
+    function updateStarDisplay(rating) {
+        stars.forEach((s, index) => {
+            s.style.color = index < rating ? 'gold' : 'lightgray';
+        });
+    }
+
+    // Khởi tạo hiển thị
+    {{#if userReview}}
+    const currentRating = {{userReview.rating}};
+    ratingInput.value = currentRating;
+    updateStarDisplay(currentRating);
+    {{else}}
+    updateStarDisplay(0);
+    ratingInput.value = 0;
+    {{/if}}
+
+    // Hover effect
+    stars.forEach(star => {
+        star.addEventListener('mouseenter', function () {
+            const hoverRating = this.dataset.rating;
+            updateStarDisplay(hoverRating);
+        });
+
+        // Khi click -> lưu rating
+        star.addEventListener('click', function () {
+            const selectedRating = this.dataset.rating;
+            ratingInput.value = selectedRating;
+            updateStarDisplay(selectedRating);
+        });
+    });
+
+    // Khi rời khỏi toàn bộ khu vực sao
+    const starContainer = document.querySelector('.star-rating');
+    starContainer.addEventListener('mouseleave', function () {
+        const currentRating = ratingInput.value;
+        updateStarDisplay(currentRating);
+    });
+
+    // Gửi review
+    if (reviewForm) {
+    reviewForm.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        
+        if (ratingInput.value === "0") {
+            showAlert('Vui lòng chọn số sao đánh giá!', 'warning');
+            return;
+        }
+
+        const formData = new FormData(this);
+        const data = {
+            rating: formData.get('rating'),
+            comment: formData.get('comment')
+        };
+
+        try {
+            const response = await fetch(`/review/course/{{course.course_id}}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                showAlert(result.message, 'success');
+                
+                
+                
+                // Reload sau 2 giây để user thấy thông báo
+                setTimeout(() => {
+                    location.reload();
+                }, 2000);
+            } else {
+                showAlert(result.message, 'danger');
+            }
+        } catch (error) {
+            console.error('Review error:', error);
+            showAlert('Có lỗi xảy ra khi gửi đánh giá', 'danger');
+        }
+    });
+}
+
+    // Xóa review
+    if (deleteBtn) {
+    deleteBtn.addEventListener('click', function () {
+        // Hiển thị modal xác nhận thay vì confirm()
+        const deleteModal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+        deleteModal.show();
+    });
+
+    // Xử lý khi user click "Xóa đánh giá" trong modal
+    const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+    if (confirmDeleteBtn) {
+        confirmDeleteBtn.addEventListener('click', async function () {
+            // Ẩn modal
+            const deleteModal = bootstrap.Modal.getInstance(document.getElementById('deleteConfirmModal'));
+            deleteModal.hide();
+
+            try {
+                const response = await fetch(`/review/course/{{course.course_id}}`, {
+                    method: 'DELETE'
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    showAlert(result.message, 'success');
+                    setTimeout(() => {
+                        location.reload();
+                    }, 2000);
+                } else {
+                    showAlert(result.message, 'danger');
+                }
+            } catch (error) {
+                console.error('Delete error:', error);
+                showAlert('Có lỗi xảy ra khi xóa đánh giá', 'danger');
+            }
+        });
+    }
+}
+});
+</script>

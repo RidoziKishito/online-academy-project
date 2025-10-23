@@ -24,7 +24,7 @@ import adminPermissionsRouter from './routes/admin-permissions.route.js';
 import adminAccountsRouter from './routes/admin-accounts.route.js';
 import contactRouter from './routes/contact.route.js';
 import sitemapRouter from './routes/sitemap.route.js';
-
+import reviewRoute from './routes/review.route.js';
 
 const app = express();
 const PORT = 3000;
@@ -56,6 +56,33 @@ app.engine('handlebars', engine({
         return options.fn(this);
       }
       return options.inverse(this);
+    },
+        repeat(count, options) {
+      let result = '';
+      for (let i = 0; i < Math.floor(count); i++) {
+        result += options.fn(this);
+      }
+      return result;
+    },
+    range(start, end) {
+      const result = [];
+      for (let i = start; i < end; i++) {
+        result.push(i);
+      }
+      return result;
+    },
+    lte(a, b) {
+      return a <= b;
+    },
+    formatDate(date) {
+      return new Date(date).toLocaleDateString('vi-VN');
+    },
+    and(a, b) {
+      return a && b;
+    },
+    slice(array, start, end) {
+      if (!array || !Array.isArray(array)) return [];
+      return array.slice(start, end);
     }
   }
 }));
@@ -111,7 +138,7 @@ app.use('/courses', courseRouter);
 // -- Routes của học viên (cần đăng nhập) --
 app.use('/student', restrict, studentRouter);
 app.use('/learn', restrict, learnRouter);
-
+app.use('/review', restrict, reviewRoute);
 // -- Routes của giảng viên (cần đăng nhập và là instructor) --
 app.use('/instructor', restrict, isInstructor, instructorDashboardRouter);
 

@@ -1,0 +1,30 @@
+<div class="container mt-4">
+    <h2>Khóa học của tôi</h2>
+    
+    {{#if courses}}
+        <div class="row">
+            {{#each courses}}
+            <div class="col-md-4 mb-4">
+                <div class="card">
+                    <img src="{{image_url}}" class="card-img-top" alt="{{title}}">
+                    <div class="card-body">
+                        <h5 class="card-title">{{title}}</h5>
+                        <p class="card-text">{{brief_description}}</p>
+                        <div class="progress mb-2">
+                            <div class="progress-bar" style="width: {{progress_percentage}}%"></div>
+                        </div>
+                        <small class="text-muted">Tiến độ: {{progress_percentage}}%</small>
+                        <br>
+                        <a href="/learn/{{course_id}}" class="btn btn-primary mt-2">Continue Learning</a>
+                    </div>
+                </div>
+            </div>
+            {{/each}}
+        </div>
+    {{else}}
+        <div class="alert alert-info">
+            <p>Bạn chưa đăng ký khóa học nào.</p>
+            <a href="/courses" class="btn btn-primary">Khám phá khóa học</a>
+        </div>
+    {{/if}}
+</div>
