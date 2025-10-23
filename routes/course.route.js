@@ -4,11 +4,13 @@ import * as categoryModel from '../models/category.model.js';
 import * as instructorModel from '../models/instructors.model.js';
 import * as chapterModel from '../models/chapter.model.js';
 import * as enrollmentModel from '../models/enrollment.model.js';
+import * as reviewModel from '../models/review.model.js';
 import { restrict } from '../middlewares/auth.mdw.js';
 const router = express.Router();
 
 // Route hiển thị tất cả khóa học (Trang chủ)
-router.get('/', async (req, res) => {
+router.get('/', async (req, res) =>
+{
   // Fetch courses and enrich with instructor name and normalized fields
   const coursesRaw = await courseModel.findAll();
 
@@ -17,9 +19,11 @@ router.get('/', async (req, res) => {
   const instructorIds = [...new Set(coursesRaw.map(c => c.instructor_id).filter(Boolean))];
 
   let instructorsMap = {};
-  if (instructorIds.length) {
+  if (instructorIds.length)
+  {
     const instructors = await Promise.all(instructorIds.map(id => instructorModel.findById(id)));
-    instructors.forEach(i => {
+    instructors.forEach(i =>
+    {
       if (i) instructorsMap[i.user_id || i.instructor_id] = i.name || i.fullname || i.username || i.name;
     });
   }
@@ -44,9 +48,11 @@ router.get('/', async (req, res) => {
 });
 
 // Route search: GET /courses/search?q=...
-router.get('/search', async (req, res) => {
+router.get('/search', async (req, res) =>
+{
   const q = (req.query.q || req.query.q || '').trim();
-  if (!q) {
+  if (!q)
+  {
     return res.render('vwCourse/search', { courses: [], q: '', empty: true, layout: 'main' });
   }
 
@@ -71,42 +77,51 @@ router.get('/search', async (req, res) => {
   res.render('vwCourse/search', { courses, q, empty: courses.length === 0, layout: 'main' });
 });
 // Route xem chi tiết một khóa học
-router.get('/detail/:id', async (req, res) => {
+router.get('/detail/:id', async (req, res) =>
+{
   const courseId = req.params.id;
+
   const course = await courseModel.findById(courseId);
   if (!course) return res.redirect('/courses');
 
-  const [chapters, instructor] = await Promise.all([
+  const [chapters, instructor, reviews, ratingStats] = await Promise.all([
     chapterModel.findByCourseId(courseId),
-    instructorModel.findById(course.instructor_id)
+    instructorModel.findById(course.instructor_id),
+    reviewModel.getReviewsByCourse(courseId),
+    reviewModel.getCourseRatingStats(courseId)
   ]);
 
-  // Kiểm tra đã ghi danh chưa (nếu đã đăng nhập)
+  // Kiểm tra đã ghi danh chưa
   let isEnrolled = false;
-const userId = req.session?.authUser?.user_id;
-console.log('[detail] userId:', userId, 'courseId:', courseId);
+  let userReview = null;
+  if (req.session?.authUser)
+  {
+    const userId = req.session.authUser.user_id;
+    isEnrolled = await enrollmentModel.checkEnrollment(userId, courseId);
+    userReview = await reviewModel.getUserReview(userId, courseId);
+  }
 
-if (userId) {
-  isEnrolled = await enrollmentModel.checkEnrollment(userId, courseId);
-}
-console.log('[detail] isEnrolled:', isEnrolled);
-
-res.render('vwCourse/details', {
-  course,
-  chapters,
-  instructor,
-  isEnrolled,
-  layout: 'main'
-});
+  res.render('vwCourse/details', {
+    course,
+    chapters,
+    instructor,
+    reviews,
+    ratingStats,
+    isEnrolled,
+    userReview,
+    layout: 'main'
+  });
 });
 
 // Route ghi danh (enroll)
-router.post('/detail/:id/enroll', restrict, async (req, res) => {
+router.post('/detail/:id/enroll', restrict, async (req, res) =>
+{
   const courseId = req.params.id;
   const userId = req.session.authUser.user_id;
 
   const exists = await enrollmentModel.checkEnrollment(userId, courseId);
-  if (!exists) {
+  if (!exists)
+  {
     await enrollmentModel.enroll(userId, courseId);
   }
 
@@ -115,14 +130,16 @@ router.post('/detail/:id/enroll', restrict, async (req, res) => {
 
 
 // Route xem các khóa học theo lĩnh vực (category)
-router.get('/by-category/:id', async (req, res) => {
+router.get('/by-category/:id', async (req, res) =>
+{
   const categoryId = req.params.id;
   const [category, coursesRawByCat] = await Promise.all([
     categoryModel.findById(categoryId),
     courseModel.findByCategory(categoryId)
   ]);
 
-  if (!category) {
+  if (!category)
+  {
     return res.redirect('/');
   }
 
