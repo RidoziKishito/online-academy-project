@@ -197,7 +197,7 @@ document.addEventListener('DOMContentLoaded', function () {
     reviewForm.addEventListener('submit', async function (e) {
         e.preventDefault();
         
-        if (ratingInput.value == 0) {
+        if (ratingInput.value === "0") {
             showAlert('Vui lòng chọn số sao đánh giá!', 'warning');
             return;
         }
