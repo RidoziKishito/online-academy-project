@@ -47,7 +47,7 @@ router.get('/profile', restrict, async (req, res) => {
         const [enrolledCourses, wishlistCourses, completedLessons] = await Promise.all([
             enrollmentModel.findCoursesByUserId(userId),
             wishlistModel.findCoursesByUserId(userId),
-            progressModel.findCompletedLessonsByUserAll(userId) // Sử dụng function mới
+            progressModel.findCompletedLessonsByUserAll(userId) // Use the new function
         ]);
 
         // Tính toán thống kê
