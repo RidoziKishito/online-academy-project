@@ -79,6 +79,10 @@ app.engine('handlebars', engine({
     },
     and(a, b) {
       return a && b;
+    },
+    slice(array, start, end) {
+      if (!array || !Array.isArray(array)) return [];
+      return array.slice(start, end);
     }
   }
 }));

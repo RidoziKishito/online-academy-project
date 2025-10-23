@@ -1,0 +1,180 @@
+<div class="container mt-4">
+    <div class="row">
+        <!-- Left Column: User Info & Stats -->
+        <div class="col-lg-4">
+            <!-- User Info Card -->
+            <div class="card mb-4">
+                <div class="card-body text-center">
+                    <div class="avatar-placeholder mb-3">
+                        <i class="bi bi-person-circle" style="font-size: 5rem; color: #6c757d;"></i>
+                    </div>
+                    <h5 class="card-title">{{user.full_name}}</h5>
+                    <p class="small text-muted">{{user.email}}</p>
+                    <a href="/student/edit-profile" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-pencil"></i> Edit Profile
+                    </a>
+                </div>
+            </div>
+
+            <!-- Stats Card -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">📊 Learning Statistics</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6 mb-3">
+                            <div class="h4 text-primary">{{stats.totalCourses}}</div>
+                            <small class="text-muted">Courses Enrolled</small>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <div class="h4 text-success">{{stats.totalCompletedLessons}}</div>
+                            <small class="text-muted">Lessons Completed</small>
+                        </div>
+                        <div class="col-6">
+                            <div class="h4 text-warning">{{stats.totalWishlist}}</div>
+                            <small class="text-muted">Wishlist Items</small>
+                        </div>
+                        <div class="col-6">
+                            <div class="h4 text-info">{{format_number stats.totalSpent}}</div>
+                            <small class="text-muted">Total Spent (VND)</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Badges Card -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">🏆 Achievements</h6>
+                </div>
+                <div class="card-body">
+                    {{#if badges}}
+                    <div class="row">
+                        {{#each badges}}
+                        <div class="col-4 text-center mb-3">
+                            <div class="badge-item">
+                                <div class="badge-icon mb-1" style="font-size: 2rem;">{{icon}}</div>
+                                <div class="badge-name small fw-bold">{{name}}</div>
+                                <div class="badge-desc" style="font-size: 0.7rem; color: #6c757d;">{{description}}</div>
+                            </div>
+                        </div>
+                        {{/each}}
+                    </div>
+                    {{else}}
+                    <p class="text-muted text-center">No badges earned yet. Keep learning!</p>
+                    {{/if}}
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Courses Progress -->
+        <div class="col-lg-8">
+            <!-- Learning Progress -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0">📈 Learning Progress</h6>
+                    <a href="/student/my-courses" class="btn btn-outline-primary btn-sm">View All</a>
+                </div>
+                <div class="card-body">
+                    {{#if coursesWithProgress}}
+                    {{#each coursesWithProgress}}
+                    <div class="course-progress-item mb-4 p-3 border rounded">
+                        <div class="row align-items-center">
+                            <div class="col-md-3">
+                                <img src="{{#if image_url}}{{image_url}}{{else}}https://via.placeholder.com/200x120?text={{title}}{{/if}}" 
+                                     alt="{{title}}" class="img-fluid rounded">
+                            </div>
+                            <div class="col-md-9">
+                                <h6 class="mb-1">{{title}}</h6>
+                                <p class="text-muted small mb-2">{{short_description}}</p>
+                                
+                                <!-- Progress Bar -->
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <div class="flex-grow-1 me-3">
+                                        <div class="progress" style="height: 8px;">
+                                            <div class="progress-bar {{#if (eq progress 100)}}bg-success{{else}}bg-primary{{/if}}" 
+                                                 style="width: {{progress}}%"></div>
+                                        </div>
+                                    </div>
+                                    <span class="badge {{#if (eq progress 100)}}bg-success{{else}}bg-primary{{/if}}">
+                                        {{progress}}%
+                                    </span>
+                                </div>
+                                
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <small class="text-muted">
+                                        {{completedLessons}}/{{totalLessons}} lessons completed
+                                    </small>
+                                    <div>
+                                        {{#if (eq progress 100)}}
+                                        <span class="badge bg-success">
+                                            <i class="bi bi-check-circle"></i> Completed
+                                        </span>
+                                        {{/if}}
+                                        <a href="/learn/{{course_id}}" class="btn btn-outline-primary btn-sm">
+                                            {{#if (eq progress 100)}}Review{{else}}Continue{{/if}}
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {{/each}}
+                    {{else}}
+                    <div class="text-center py-5">
+                        <i class="bi bi-book" style="font-size: 3rem; color: #dee2e6;"></i>
+                        <h6 class="mt-3 text-muted">No enrolled courses yet</h6>
+                        <p class="text-muted">Start your learning journey today!</p>
+                        <a href="/courses" class="btn btn-primary">Browse Courses</a>
+                    </div>
+                    {{/if}}
+                </div>
+            </div>
+
+            <!-- Recent Wishlist -->
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0">❤️ Wishlist</h6>
+                    <a href="/student/wishlist" class="btn btn-outline-primary btn-sm">View All</a>
+                </div>
+                <div class="card-body">
+                    {{#if wishlistCourses}}
+                    <div class="row">
+                        {{#each (slice wishlistCourses 0 3)}}
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100">
+                                <img src="{{#if image_url}}{{image_url}}{{else}}https://via.placeholder.com/300x180?text={{title}}{{/if}}" 
+                                     class="card-img-top" alt="{{title}}" style="height: 120px; object-fit: cover;">
+                                <div class="card-body p-3">
+                                    <h6 class="card-title small">{{title}}</h6>
+                                    <p class="text-danger fw-bold small">{{format_number current_price}} VND</p>
+                                    <a href="/courses/detail/{{course_id}}" class="btn btn-primary btn-sm w-100">View Details</a>
+                                </div>
+                            </div>
+                        </div>
+                        {{/each}}
+                    </div>
+                    {{else}}
+                    <p class="text-muted text-center">Your wishlist is empty</p>
+                    {{/if}}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.badge-item {
+    transition: transform 0.2s;
+}
+.badge-item:hover {
+    transform: scale(1.05);
+}
+.course-progress-item {
+    transition: box-shadow 0.2s;
+}
+.course-progress-item:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+</style>
