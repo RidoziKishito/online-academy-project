@@ -1,0 +1,192 @@
+{{#fillContent 'css'}}
+<link href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css" rel="stylesheet" />
+<link href="https://releases.transloadit.com/uppy/v5.1.5/uppy.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+{{/fillContent}}
+
+{{#fillContent 'js'}}
+<script src="https://cdn.jsdelivr.net/npm/cleave.js@1.6.0/dist/cleave.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
+<script>
+    // --- SỬA LỖI: Sửa ID cho đúng ---
+    new Cleave('#currentPrice', { // <-- Sửa từ #txtPrice
+        numeral: true,
+        numeralThousandsGroupStyle: 'thousand'
+    });
+
+    new Cleave('#originalPrice', { // <-- Sửa từ #txtQuantity
+        numeral: true,
+        numeralThousandsGroupStyle: 'thousand'
+    });
+    // -------------------------------
+
+    const quill = new Quill('#editor', {
+        theme: 'snow',
+        placeholder: 'Compose an epic...'
+    });
+
+    // Ensure hidden input contains initial editor content in case user doesn't change it
+    const initialHtml = quill.root.innerHTML;
+    const fullDescInput = document.querySelector('#full_description');
+    if (fullDescInput) fullDescInput.value = initialHtml;
+
+    // On submit, copy quill html to hidden input so server receives full_description
+    document.querySelector('#frmAddCourse').addEventListener('submit', function (e) {
+        const html = quill.root.innerHTML;
+        document.querySelector('#full_description').value = html;
+    });
+
+    // Update thumbnail preview when image URL input changes
+    const imageUrlInput = document.querySelector('#imageUrlInput');
+    const thumbnailPreview = document.querySelector('#thumbnailPreview');
+    if (imageUrlInput && thumbnailPreview) {
+        imageUrlInput.addEventListener('input', function () {
+            const v = imageUrlInput.value && imageUrlInput.value.trim();
+            const fallback = `https://picsum.photos/seed/${thumbnailPreview.dataset.courseId}/400/200`;
+            thumbnailPreview.src = v || fallback;
+        });
+    }
+</script>
+{{/fillContent}}
+<div class="container mt-4">
+    <h4 class="mb-3">Manage Course: {{course.title}}</h4>
+
+    <ul class="nav nav-tabs mb-3" id="manageCourseTabs">
+        <li class="nav-item">
+            <a class="nav-link active" data-bs-toggle="tab" href="#tab-course">Course Info</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" data-bs-toggle="tab" href="#tab-students">Students</a>
+        </li>
+    </ul>
+
+    <div class="tab-content">
+        <!-- COURSE INFO TAB -->
+        <div class="tab-pane fade show active" id="tab-course">
+            <div class="card mb-3">
+                <div class="card-body">
+                    <form id="frmAddCourse" action="/instructor/update-course/{{course.course_id}}" method="POST">
+                        {{#if flash}}
+                        <div class="mb-3">
+                            {{#if flash.success}}<div class="alert alert-success">{{flash.success}}</div>{{/if}}
+                            {{#if flash.error}}<div class="alert alert-danger">{{flash.error}}</div>{{/if}}
+                        </div>
+                        {{/if}}
+                        <div class="mb-3">
+                            <label class="form-label">Course Title</label>
+                            <input type="text" name="title" class="form-control" value="{{course.title}}" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Description</label>
+                            <!-- Quill requires a container element; render existing HTML into it -->
+                            <div id="editor" class="form-control" style="min-height:200px">{{{course.full_description}}}
+                            </div>
+                            <input type="hidden" id="full_description" name="full_description" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Thumbnail Image URL</label>
+                            <div class="row g-2 align-items-center">
+                                <div class="col-md-4">
+                                    <img id="thumbnailPreview" data-course-id="{{course.course_id}}"
+                                        src="{{#if course.image_url}}{{course.image_url}}{{else}}https://picsum.photos/seed/{{course.course_id}}/400/200{{/if}}"
+                                        alt="Thumbnail" class="img-fluid rounded border"
+                                        style="max-height:160px;object-fit:cover;" />
+                                </div>
+                                <div class="col-md-8">
+                                    <input type="text" id="imageUrlInput" name="image_url" class="form-control"
+                                        value="{{course.image_url}}"
+                                        placeholder="https://picsum.photos/seed/123/400/200" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-4">
+                                <label class="form-label">Price</label>
+                                <input id="currentPrice" type="text" name="price" class="form-control"
+                                    value="{{course.price}}" placeholder="0">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Sale Price</label>
+                                <input id="originalPrice" type="text" name="sale_price" class="form-control"
+                                    value="{{course.sale_price}}" placeholder="0">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Category</label>
+                                <select name="category_id" class="form-select">
+                                    {{#each categories}}
+                                    <option value="{{category_id}}" {{#ifEq category_id
+                                        ../course.category_id}}selected{{/ifEq}}>{{name}}</option>
+                                    {{/each}}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between mt-4">
+                            <div>
+                                <button type="submit" name="status" value="completed" class="btn btn-success" {{#if
+                                    course.is_complete}}disabled{{/if}}>Mark Completed</button>
+                                <button type="submit" name="status" value="incomplete" class="btn btn-secondary"
+                                    {{#unless course.is_complete}}disabled{{/unless}}>Mark Incomplete</button>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Save Changes</button>
+                            <a href="/instructor/delete-course/{{course.course_id}}" class="btn btn-danger">Delete</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- STUDENTS TAB -->
+        <div class="tab-pane fade" id="tab-students">
+            <div class="card">
+                <div class="card-header">
+                    Students Enrolled ({{students.length}})
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Student</th>
+                                <th>Email</th>
+                                <th>Progress</th>
+                                <th class="text-end">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{#each students}}
+                            <tr>
+                                <td>{{@index}}</td>
+                                <td>{{full_name}}</td>
+                                <td>{{email}}</td>
+                                <td>
+                                    <div class="progress" style="height: 10px;">
+                                        <div class="progress-bar bg-success" role="progressbar"
+                                            style="width: {{progress_percent}}%" aria-valuenow="{{progress_percent}}"
+                                            aria-valuemin="0" aria-valuemax="100">
+                                        </div>
+                                    </div>
+                                    <small>{{progress_percent}}%</small>
+                                </td>
+                                <td class="text-end">
+                                    <a href="/instructor/student-progress/{{../course.course_id}}/{{user_id}}"
+                                        class="btn btn-outline-primary btn-sm">
+                                        View Detail
+                                    </a>
+                                </td>
+                            </tr>
+                            {{else}}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-3">No students yet.</td>
+                            </tr>
+                            {{/each}}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

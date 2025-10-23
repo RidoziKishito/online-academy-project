@@ -24,6 +24,7 @@ import adminPermissionsRouter from './routes/admin-permissions.route.js';
 import adminAccountsRouter from './routes/admin-accounts.route.js';
 import contactRouter from './routes/contact.route.js';
 import sitemapRouter from './routes/sitemap.route.js';
+import instructorsRouter from './routes/instructors.route.js';
 
 
 const app = express();
@@ -47,6 +48,18 @@ app.engine('handlebars', engine({
     fillContent: hsb_sections(),
     format_number(value) {
       return new Intl.NumberFormat('vi-VN').format(value);
+    },
+    format_date(value) {
+      if (!value) return '';
+      const d = new Date(value);
+      if (Number.isNaN(d.getTime())) return value;
+      return d.toLocaleString('vi-VN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
     },
     eq(a, b) {
       return a === b;
@@ -97,6 +110,13 @@ app.use(async function (req, res, next) {
   }));
   next();
 });
+// Flash messages (simple session-based)
+app.use(function (req, res, next) {
+  res.locals.flash = req.session.flash || null;
+  // clear flash after exposing to view
+  delete req.session.flash;
+  next();
+});
 // =======================================================
 
 
@@ -111,6 +131,9 @@ app.use('/courses', courseRouter);
 // -- Routes của học viên (cần đăng nhập) --
 app.use('/student', restrict, studentRouter);
 app.use('/learn', restrict, learnRouter);
+
+// Public instructors profiles
+app.use('/instructors', instructorsRouter);
 
 // -- Routes của giảng viên (cần đăng nhập và là instructor) --
 app.use('/instructor', restrict, isInstructor, instructorDashboardRouter);
