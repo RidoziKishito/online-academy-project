@@ -48,9 +48,9 @@
         <div class="mb-3">
           <label class="form-label">Role</label>
           <select name="role" class="form-select">
-            <option value="student" {{#ifEq user.role "student"}}selected{{/ifEq}}>Student</option>
-            <option value="instructor" {{#ifEq user.role "instructor"}}selected{{/ifEq}}>Instructor</option>
-            <option value="admin" {{#ifEq user.role "admin"}}selected{{/ifEq}}>Admin</option>
+            {{#each role}}
+              <option value="{{this}}" {{#if ../user}}{{#if (eq this ../user.role)}}selected{{/if}}{{/if}}>{{this}}</option>
+            {{/each}}
           </select>
         </div>
 

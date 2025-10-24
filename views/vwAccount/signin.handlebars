@@ -2,6 +2,13 @@
     <div class="card">
         <div class="card-header">Sign In</div>
         <div class="card-body">
+            {{#if success}}
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <i class="bi bi-check-circle-fill me-2"></i>
+                    <strong>Success!</strong> {{success}}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {{/if}}
             {{#if error}}
                     <div class="alert alert-warning alert-dismissible fade show" role="alert">
                         <strong>Error!</strong> Your email or password is incorrect.
@@ -15,6 +22,11 @@
             <div class="mb-3">
                 <label for="txtPassword" class="form-label">Password</label>
                 <input type="password" class="form-control" id="txtPassword" name="password">
+            </div>
+            <div class="mb-3 text-end">
+                <a href="/account/forgot-password" class="text-decoration-none small">
+                    <i class="bi bi-key-fill me-1"></i>Forgot Password?
+                </a>
             </div>
         </div>
         <div class="card-footer text-muted">

@@ -22,3 +22,96 @@ export function patch(id, user) {
 export function findAll() {
   return db(TABLE_NAME).select('*').orderBy('user_id', 'asc');
 }
+
+export function getRoleOptions() {
+  return db(TABLE_NAME)
+    .distinct('role')
+    .whereNotNull('role')
+    .orderBy('role', 'asc')
+    .pluck('role');
+}
+
+// Pagination helpers
+export function countAll() {
+  return db(TABLE_NAME)
+    .count('user_id as total')
+    .first()
+    .then(r => parseInt(r.total || 0));
+}
+
+export function findAllPaged(limit, offset) {
+  let q = db(TABLE_NAME).select('*').orderBy('user_id', 'asc');
+  if (limit) q = q.limit(limit);
+  if (offset) q = q.offset(offset);
+  return q;
+}
+
+// Filtered pagination
+export function findAllFiltered(filters = {}) {
+  let q = db(TABLE_NAME).select('*');
+  
+  if (filters.role) {
+    q = q.where('role', filters.role);
+  }
+  
+  if (filters.isVerified !== null && filters.isVerified !== undefined) {
+    const verified = filters.isVerified === 'true' || filters.isVerified === true;
+    q = q.where('is_verified', verified);
+  }
+  
+  q = q.orderBy('user_id', 'asc');
+  
+  if (filters.limit) q = q.limit(filters.limit);
+  if (filters.offset) q = q.offset(filters.offset);
+  
+  return q;
+}
+
+export function countAllFiltered(filters = {}) {
+  let q = db(TABLE_NAME);
+  
+  if (filters.role) {
+    q = q.where('role', filters.role);
+  }
+  
+  if (filters.isVerified !== null && filters.isVerified !== undefined) {
+    const verified = filters.isVerified === 'true' || filters.isVerified === true;
+    q = q.where('is_verified', verified);
+  }
+  
+  return q.count('user_id as total')
+    .first()
+    .then(r => parseInt(r.total || 0));
+}
+
+export function del(id) {
+  return db(TABLE_NAME).where('user_id', id).del();
+}
+
+// Password reset functions
+export function setResetToken(email, token, expiresAt) {
+  return db(TABLE_NAME)
+    .where('email', email)
+    .update({
+      otp_secret: token,
+      otp_expires_at: expiresAt
+    });
+}
+
+export function findByResetToken(email, token) {
+  return db(TABLE_NAME)
+    .where('email', email)
+    .where('otp_secret', token)
+    .where('otp_expires_at', '>', new Date())
+    .first();
+}
+
+export function resetPassword(userId, newPasswordHash) {
+  return db(TABLE_NAME)
+    .where('user_id', userId)
+    .update({
+      password_hash: newPasswordHash,
+      otp_secret: null,
+      otp_expires_at: null
+    });
+}

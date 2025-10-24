@@ -2,6 +2,7 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import * as userModel from '../models/user.model.js';
 import { restrict } from '../middlewares/auth.mdw.js';
+import { sendResetEmail } from '../utils/mailer.js';
 
 const router = express.Router();
 
@@ -153,6 +154,123 @@ router.post('/profile', restrict, async (req, res) => {
 
   res.render('vwAccount/profile', { success: true });
 });
+
+  // Forgot Password - Request reset token
+  router.get('/forgot-password', (req, res) => {
+    res.render('vwAccount/forgot-password');
+  });
+
+  router.post('/forgot-password', async (req, res) => {
+    const { email } = req.body;
+  
+    if (!email || email.trim().length === 0) {
+      return res.render('vwAccount/forgot-password', {
+        error: 'Please enter your email address.'
+      });
+    }
+
+    try {
+      const user = await userModel.findByEmail(email);
+    
+      // Check if user exists
+      if (!user) {
+        return res.json({
+          success: false,
+          message: 'Email address not found. Please check and try again.'
+        });
+      }
+    
+      // Generate random 8-character token
+      const token = Math.random().toString(36).substring(2, 10).toUpperCase();
+      const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+    
+      await userModel.setResetToken(email, token, expiresAt);
+    
+      // Send email with token
+      try {
+        await sendResetEmail(email, token, user.full_name);
+      } catch (emailError) {
+        console.error('Failed to send reset email:', emailError);
+        return res.json({
+          success: false,
+          message: 'Failed to send reset email. Please try again later.'
+        });
+      }
+    
+      // Return success response
+      res.json({
+        success: true,
+        email: email
+      });
+    } catch (err) {
+      console.error('Forgot password error:', err);
+      res.json({
+        success: false,
+        message: 'An error occurred. Please try again.'
+      });
+    }
+  });
+
+  // Reset Password - Enter new password with token
+  router.get('/reset-password', (req, res) => {
+    const { email, token } = req.query;
+    res.render('vwAccount/reset-password', {
+      oldData: { email, token }
+    });
+  });
+
+  router.post('/reset-password', async (req, res) => {
+    const { email, token, password, confirm_password } = req.body;
+    const errorMessages = {};
+    const oldData = { email, token };
+  
+    // Validation
+    if (!email || !token) {
+      return res.render('vwAccount/reset-password', {
+        error: 'Invalid reset link.',
+        oldData
+      });
+    }
+  
+    if (!password || password.length < 6) {
+      errorMessages.password = ['Password must be at least 6 characters.'];
+    }
+    if (password !== confirm_password) {
+      errorMessages.confirm_password = ['Passwords do not match.'];
+    }
+  
+    if (Object.keys(errorMessages).length > 0) {
+      return res.render('vwAccount/reset-password', {
+        errorMessages,
+        oldData
+      });
+    }
+  
+    try {
+      // Verify token
+      const user = await userModel.findByResetToken(email, token);
+    
+      if (!user) {
+        return res.render('vwAccount/reset-password', {
+          error: 'Invalid or expired reset token. Please request a new one.',
+          oldData
+        });
+      }
+    
+      // Reset password
+      const newHash = bcrypt.hashSync(password, 10);
+      await userModel.resetPassword(user.user_id, newHash);
+    
+      // Redirect to signin with success message
+      res.redirect('/account/signin?reset=success');
+    } catch (err) {
+      console.error('Reset password error:', err);
+      res.render('vwAccount/reset-password', {
+        error: 'An error occurred. Please try again.',
+        oldData
+      });
+    }
+  });
 
 // (Các route đổi mật khẩu có thể giữ nguyên logic, chỉ cần đảm bảo tên cột password_hash là đúng)
 

@@ -5,9 +5,10 @@ import session from 'express-session';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+import { testEmailConfig } from './utils/mailer.js';
+testEmailConfig();
 // Import Middlewares
 import { restrict, isAdmin, isInstructor } from './middlewares/auth.mdw.js';
-
 // Import Models (chỉ cần cho middleware)
 import * as categoryModel from './models/category.model.js';
 
@@ -201,7 +202,6 @@ app.use((err, req, res, next) => {
   res.status(500).render('500');
 });
 // =======================================================
-
 app.listen(PORT, () => {
   console.log(`Application listening on port ${PORT}`);
 });

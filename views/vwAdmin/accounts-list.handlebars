@@ -7,7 +7,28 @@
         <i class="bi bi-person-plus"></i> Create New
       </a>
     </div>
-    <div class="card-body table-responsive">
+    <div class="card-body">
+      <form method="get" action="/admin/accounts" class="row g-3 mb-3" id="filterForm">
+        <div class="col-md-6">
+          <label for="roleFilter" class="form-label">Filter by Role</label>
+          <select class="form-select" id="roleFilter" name="role">
+            <option value="">All Roles</option>
+            {{#each roles}}
+            <option value="{{this}}" {{#if (eq ../currentRole this)}}selected{{/if}}>{{this}}</option>
+            {{/each}}
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label for="verifiedFilter" class="form-label">Filter by Verified</label>
+          <select class="form-select" id="verifiedFilter" name="is_verified">
+            <option value="">All</option>
+            <option value="true" {{#if (eq currentVerified 'true')}}selected{{/if}}>Verified</option>
+            <option value="false" {{#if (eq currentVerified 'false')}}selected{{/if}}>Not Verified</option>
+          </select>
+        </div>
+      </form>
+    </div>
+    <div class="card-body table-responsive pt-0">
       <table class="table table-striped">
         <thead>
           <tr>
@@ -15,25 +36,214 @@
             <th>Full name</th>
             <th>Email</th>
             <th>Role</th>
-            <th></th>
+            <th>Verified</th>
+            <th class="text-end">Actions</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody id="accountsTableBody">
           {{#each users}}
           <tr>
             <td>{{this.user_id}}</td>
             <td>{{this.full_name}}</td>
             <td>{{this.email}}</td>
             <td>{{this.role}}</td>
+            <td>
+              {{#if this.is_verified}}
+                <span class="badge bg-success">Yes</span>
+              {{else}}
+                <span class="badge bg-secondary">No</span>
+              {{/if}}
+            </td>
             <td class="text-end">
-              <a class="btn btn-sm btn-outline-secondary" href="/admin/accounts/edit?id={{this.user_id}}">
-                <i class="bi bi-pencil-square"></i> Edit
+              <a class="btn btn-sm btn-outline-primary" href="/admin/accounts/edit?id={{this.user_id}}" title="Edit">
+                <i class="bi bi-pencil-square"></i>
               </a>
+              <button type="button" class="btn btn-sm btn-danger delete-btn" data-user-id="{{this.user_id}}" data-user-name="{{this.full_name}}" {{#if this.is_verified}}disabled title="Cannot delete verified user"{{/if}}>
+                <i class="bi bi-trash"></i>
+              </button>
             </td>
           </tr>
           {{/each}}
         </tbody>
       </table>
     </div>
+    {{#if pagination}}
+    <div class="card-footer">
+      <div class="d-flex justify-content-between align-items-center">
+        <div class="text-muted">
+          Showing {{users.length}} of {{pagination.totalItems}} accounts
+        </div>
+        <nav aria-label="Accounts pagination">
+          <ul class="pagination pagination-sm mb-0" id="paginationControls">
+            <li class="page-item {{#if (eq pagination.currentPage 1)}}disabled{{/if}}">
+              <a class="page-link" href="#" data-page="{{subtract pagination.currentPage 1}}">Previous</a>
+            </li>
+            {{#each (generatePages pagination.currentPage pagination.totalPages)}}
+              {{#if (eq this '...')}}
+                <li class="page-item disabled"><span class="page-link">...</span></li>
+              {{else}}
+                <li class="page-item {{#if (eq this ../pagination.currentPage)}}active{{/if}}">
+                  <a class="page-link" href="#" data-page="{{this}}">{{this}}</a>
+                </li>
+              {{/if}}
+            {{/each}}
+            <li class="page-item {{#if (eq pagination.currentPage pagination.totalPages)}}disabled{{/if}}">
+              <a class="page-link" href="#" data-page="{{add pagination.currentPage 1}}">Next</a>
+            </li>
+          </ul>
+        </nav>
+      </div>
+    </div>
+    {{/if}}
   </div>
 </div>
+
+{{#fillContent 'js'}}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  let currentPage = {{pagination.currentPage}};
+
+  function renderRows(users) {
+    const tbody = document.getElementById('accountsTableBody');
+    tbody.innerHTML = '';
+    users.forEach(u => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${u.user_id}</td>
+        <td>${u.full_name || ''}</td>
+        <td>${u.email || ''}</td>
+        <td>${u.role || ''}</td>
+        <td>${u.is_verified ? '<span class="badge bg-success">Yes</span>' : '<span class="badge bg-secondary">No</span>'}</td>
+        <td class="text-end">
+          <a class="btn btn-sm btn-outline-primary" href="/admin/accounts/edit?id=${u.user_id}" title="Edit">
+            <i class="bi bi-pencil-square"></i>
+          </a>
+          <button type="button" class="btn btn-sm btn-danger delete-btn" data-user-id="${u.user_id}" data-user-name="${u.full_name || u.email}" ${u.is_verified ? 'disabled title="Cannot delete verified user"' : ''}>
+            <i class="bi bi-trash"></i>
+          </button>
+        </td>`;
+      tbody.appendChild(tr);
+    });
+    attachDeleteHandlers();
+  }
+
+  function generatePages(currentPage, totalPages) {
+    const pages = [];
+    const maxVisible = 7;
+    if (totalPages <= maxVisible) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else if (currentPage <= 4) {
+      for (let i = 1; i <= 5; i++) pages.push(i);
+      pages.push('...');
+      pages.push(totalPages);
+    } else if (currentPage >= totalPages - 3) {
+      pages.push(1);
+      pages.push('...');
+      for (let i = totalPages - 4; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      pages.push('...');
+      for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i);
+      pages.push('...');
+      pages.push(totalPages);
+    }
+    return pages;
+  }
+
+  function updatePagination(pagination) {
+    const ul = document.getElementById('paginationControls');
+    if (!ul) return;
+    const pages = generatePages(pagination.currentPage, pagination.totalPages);
+    let html = '';
+    html += `<li class=\"page-item ${pagination.currentPage === 1 ? 'disabled' : ''}\"><a class=\"page-link\" href=\"#\" data-page=\"${pagination.currentPage - 1}\">Previous</a></li>`;
+    pages.forEach(p => {
+      if (p === '...') {
+        html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+      } else {
+        html += `<li class=\"page-item ${p === pagination.currentPage ? 'active' : ''}\"><a class=\"page-link\" href=\"#\" data-page=\"${p}\">${p}</a></li>`;
+      }
+    });
+    html += `<li class=\"page-item ${pagination.currentPage === pagination.totalPages ? 'disabled' : ''}\"><a class=\"page-link\" href=\"#\" data-page=\"${pagination.currentPage + 1}\">Next</a></li>`;
+    ul.innerHTML = html;
+    const showing = document.querySelector('.card-footer .text-muted');
+    if (showing) showing.textContent = `Showing ${pagination.limit} of ${pagination.totalItems} accounts`;
+    attachPaginationHandlers();
+  }
+
+  function loadUsers(page = 1) {
+    const filterForm = document.getElementById('filterForm');
+    const formData = new FormData(filterForm);
+    const params = new URLSearchParams(formData);
+    params.set('page', page);
+    
+    fetch(`/admin/accounts?${params.toString()}`, { headers: { 'Accept': 'application/json' }})
+      .then(r => r.json())
+      .then(data => {
+        renderRows(data.users);
+        updatePagination(data.pagination);
+        currentPage = data.pagination.currentPage;
+      })
+      .catch(err => {
+        console.error(err);
+        Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to load accounts.' });
+      });
+  }
+
+  function attachPaginationHandlers() {
+    document.querySelectorAll('#paginationControls .page-link').forEach(a => {
+      a.addEventListener('click', function(e) {
+        e.preventDefault();
+        const p = parseInt(this.dataset.page);
+        if (p && p > 0) loadUsers(p);
+      });
+    });
+  }
+
+  function attachDeleteHandlers() {
+    document.querySelectorAll('.delete-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const userId = this.dataset.userId;
+        const userName = this.dataset.userName || userId;
+        Swal.fire({
+          title: 'Delete Account?',
+          html: `Are you sure you want to delete <strong>${userName}</strong>?`,
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#d33',
+          cancelButtonColor: '#3085d6',
+          confirmButtonText: 'Yes, delete',
+          cancelButtonText: 'Cancel'
+        }).then(res => {
+          if (res.isConfirmed) {
+            fetch(`/admin/accounts/delete/${userId}`, { method: 'POST', headers: { 'Accept': 'application/json' }})
+              .then(r => r.json())
+              .then(data => {
+                if (data.ok) {
+                  Swal.fire({ icon: 'success', title: 'Deleted', timer: 1200, showConfirmButton: false });
+                  loadUsers(currentPage);
+                } else {
+                  Swal.fire({ icon: 'error', title: 'Cannot delete', text: data.error || 'Delete failed' });
+                }
+              })
+              .catch(() => Swal.fire({ icon: 'error', title: 'Error', text: 'Delete failed' }));
+          }
+        });
+      });
+    });
+  }
+
+  // Auto-submit form when filters change
+  const filterSelects = document.querySelectorAll('#filterForm select');
+  filterSelects.forEach(select => {
+    select.addEventListener('change', function() {
+      loadUsers(1); // Reset to page 1 when filters change
+    });
+  });
+
+  // init
+  attachPaginationHandlers();
+  attachDeleteHandlers();
+});
+</script>
+{{/fillContent}}
