@@ -51,9 +51,11 @@ export function findAllWithCategory() {
 export function findAllWithCategoryFiltered(filters = {}) {
   let query = db(TABLE_NAME)
     .leftJoin('categories', 'courses.category_id', 'categories.category_id')
+    .leftJoin('users', 'courses.instructor_id', 'users.user_id')
     .select(
       'courses.*',
-      'categories.name as category_name'
+      'categories.name as category_name',
+      'users.full_name as instructor_name'
     );
 
   // Filter by category if provided
@@ -66,6 +68,11 @@ export function findAllWithCategoryFiltered(filters = {}) {
     query = query.where('courses.status', filters.status);
   }
 
+  // Filter by instructor if provided
+  if (filters.instructorId) {
+    query = query.where('courses.instructor_id', filters.instructorId);
+  }
+
   // Sort by specified field or default to ID
   const direction = filters.order === 'desc' ? 'desc' : 'asc';
   
@@ -76,7 +83,39 @@ export function findAllWithCategoryFiltered(filters = {}) {
     query = query.orderBy('courses.course_id', direction);
   }
 
+  // Pagination
+  if (filters.limit) {
+    query = query.limit(filters.limit);
+  }
+  if (filters.offset) {
+    query = query.offset(filters.offset);
+  }
+
   return query;
+}
+
+export async function countAllWithCategoryFiltered(filters = {}) {
+  let query = db(TABLE_NAME)
+    .leftJoin('categories', 'courses.category_id', 'categories.category_id')
+    .leftJoin('users', 'courses.instructor_id', 'users.user_id');
+
+  // Filter by category if provided
+  if (filters.categoryId) {
+    query = query.where('courses.category_id', filters.categoryId);
+  }
+
+  // Filter by status if provided
+  if (filters.status) {
+    query = query.where('courses.status', filters.status);
+  }
+
+  // Filter by instructor if provided
+  if (filters.instructorId) {
+    query = query.where('courses.instructor_id', filters.instructorId);
+  }
+
+  const result = await query.count('courses.course_id as total').first();
+  return parseInt(result.total || 0);
 }
 
 export function add(course) {
