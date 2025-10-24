@@ -38,6 +38,42 @@ export function findAll() {
   return db(TABLE_NAME);
 }
 
+export function findAllWithCategory() {
+  return db(TABLE_NAME)
+    .leftJoin('categories', 'courses.category_id', 'categories.category_id')
+    .select(
+      'courses.*',
+      'categories.name as category_name'
+    )
+    .orderBy('courses.course_id', 'asc');
+}
+
+export function findAllWithCategoryFiltered(filters = {}) {
+  let query = db(TABLE_NAME)
+    .leftJoin('categories', 'courses.category_id', 'categories.category_id')
+    .select(
+      'courses.*',
+      'categories.name as category_name'
+    );
+
+  // Filter by category if provided
+  if (filters.categoryId) {
+    query = query.where('courses.category_id', filters.categoryId);
+  }
+
+  // Sort by specified field or default to ID
+  const direction = filters.order === 'desc' ? 'desc' : 'asc';
+  
+  if (filters.sortBy === 'enrollment') {
+    query = query.orderBy('courses.enrollment_count', direction);
+  } else {
+    // Default: sort by ID with the selected order
+    query = query.orderBy('courses.course_id', direction);
+  }
+
+  return query;
+}
+
 export function add(course) {
   return db(TABLE_NAME).insert(course).returning('course_id');
 }

@@ -3,6 +3,7 @@ import express from 'express';
 import fs from 'fs';
 import path from 'path';
 import * as courseModel from '../models/courses.model.js';
+import * as categoryModel from '../models/category.model.js';
 import { z } from 'zod'; // <-- THÊM: Import Zod
 
 const router = express.Router();
@@ -44,8 +45,23 @@ const courseSchema = z.object({
 
 
 router.get('/', async (req, res) => {
-  const list = await courseModel.findAll();
-  res.render('vwAdminCourse/list', { courses: list });
+  // Get filter and sort parameters from query string
+  const filters = {
+    categoryId: req.query.category ? parseInt(req.query.category) : null,
+    sortBy: req.query.sortBy || null,
+    order: req.query.order || 'asc'
+  };
+
+  const list = await courseModel.findAllWithCategoryFiltered(filters);
+  const categories = await categoryModel.findAll();
+
+  res.render('vwAdminCourse/list', { 
+    courses: list,
+    categories,
+    currentCategory: filters.categoryId,
+    currentSort: filters.sortBy,
+    currentOrder: filters.order
+  });
 });
 
 router.get('/create', (req, res) => {

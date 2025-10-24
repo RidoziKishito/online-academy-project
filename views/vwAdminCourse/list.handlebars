@@ -6,13 +6,49 @@
             New Course
         </a>
     </h5>
+    <div class="card-body">
+        <form method="get" action="/admin/courses" class="row g-3 mb-3">
+            <div class="col-md-4">
+                <label for="categoryFilter" class="form-label">Filter by Category</label>
+                <select class="form-select" id="categoryFilter" name="category">
+                    <option value="">All Categories</option>
+                    {{#each categories}}
+                    <option value="{{category_id}}" {{#if (eq ../currentCategory category_id)}}selected{{/if}}>
+                        {{name}}
+                    </option>
+                    {{/each}}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="sortBy" class="form-label">Sort by</label>
+                <select class="form-select" id="sortBy" name="sortBy">
+                    <option value="">Default (ID)</option>
+                    <option value="enrollment" {{#if (eq currentSort 'enrollment')}}selected{{/if}}>Enrollment</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="order" class="form-label">Order</label>
+                <select class="form-select" id="order" name="order">
+                    <option value="asc" {{#if (eq currentOrder 'asc')}}selected{{/if}}>Ascending</option>
+                    <option value="desc" {{#if (eq currentOrder 'desc')}}selected{{/if}}>Descending</option>
+                </select>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-success w-100">
+                    <i class="bi bi-funnel"></i> Apply
+                </button>
+            </div>
+        </form>
+    </div>
     <table class="table table-hover">
         <thead>
             <tr>
                 <th scope="col" class="text-center">#</th>
                 <th scope="col">Course</th>
+                <th scope="col">Category</th>
                 <th scope="col">Price</th>
-                <th scope="col">Quantity</th>
+                <th scope="col">Sale price</th>
+                <th scope="col">Enrollment</th>
                 <th scope="col" class="text-end">Action</th>
             </tr>
         </thead>
@@ -21,7 +57,15 @@
             <tr>
                 <th scope="row" class="text-center">{{course_id}}</th>
                 <td>{{title}}</td>
-                <td>{{format_number current_price}}</td>
+                <td>
+                    {{#if category_name}}
+                    <span class="badge bg-info">{{category_name}}</span>
+                    {{else}}
+                    <span class="badge bg-secondary">N/A</span>
+                    {{/if}}
+                </td>
+                <td>{{format_number price}}</td>
+                <td>{{format_number sale_price}}</td>
                 <td>{{enrollment_count}}</td>
                 <td class="text-end">
                     <a name="" id="" class="btn btn-outline-primary btn-sm" href="/admin/courses/edit?id={{course_id}}" role="button">
