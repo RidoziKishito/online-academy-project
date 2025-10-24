@@ -6,7 +6,10 @@ const router = express.Router();
 router.get('/', async (req, res) => {
   const list = await categoryModel.findAll();
   const categories = list.map(c => ({ ...c, catid: c.category_id, catname: c.name }));
-  res.render('vwAdminCategory/list', { categories });
+  res.render('vwAdminCategory/list', { 
+    categories,
+    updated: req.query.updated === 'true'
+  });
 });
 
 router.get('/add', (req, res) => {
@@ -104,7 +107,7 @@ router.post('/patch', async (req, res) => {
   }
 
   await categoryModel.patch(id, { name: rawName });
-  res.redirect('/admin/categories');
+  res.redirect('/admin/categories?updated=true');
 });
 
 export default router;

@@ -3,7 +3,8 @@ import db from '../utils/db.js';
 const TABLE_NAME = 'categories';
 
 export function findAll() {
-  return db(TABLE_NAME);
+  // Ensure categories are returned in ascending order by id for consistent listing
+  return db(TABLE_NAME).orderBy('category_id', 'asc');
 }
 
 export function add(category) {
