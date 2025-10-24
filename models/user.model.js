@@ -15,6 +15,10 @@ export function findById(id) {
   return db(TABLE_NAME).where('user_id', id).first();
 }
 
+export function findAllInstructors() {
+  return db(TABLE_NAME).where('role', 'instructor').select('*').orderBy('full_name', 'asc');
+}
+
 export function patch(id, user) {
   return db(TABLE_NAME).where('user_id', id).update(user);
 }

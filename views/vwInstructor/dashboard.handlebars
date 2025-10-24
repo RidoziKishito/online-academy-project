@@ -1,0 +1,72 @@
+<div class="card shadow-sm">
+    <h5 class="card-header d-flex justify-content-between align-items-center">
+        My Courses
+        <a class="btn btn-primary btn-sm" href="/instructor/create" role="button">
+            <i class="bi bi-plus-circle"></i> New Course
+        </a>
+    </h5>
+
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th scope="col" class="text-center">#</th>
+                    <th scope="col">Course</th>
+                    <th scope="col">Category</th>
+                    <th scope="col" class="text-center">Students</th>
+                    <th scope="col" class="text-center">Status</th>
+                    <th scope="col" class="text-end">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each courses}}
+                <tr>
+                    <th scope="row" class="text-center text-muted">{{course_id}}</th>
+                    <td>
+                        <div class="d-flex align-items-center">
+                            {{#if image_url}}
+                            <img src="{{image_url}}" alt="{{title}}" class="rounded me-2" width="60" height="40"
+                                style="object-fit: cover;">
+                            {{/if}}
+                            <div>
+                                <strong>{{title}}</strong>
+                                <div class="text-muted small">
+                                    {{#if sale_price}}
+                                    <span class="text-decoration-line-through">${{price}}</span>
+                                    <span class="text-danger fw-bold">${{sale_price}}</span>
+                                    {{else}}
+                                    ${{price}}
+                                    {{/if}}
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+
+                    <td>{{#if category_name}}{{category_name}}{{else}}—{{/if}}</td>
+
+                    <td class="text-center">{{enrollment_count}}</td>
+
+                    <td class="text-center">
+                        {{#if is_complete}}
+                        <span class="badge bg-success">Completed</span>
+                        {{else}}
+                        <span class="badge bg-warning text-dark">Draft</span>
+                        {{/if}}
+                    </td>
+
+                    <td class="text-end">
+                        <a class="btn btn-outline-primary btn-sm" href="/instructor/manage-course/{{course_id}}"
+                            role="button" title="Edit Course">
+                            <i class="bi bi-pencil-square"></i>
+                        </a>
+                    </td>
+                </tr>
+                {{else}}
+                <tr>
+                    <td colspan="6" class="text-center py-4 text-muted">No courses found.</td>
+                </tr>
+                {{/each}}
+            </tbody>
+        </table>
+    </div>
+</div>

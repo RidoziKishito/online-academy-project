@@ -25,7 +25,28 @@ export function countByCategory(categoryId) {
 }
 
 export function findByInstructor(instructorId) {
-    return db(TABLE_NAME).where('instructor_id', instructorId);
+  return db('courses as c')
+    .leftJoin('categories as cat', 'c.category_id', 'cat.category_id')
+    .select(
+      'c.course_id',
+      'c.title',
+      'c.image_url',
+      'c.price',
+      'c.sale_price',
+      'c.is_complete',
+      'c.enrollment_count',
+      'cat.name as category_name'
+    )
+    .where('c.instructor_id', instructorId)
+    .orderBy('c.created_at', 'desc');
+}
+
+export function findDetail(courseId, instructorId) {
+  return db('courses as c')
+    .leftJoin('categories as cat', 'c.category_id', 'cat.category_id')
+    .select('c.*', 'cat.name as category_name')
+    .where({ 'c.course_id': courseId, 'c.instructor_id': instructorId })
+    .first();
 }
 
 export function search(keyword) {
@@ -43,11 +64,11 @@ export function add(course) {
 }
 
 export function patch(id, course) {
-    return db(TABLE_NAME).where('course_id', id).update(course);
+  return db(TABLE_NAME).where('course_id', id).update(course);
 }
 
 export function del(id) {
-    return db(TABLE_NAME).where('course_id', id).del();
+  return db(TABLE_NAME).where('course_id', id).del();
 }
 
 export function incrementEnrollment(courseId) {

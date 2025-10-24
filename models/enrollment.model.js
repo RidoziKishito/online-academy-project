@@ -24,10 +24,38 @@ export function findCoursesByUserId(userId) {
     .where('user_enrollments.user_id', userId);
 }
 
-export async function checkEnrollment(userId, courseId) {
+export async function checkEnrollment(userId, courseId, withDetail = false) {
   const row = await db(TABLE_NAME)
     .where({ user_id: userId, course_id: courseId })
     .first();
   console.log('[checkEnrollment]', { userId, courseId, found: !!row });
-  return !!row;
+
+  return withDetail ? row : !!row;
+}
+
+export function findStudentsByCourse(courseId) {
+  return db(TABLE_NAME)
+    .join('users', 'user_enrollments.user_id', '=', 'users.user_id')
+    .select(
+      'users.user_id',
+      'users.full_name',
+      'users.email',
+      'user_enrollments.enrolled_at'
+    )
+    .where('user_enrollments.course_id', courseId)
+    .orderBy('user_enrollments.enrolled_at', 'desc');
+}
+
+export function findStudentDetail(courseId, userId) {
+  return db(TABLE_NAME)
+    .join('users', 'user_enrollments.user_id', '=', 'users.user_id')
+    .select(
+      'users.user_id',
+      'users.full_name',
+      'users.email',
+      'user_enrollments.enrolled_at'
+    )
+    .where('user_enrollments.course_id', courseId)
+    .andWhere('user_enrollments.user_id', userId)
+    .first();
 }
