@@ -30,13 +30,6 @@
             return;
         }
 
-        // Ensure role selected
-        const role = document.querySelector('input[name="role"]:checked');
-        if (!role) {
-            Swal.fire({ title: 'Error', text: 'Please select account type (Student or Instructor)', icon: 'error' });
-            return;
-        }
-
         // Check email availability
         const url = `/account/is-email-available?email=${encodeURIComponent(email)}`;
         fetch(url)
@@ -85,21 +78,6 @@
                 <label for="txtConfirm" class="form-label">Confirm Password</label>
                 <input type="password" class="form-control {{#if errorMessages.confirm_password}}is-invalid{{/if}}" id="txtConfirm" name="confirm_password">
                 {{#if errorMessages.confirm_password}}<div class="invalid-feedback">{{errorMessages.confirm_password.[0]}}</div>{{/if}}
-            </div>
-
-            <div class="mb-3">
-                <label class="form-label">Account type <span class="text-danger">*</span></label>
-                <div>
-                    <div class="form-check form-check-inline">
-                        <input class="form-check-input {{#if errorMessages.role}}is-invalid{{/if}}" type="radio" name="role" id="roleStudent" value="student" {{#ifEq oldData.role "student"}}checked{{/ifEq}} required>
-                        <label class="form-check-label" for="roleStudent">Student</label>
-                    </div>
-                    <div class="form-check form-check-inline">
-                        <input class="form-check-input {{#if errorMessages.role}}is-invalid{{/if}}" type="radio" name="role" id="roleInstructor" value="instructor" {{#ifEq oldData.role "instructor"}}checked{{/ifEq}}>
-                        <label class="form-check-label" for="roleInstructor">Instructor</label>
-                    </div>
-                </div>
-                {{#if errorMessages.role}}<div class="invalid-feedback d-block">{{errorMessages.role.[0]}}</div>{{/if}}
             </div>
             <button type="submit" class="btn btn-primary"><i class="bi bi-file-person"></i> Sign Up</button>
             <button type="reset" class="btn btn-info"><i class="bi bi-file-earmark-x"></i> Reset</button>

@@ -115,3 +115,14 @@ export function resetPassword(userId, newPasswordHash) {
       otp_expires_at: null
     });
 }
+
+// Email verification
+export function verifyEmail(userId) {
+  return db(TABLE_NAME)
+    .where('user_id', userId)
+    .update({
+      is_verified: true,
+      otp_secret: null,
+      otp_expires_at: null
+    });
+}

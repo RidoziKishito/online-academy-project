@@ -87,6 +87,69 @@ export async function sendResetEmail(email, token, fullName = 'User') {
 }
 
 /**
+ * Send account verification email with OTP
+ * @param {string} email - Recipient email
+ * @param {string} token - Verification OTP
+ * @param {string} fullName - User's full name (optional)
+ */
+export async function sendVerifyEmail(email, token, fullName = 'User') {
+  const verifyUrl = `${process.env.BASE_URL || 'http://localhost:3000'}/account/verify-email?email=${encodeURIComponent(email)}`;
+  const mailOptions = {
+    from: `"${process.env.APP_NAME || 'Online Academy'}" <${process.env.EMAIL_USER}>`,
+    to: email,
+    subject: 'Verify your VietEdu account',
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background-color: #198754; color: white; padding: 20px; text-align: center; }
+          .content { background-color: #f8f9fa; padding: 30px; }
+          .token-box { background-color: #fff; border: 2px solid #198754; padding: 15px; margin: 20px 0; text-align: center; }
+          .token { font-size: 24px; font-weight: bold; color: #198754; letter-spacing: 2px; }
+          .button { display: inline-block; background-color: #198754; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+          .footer { text-align: center; color: #666; font-size: 12px; margin-top: 20px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>Verify your account</h1>
+          </div>
+          <div class="content">
+            <p>Hello <strong>${fullName}</strong>,</p>
+            <p>Welcome to ${process.env.APP_NAME || 'Online Academy'}! Use the verification code below to activate your account:</p>
+            <div class="token-box">
+              <div class="token">${token}</div>
+            </div>
+            <p>Or click the button below to go to the verification page:</p>
+            <div style="text-align: center;">
+              <a href="${verifyUrl}" class="button">Verify Account</a>
+            </div>
+            <p><strong>This code will expire in 15 minutes.</strong></p>
+          </div>
+          <div class="footer">
+            <p>&copy; ${new Date().getFullYear()} ${process.env.APP_NAME || 'Online Academy'}. All rights reserved.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log(`Verification email sent to ${email}`);
+    return true;
+  } catch (error) {
+    console.error('Error sending verification email:', error);
+    throw new Error('Failed to send verification email');
+  }
+}
+
+/**
  * Test email configuration
  */
 export async function testEmailConfig() {

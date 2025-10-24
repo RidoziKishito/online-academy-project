@@ -1,0 +1,168 @@
+{{#fillContent 'css'}}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+{{/fillContent}}
+
+<div class="container-fluid px-2">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h1 class="h3 mb-1"><i class="fa-solid fa-gauge-high text-primary me-2"></i> Admin Dashboard</h1>
+      <p class="text-muted mb-0">Overview of users, courses, enrollments, and reviews</p>
+    </div>
+  </div>
+
+  <!-- KPI Cards -->
+  <div class="row g-3 mb-3">
+    <div class="col-sm-6 col-lg-3">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="flex-shrink-0 me-3">
+              <span class="badge bg-primary p-3"><i class="fa-solid fa-users"></i></span>
+            </div>
+            <div class="flex-grow-1">
+              <div class="text-muted small">Total Users</div>
+              <div class="fs-4 fw-bold">{{metrics.usersTotal}}</div>
+              <div class="small mt-1">Verified: <span class="fw-semibold">{{metrics.usersVerified}}</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="flex-shrink-0 me-3">
+              <span class="badge bg-success p-3"><i class="fa-solid fa-chalkboard-user"></i></span>
+            </div>
+            <div class="flex-grow-1">
+              <div class="text-muted small">Instructors</div>
+              <div class="fs-4 fw-bold">{{metrics.instructors}}</div>
+              <div class="small mt-1">Admins: <span class="fw-semibold">{{metrics.admins}}</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="flex-shrink-0 me-3">
+              <span class="badge bg-warning p-3"><i class="fa-solid fa-graduation-cap"></i></span>
+            </div>
+            <div class="flex-grow-1">
+              <div class="text-muted small">Courses</div>
+              <div class="fs-4 fw-bold">{{metrics.coursesTotal}}</div>
+              <div class="small mt-1 text-muted">Total published and drafts</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="flex-shrink-0 me-3">
+              <span class="badge bg-info p-3"><i class="fa-solid fa-user-check"></i></span>
+            </div>
+            <div class="flex-grow-1">
+              <div class="text-muted small">Enrollments</div>
+              <div class="fs-4 fw-bold">{{metrics.enrollmentsTotal}}</div>
+              <div class="small mt-1">Reviews: <span class="fw-semibold">{{metrics.reviewsTotal}}</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <!-- Top Courses -->
+    <div class="col-lg-7">
+      <div class="card shadow-sm h-100">
+        <div class="card-header bg-white fw-semibold">Top Courses by Enrollment</div>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th style="width:60px">#ID</th>
+                <th>Title</th>
+                <th>Instructor</th>
+                <th class="text-end">Enrollments</th>
+                <th class="text-end">Views</th>
+                <th class="text-end">Rating</th>
+              </tr>
+            </thead>
+            <tbody>
+              {{#if topCourses}}
+                {{#each topCourses}}
+                  <tr>
+                    <td><a href="/courses/detail/{{course_id}}" class="text-decoration-none">{{course_id}}</a></td>
+                    <td class="fw-semibold">{{title}}</td>
+                    <td class="text-muted small">{{#if instructor_name}}{{instructor_name}}{{else}}—{{/if}}</td>
+                    <td class="text-end">{{enrollment_count}}</td>
+                    <td class="text-end">{{view_count}}</td>
+                    <td class="text-end">{{#if rating_avg}}{{rating_avg}}{{else}}0.0{{/if}} ({{rating_count}})</td>
+                  </tr>
+                {{/each}}
+              {{else}}
+                <tr><td colspan="6" class="text-center text-muted py-4">No courses found</td></tr>
+              {{/if}}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Users -->
+    <div class="col-lg-5">
+      <div class="card shadow-sm h-100">
+        <div class="card-header bg-white fw-semibold">Recent Users</div>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th style="width:60px">#ID</th>
+                <th>Name</th>
+                <th>Role</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {{#if recentUsers}}
+                {{#each recentUsers}}
+                  <tr>
+                    <td>{{user_id}}</td>
+                    <td>
+                      <div class="fw-semibold">{{#if full_name}}{{full_name}}{{else}}{{email}}{{/if}}</div>
+                      <div class="small text-muted">{{email}}</div>
+                    </td>
+                    <td><span class="badge text-bg-secondary">{{#if role}}{{role}}{{else}}user{{/if}}</span></td>
+                    <td>
+                      {{#if is_verified}}
+                        <span class="badge text-bg-success">Verified</span>
+                      {{else}}
+                        <span class="badge text-bg-warning">Unverified</span>
+                      {{/if}}
+                    </td>
+                  </tr>
+                {{/each}}
+              {{else}}
+                <tr><td colspan="4" class="text-center text-muted py-4">No users found</td></tr>
+              {{/if}}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{{#fillContent 'js'}}
+<script>
+  // Placeholder for future AJAX refresh of widgets
+  // We can add periodic refresh or filter interactions here later if needed.
+</script>
+{{/fillContent}}

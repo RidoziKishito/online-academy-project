@@ -2,7 +2,7 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import * as userModel from '../models/user.model.js';
 import { restrict } from '../middlewares/auth.mdw.js';
-import { sendResetEmail } from '../utils/mailer.js';
+import { sendResetEmail, sendVerifyEmail } from '../utils/mailer.js';
 
 const router = express.Router();
 
@@ -11,8 +11,8 @@ router.get('/signup', (req, res) => {
 });
 
 router.post('/signup', async (req, res) => {
-  const { fullName, email, password, confirm_password, role } = req.body;
-  const oldData = { fullName, email, role };
+  const { fullName, email, password, confirm_password } = req.body;
+  const oldData = { fullName, email };
   const errorMessages = {};
 
   // Basic server-side validation
@@ -29,11 +29,6 @@ router.post('/signup', async (req, res) => {
     errorMessages.confirm_password = ['Passwords do not match.'];
   }
 
-  // Validate role (required, must be student or instructor)
-  if (!role || (role !== 'student' && role !== 'instructor')) {
-    errorMessages.role = ['Please select account type: student or instructor.'];
-  }
-
   if (Object.keys(errorMessages).length > 0) {
     return res.render('vwAccount/signup', { oldData, errorMessages });
   }
@@ -45,12 +40,26 @@ router.post('/signup', async (req, res) => {
       full_name: fullName,
       email,
       password_hash,
-      role: role || 'student'
+      role: 'student',
+      is_verified: false
     };
 
-    const inserted = await userModel.add(user); // returns user_id
-    // Optionally, you can auto-login here. For now, just show success.
-    return res.render('vwAccount/signup', { success: true });
+    const [insertedId] = await userModel.add(user); // returns user_id
+
+    // Generate OTP for email verification (8 uppercase chars)
+    const token = Math.random().toString(36).substring(2, 10).toUpperCase();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+    await userModel.setResetToken(email, token, expiresAt);
+
+    try {
+      await sendVerifyEmail(email, token, fullName);
+    } catch (emailError) {
+      console.error('Failed to send verification email:', emailError);
+      // still let user proceed to verification page; they can request resend
+    }
+
+    // Render verify email page
+    return res.render('vwAccount/verify-email', { email });
   } catch (err) {
     // Handle unique constraint (email) for Postgres
     if (err && err.code === '23505') {
@@ -89,6 +98,15 @@ router.post('/signin', async (req, res) => {
   const password_match = bcrypt.compareSync(req.body.password, user.password_hash);
   if (password_match === false) {
     return res.render('vwAccount/signin', { error: true, oldData: { email: req.body.email } });
+  }
+
+  // Block sign-in if email not verified
+  if (user.is_verified === false) {
+    // Optionally, trigger resend silently? We'll show a friendly message.
+    return res.render('vwAccount/verify-email', {
+      email: user.email,
+      error: 'Your email is not verified. Please enter the code we sent to your inbox.'
+    });
   }
 
   req.session.isAuthenticated = true;
@@ -273,5 +291,89 @@ router.post('/profile', restrict, async (req, res) => {
   });
 
 // (Các route đổi mật khẩu có thể giữ nguyên logic, chỉ cần đảm bảo tên cột password_hash là đúng)
+
+// Email verification pages
+router.get('/verify-email', (req, res) => {
+  const { email } = req.query;
+  res.render('vwAccount/verify-email', { email });
+});
+
+router.post('/verify-email', async (req, res) => {
+  const { email, token } = req.body;
+  if (!email || !token) {
+    if (req.headers.accept?.includes('application/json')) {
+      return res.json({ success: false, message: 'Please enter the verification code.' });
+    }
+    return res.render('vwAccount/verify-email', { email, error: 'Please enter the verification code.' });
+  }
+  try {
+    const user = await userModel.findByResetToken(email, token);
+    if (!user) {
+      if (req.headers.accept?.includes('application/json')) {
+        return res.json({ success: false, message: 'Invalid or expired code. Please try again.' });
+      }
+      return res.render('vwAccount/verify-email', { email, error: 'Invalid or expired code. Please try again.' });
+    }
+    await userModel.verifyEmail(user.user_id);
+    if (req.headers.accept?.includes('application/json')) {
+      return res.json({ success: true });
+    }
+    return res.render('vwAccount/signin', { success: 'Your email has been verified. Please sign in.' });
+  } catch (err) {
+    console.error('Verify email error:', err);
+    if (req.headers.accept?.includes('application/json')) {
+      return res.json({ success: false, message: 'An error occurred. Please try again.' });
+    }
+    return res.render('vwAccount/verify-email', { email, error: 'An error occurred. Please try again.' });
+  }
+});
+
+router.post('/resend-verification', async (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    if (req.headers.accept?.includes('application/json')) {
+      return res.json({ success: false, message: 'Email is required to resend verification.' });
+    }
+    return res.render('vwAccount/verify-email', { error: 'Email is required to resend verification.' });
+  }
+  try {
+    const user = await userModel.findByEmail(email);
+    if (!user) {
+      if (req.headers.accept?.includes('application/json')) {
+        return res.json({ success: false, message: 'Email not found.' });
+      }
+      return res.render('vwAccount/verify-email', { error: 'Email not found.' });
+    }
+    if (user.is_verified) {
+      if (req.headers.accept?.includes('application/json')) {
+        return res.json({ success: true, alreadyVerified: true });
+      }
+      return res.render('vwAccount/signin', { success: 'This email is already verified. Please sign in.' });
+    }
+
+    const token = Math.random().toString(36).substring(2, 10).toUpperCase();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+    await userModel.setResetToken(email, token, expiresAt);
+    try {
+      await sendVerifyEmail(email, token, user.full_name);
+    } catch (emailError) {
+      console.error('Resend verification email failed:', emailError);
+      if (req.headers.accept?.includes('application/json')) {
+        return res.json({ success: false, message: 'Failed to send verification email. Try again later.' });
+      }
+      return res.render('vwAccount/verify-email', { email, error: 'Failed to send verification email. Try again later.' });
+    }
+    if (req.headers.accept?.includes('application/json')) {
+      return res.json({ success: true });
+    }
+    return res.render('vwAccount/verify-email', { email, success: 'Verification code resent. Please check your inbox.' });
+  } catch (err) {
+    console.error('Resend verification error:', err);
+    if (req.headers.accept?.includes('application/json')) {
+      return res.json({ success: false, message: 'An error occurred. Please try again.' });
+    }
+    return res.render('vwAccount/verify-email', { email, error: 'An error occurred. Please try again.' });
+  }
+});
 
 export default router;
