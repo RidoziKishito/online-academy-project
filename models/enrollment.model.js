@@ -31,3 +31,11 @@ export async function checkEnrollment(userId, courseId) {
   console.log('[checkEnrollment]', { userId, courseId, found: !!row });
   return !!row;
 }
+
+export async function hasEnrollmentsByCourse(courseId) {
+  const result = await db(TABLE_NAME)
+    .where('course_id', courseId)
+    .count({ count: '*' })
+    .first();
+  return parseInt(result.count) > 0;
+}

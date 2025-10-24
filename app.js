@@ -106,7 +106,11 @@ app.use(function (req, res, next) {
   res.locals.isAdmin = !!(req.session && req.session.authUser && req.session.authUser.role === 'admin');
   next();
 });
-
+//Provide isInstructor flag to templates
+app.use(function (req, res, next) {
+  res.locals.isInstructor = !!(req.session && req.session.authUser && req.session.authUser.role === 'instructor');
+  next();
+});
 // Provide current year to templates
 app.use(function (req, res, next) {
   res.locals.currentYear = new Date().getFullYear();

@@ -61,6 +61,11 @@ export function findAllWithCategoryFiltered(filters = {}) {
     query = query.where('courses.category_id', filters.categoryId);
   }
 
+  // Filter by status if provided
+  if (filters.status) {
+    query = query.where('courses.status', filters.status);
+  }
+
   // Sort by specified field or default to ID
   const direction = filters.order === 'desc' ? 'desc' : 'asc';
   
@@ -84,6 +89,32 @@ export function patch(id, course) {
 
 export function del(id) {
     return db(TABLE_NAME).where('course_id', id).del();
+}
+
+export function approveCourse(courseId) {
+  return db(TABLE_NAME)
+    .where('course_id', courseId)
+    .update({ status: 'approved' });
+}
+
+export function hideCourse(courseId) {
+  return db(TABLE_NAME)
+    .where('course_id', courseId)
+    .update({ status: 'hidden' });
+}
+
+export function showCourse(courseId) {
+  return db(TABLE_NAME)
+    .where('course_id', courseId)
+    .update({ status: 'approved' });
+}
+
+export function countEnrollmentsByCourse(courseId) {
+  return db('enrollments')
+    .where('course_id', courseId)
+    .count('enrollment_id as count')
+    .first()
+    .then(result => parseInt(result.count || 0));
 }
 
 export function incrementEnrollment(courseId) {

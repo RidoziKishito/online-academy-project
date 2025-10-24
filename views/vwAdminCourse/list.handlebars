@@ -1,14 +1,11 @@
 <div class="card">
     <h5 class="card-header d-flex justify-content-between">
-        Courses
-        <a name="" id="" class="btn btn-primary btn-sm" href="/admin/courses/create" role="button">
-            <i class="bi bi-plus-circle"></i>
-            New Course
-        </a>
+        <span>Courses</span>
+        <!-- Admins review/approve only; creation is done by instructors -->
     </h5>
     <div class="card-body">
         <form method="get" action="/admin/courses" class="row g-3 mb-3">
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <label for="categoryFilter" class="form-label">Filter by Category</label>
                 <select class="form-select" id="categoryFilter" name="category">
                     <option value="">All Categories</option>
@@ -19,23 +16,32 @@
                     {{/each}}
                 </select>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
+                <label for="statusFilter" class="form-label">Filter by Status</label>
+                <select class="form-select" id="statusFilter" name="status">
+                    <option value="">All Status</option>
+                    <option value="pending" {{#if (eq currentStatus 'pending')}}selected{{/if}}>Pending</option>
+                    <option value="approved" {{#if (eq currentStatus 'approved')}}selected{{/if}}>Approved</option>
+                    <option value="hidden" {{#if (eq currentStatus 'hidden')}}selected{{/if}}>Hidden</option>
+                </select>
+            </div>
+            <div class="col-md-2">
                 <label for="sortBy" class="form-label">Sort by</label>
                 <select class="form-select" id="sortBy" name="sortBy">
                     <option value="">Default (ID)</option>
                     <option value="enrollment" {{#if (eq currentSort 'enrollment')}}selected{{/if}}>Enrollment</option>
                 </select>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <label for="order" class="form-label">Order</label>
                 <select class="form-select" id="order" name="order">
                     <option value="asc" {{#if (eq currentOrder 'asc')}}selected{{/if}}>Ascending</option>
                     <option value="desc" {{#if (eq currentOrder 'desc')}}selected{{/if}}>Descending</option>
                 </select>
             </div>
-            <div class="col-md-2 d-flex align-items-end">
+            <div class="col-md-3 d-flex align-items-end">
                 <button type="submit" class="btn btn-success w-100">
-                    <i class="bi bi-funnel"></i> Apply
+                    <i class="bi bi-funnel"></i> Apply Filter
                 </button>
             </div>
         </form>
@@ -46,10 +52,11 @@
                 <th scope="col" class="text-center">#</th>
                 <th scope="col">Course</th>
                 <th scope="col">Category</th>
+                <th scope="col">Status</th>
                 <th scope="col">Price</th>
                 <th scope="col">Sale price</th>
                 <th scope="col">Enrollment</th>
-                <th scope="col" class="text-end">Action</th>
+                <th scope="col" class="text-end">Actions</th>
             </tr>
         </thead>
         <tbody>
@@ -64,16 +71,163 @@
                     <span class="badge bg-secondary">N/A</span>
                     {{/if}}
                 </td>
+                <td>
+                    {{#if (eq status 'pending')}}
+                    <span class="badge bg-warning text-dark">Pending</span>
+                    {{else if (eq status 'approved')}}
+                    <span class="badge bg-success">Approved</span>
+                    {{else if (eq status 'hidden')}}
+                    <span class="badge bg-secondary">Hidden</span>
+                    {{else}}
+                    <span class="badge bg-danger">Unknown</span>
+                    {{/if}}
+                </td>
                 <td>{{format_number price}}</td>
                 <td>{{format_number sale_price}}</td>
                 <td>{{enrollment_count}}</td>
                 <td class="text-end">
-                    <a name="" id="" class="btn btn-outline-primary btn-sm" href="/admin/courses/edit?id={{course_id}}" role="button">
+                    {{#if (eq status 'pending')}}
+                    <form method="post" action="/admin/courses/approve/{{course_id}}" style="display: inline;">
+                        <button type="submit" class="btn btn-success btn-sm" title="Approve">
+                            <i class="bi bi-check-circle"></i>
+                        </button>
+                    </form>
+                    {{else if (eq status 'approved')}}
+                    <form method="post" action="/admin/courses/hide/{{course_id}}" style="display: inline;">
+                        <button type="submit" class="btn btn-warning btn-sm" title="Hide">
+                            <i class="bi bi-eye-slash"></i>
+                        </button>
+                    </form>
+                    {{else if (eq status 'hidden')}}
+                    <form method="post" action="/admin/courses/show/{{course_id}}" style="display: inline;">
+                        <button type="submit" class="btn btn-info btn-sm" title="Show">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </form>
+                    {{/if}}
+                    <a class="btn btn-outline-primary btn-sm" href="/admin/courses/edit?id={{course_id}}" title="Edit">
                         <i class="bi bi-pencil-square"></i>
                     </a>
+                    <button type="button" class="btn btn-danger btn-sm delete-btn" data-course-id="{{course_id}}" data-course-title="{{title}}" title="Delete">
+                        <i class="bi bi-trash"></i>
+                    </button>
                 </td>
             </tr>
             {{/each}}
         </tbody>
     </table>
 </div>
+
+{{#fillContent 'js'}}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle success/error messages from query parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const action = urlParams.get('action');
+    const error = urlParams.get('error');
+
+    if (action === 'approved') {
+        Swal.fire({
+            icon: 'success',
+            title: 'Course Approved',
+            text: 'The course has been approved successfully.',
+            timer: 2000,
+            showConfirmButton: false
+        });
+        } else if (action === 'created') {
+            Swal.fire({
+                icon: 'success',
+                title: 'Course Created',
+                text: 'The new course has been created successfully.',
+                timer: 2000,
+                showConfirmButton: false
+            });
+    } else if (action === 'hidden') {
+        Swal.fire({
+            icon: 'info',
+            title: 'Course Hidden',
+            text: 'The course has been hidden from public view.',
+            timer: 2000,
+            showConfirmButton: false
+        });
+    } else if (action === 'shown') {
+        Swal.fire({
+            icon: 'success',
+            title: 'Course Shown',
+            text: 'The course is now visible to the public.',
+            timer: 2000,
+            showConfirmButton: false
+        });
+    } else if (action === 'deleted') {
+        Swal.fire({
+            icon: 'success',
+            title: 'Course Deleted',
+            text: 'The course has been deleted successfully.',
+            timer: 2000,
+            showConfirmButton: false
+        });
+    }
+
+    if (error === 'approve_failed') {
+        Swal.fire({
+            icon: 'error',
+            title: 'Approval Failed',
+            text: 'Failed to approve the course. Please try again.'
+        });
+    } else if (error === 'hide_failed') {
+        Swal.fire({
+            icon: 'error',
+            title: 'Hide Failed',
+            text: 'Failed to hide the course. Please try again.'
+        });
+    } else if (error === 'show_failed') {
+        Swal.fire({
+            icon: 'error',
+            title: 'Show Failed',
+            text: 'Failed to show the course. Please try again.'
+        });
+    } else if (error === 'delete_failed') {
+        Swal.fire({
+            icon: 'error',
+            title: 'Delete Failed',
+            text: 'Failed to delete the course. Please try again.'
+        });
+    } else if (error === 'has_enrollments') {
+        Swal.fire({
+            icon: 'error',
+            title: 'Cannot Delete',
+            text: 'This course has enrollments and cannot be deleted.'
+        });
+    }
+
+    // Handle delete button clicks
+    document.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const courseId = this.dataset.courseId;
+            const courseTitle = this.dataset.courseTitle;
+
+            Swal.fire({
+                title: 'Delete Course?',
+                html: `Are you sure you want to delete <strong>${courseTitle}</strong>?<br>This action cannot be undone.`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Yes, delete it!',
+                cancelButtonText: 'Cancel'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Create and submit a form for POST request
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = `/admin/courses/delete/${courseId}`;
+                    document.body.appendChild(form);
+                    form.submit();
+                }
+            });
+        });
+    });
+});
+</script>
+{{/fillContent}}
