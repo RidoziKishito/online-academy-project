@@ -3,11 +3,14 @@ import * as courseModel from '../models/courses.model.js';
 import * as categoryModel from '../models/category.model.js';
 import * as instructorModel from '../models/instructors.model.js';
 import * as chapterModel from '../models/chapter.model.js';
-
+import * as enrollmentModel from '../models/enrollment.model.js';
+import * as reviewModel from '../models/review.model.js';
+import { restrict } from '../middlewares/auth.mdw.js';
 const router = express.Router();
 
 // Route hiển thị tất cả khóa học (Trang chủ)
-router.get('/', async (req, res) => {
+router.get('/', async (req, res) =>
+{
   // Fetch courses and enrich with instructor name and normalized fields
   const coursesRaw = await courseModel.findAll();
 
@@ -16,9 +19,11 @@ router.get('/', async (req, res) => {
   const instructorIds = [...new Set(coursesRaw.map(c => c.instructor_id).filter(Boolean))];
 
   let instructorsMap = {};
-  if (instructorIds.length) {
+  if (instructorIds.length)
+  {
     const instructors = await Promise.all(instructorIds.map(id => instructorModel.findById(id)));
-    instructors.forEach(i => {
+    instructors.forEach(i =>
+    {
       if (i) instructorsMap[i.user_id || i.instructor_id] = i.name || i.fullname || i.username || i.name;
     });
   }
@@ -43,9 +48,11 @@ router.get('/', async (req, res) => {
 });
 
 // Route search: GET /courses/search?q=...
-router.get('/search', async (req, res) => {
+router.get('/search', async (req, res) =>
+{
   const q = (req.query.q || req.query.q || '').trim();
-  if (!q) {
+  if (!q)
+  {
     return res.render('vwCourse/search', { courses: [], q: '', empty: true, layout: 'main' });
   }
 
@@ -69,53 +76,70 @@ router.get('/search', async (req, res) => {
 
   res.render('vwCourse/search', { courses, q, empty: courses.length === 0, layout: 'main' });
 });
-
 // Route xem chi tiết một khóa học
-router.get('/detail/:id', async (req, res) => {
+router.get('/detail/:id', async (req, res) =>
+{
   const courseId = req.params.id;
-  
-  // Dùng Promise.all để lấy dữ liệu song song
+
   const course = await courseModel.findById(courseId);
   if (!course) return res.redirect('/courses');
 
-  // load chapters and instructor in parallel now that we have course
-  const [chapters, instructor] = await Promise.all([
+  const [chapters, instructor, reviews, ratingStats] = await Promise.all([
     chapterModel.findByCourseId(courseId),
-    instructorModel.findById(course.instructor_id)
+    instructorModel.findById(course.instructor_id),
+    reviewModel.getReviewsByCourse(courseId),
+    reviewModel.getCourseRatingStats(courseId)
   ]);
 
-  // normalize course fields for template
-  const normalizedCourse = {
-    ...course,
-    course_id: course.course_id,
-    title: course.title,
-    description: course.full_description || course.short_description || '',
-    image_url: course.image_url || course.large_image_url || null,
-    current_price: (course.sale_price != null && course.sale_price > 0) ? course.sale_price : course.price,
-    original_price: (course.sale_price != null && course.sale_price > 0) ? course.price : null,
-    rating_avg: (course.rating_avg != null ? Number(parseFloat(course.rating_avg).toFixed(1)) : (course.rating != null ? Number(parseFloat(course.rating).toFixed(1)) : 0)),
-    rating_count: course.rating_count || course.total_reviews || 0,
-    total_hours: course.total_hours || 0,
-    total_lectures: course.total_lectures || 0,
-  };
-
-  if (!course) {
-    return res.redirect('/courses');
+  // Kiểm tra đã ghi danh chưa
+  let isEnrolled = false;
+  let userReview = null;
+  if (req.session?.authUser)
+  {
+    const userId = req.session.authUser.user_id;
+    isEnrolled = await enrollmentModel.checkEnrollment(userId, courseId);
+    userReview = await reviewModel.getUserReview(userId, courseId);
   }
-  
-  res.render('vwCourse/detail', { course, chapters, instructor, layout: 'main' });
+
+  res.render('vwCourse/details', {
+    course,
+    chapters,
+    instructor,
+    reviews,
+    ratingStats,
+    isEnrolled,
+    userReview,
+    layout: 'main'
+  });
+});
+
+// Route ghi danh (enroll)
+router.post('/detail/:id/enroll', restrict, async (req, res) =>
+{
+  const courseId = req.params.id;
+  const userId = req.session.authUser.user_id;
+
+  const exists = await enrollmentModel.checkEnrollment(userId, courseId);
+  if (!exists)
+  {
+    await enrollmentModel.enroll(userId, courseId);
+  }
+
+  return res.redirect('/student/my-courses');
 });
 
 
 // Route xem các khóa học theo lĩnh vực (category)
-router.get('/by-category/:id', async (req, res) => {
+router.get('/by-category/:id', async (req, res) =>
+{
   const categoryId = req.params.id;
   const [category, coursesRawByCat] = await Promise.all([
     categoryModel.findById(categoryId),
     courseModel.findByCategory(categoryId)
   ]);
 
-  if (!category) {
+  if (!category)
+  {
     return res.redirect('/');
   }
 
@@ -133,7 +157,7 @@ router.get('/by-category/:id', async (req, res) => {
     total_lectures: c.total_lectures || 0,
   }));
 
-  res.render('vwCourse/byCategory', {
+  res.render('vwCourse/byCat', {
     category,
     courses,
     empty: courses.length === 0,
