@@ -5,7 +5,9 @@ import * as instructorModel from '../models/instructors.model.js';
 import * as chapterModel from '../models/chapter.model.js';
 import * as enrollmentModel from '../models/enrollment.model.js';
 import * as reviewModel from '../models/review.model.js';
+import * as wishlistModel from '../models/wishlist.model.js';
 import { restrict } from '../middlewares/auth.mdw.js';
+import session from 'express-session';
 const router = express.Router();
 
 // Route hiển thị tất cả khóa học (Trang chủ)
@@ -94,12 +96,15 @@ router.get('/detail/:id', async (req, res) =>
   // Kiểm tra đã ghi danh chưa
   let isEnrolled = false;
   let userReview = null;
-  if (req.session?.authUser)
-  {
-    const userId = req.session.authUser.user_id;
-    isEnrolled = await enrollmentModel.checkEnrollment(userId, courseId);
-    userReview = await reviewModel.getUserReview(userId, courseId);
-  }
+  let isInWishlist = false;
+  if (req.session?.authUser) {
+        const userId = req.session.authUser.user_id;
+        [isEnrolled, userReview, isInWishlist] = await Promise.all([
+            enrollmentModel.checkEnrollment(userId, courseId),
+            reviewModel.getUserReview(userId, courseId),
+            wishlistModel.checkWishlist ? wishlistModel.checkWishlist(userId, courseId) : false
+        ]);
+    }
 
   res.render('vwCourse/details', {
     course,
@@ -109,6 +114,8 @@ router.get('/detail/:id', async (req, res) =>
     ratingStats,
     isEnrolled,
     userReview,
+    isInWishlist,
+    session: req.session,
     layout: 'main'
   });
 });
@@ -127,7 +134,40 @@ router.post('/detail/:id/enroll', restrict, async (req, res) =>
 
   return res.redirect('/student/my-courses');
 });
+router.post('/wishlist/toggle', restrict, async (req, res) => {
+    try {
+        const userId = req.session.authUser.user_id;
+        const { courseId } = req.body;
 
+        if (!courseId) {
+            return res.status(400).json({ success: false, message: 'Missing courseId' });
+        }
+
+        // Kiểm tra đã có trong wishlist chưa
+        const isInWishlist = await wishlistModel.checkWishlist(userId, courseId);
+        
+        if (isInWishlist) {
+            // Remove from wishlist
+            await wishlistModel.remove(userId, courseId);
+            res.json({ 
+                success: true, 
+                action: 'removed',
+                message: 'Đã xóa khỏi danh sách yêu thích!' 
+            });
+        } else {
+            // Add to wishlist
+            await wishlistModel.add(userId, courseId);
+            res.json({ 
+                success: true, 
+                action: 'added',
+                message: 'Đã thêm vào danh sách yêu thích!' 
+            });
+        }
+    } catch (error) {
+        console.error('Wishlist toggle error:', error);
+        res.status(500).json({ success: false, message: 'Lỗi server' });
+    }
+});
 
 // Route xem các khóa học theo lĩnh vực (category)
 router.get('/by-category/:id', async (req, res) =>
