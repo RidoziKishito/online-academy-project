@@ -20,15 +20,23 @@
     });
     // -------------------------------
 
-    const quill = new Quill('#editor', {
+    const quillDescription = new Quill('#editor', {
         theme: 'snow',
-        placeholder: 'Compose an epic...'
+        placeholder: 'Write the full course description...'
     });
 
-    // On submit, copy quill html to hidden input so server receives full_description
+    const quillRequirements = new Quill('#requirementsEditor', {
+        theme: 'snow',
+        placeholder: 'What are the requirements or prerequisites for this course?'
+    });
+
+    // On submit, copy quill html to hidden inputs
     document.querySelector('#frmAddCourse').addEventListener('submit', function(e) {
-        const html = quill.root.innerHTML;
-        document.querySelector('#full_description').value = html;
+        const descriptionHtml = quillDescription.root.innerHTML;
+        document.querySelector('#full_description').value = descriptionHtml;
+        
+        const requirementsHtml = quillRequirements.root.innerHTML;
+        document.querySelector('#requirements').value = requirementsHtml;
     });
 </script>
 {{/fillContent}}
@@ -46,7 +54,14 @@
           <form id="frmAddCourse" method="post" action="/admin/courses/create">
 
             {{#if errorMessages}}
-              <div class="alert alert-danger">Please check the fields below.</div>
+              <div class="alert alert-danger">
+                <strong>Please check the fields below:</strong>
+                <ul class="mb-0 mt-2">
+                  {{#each errorMessages}}
+                    <li><strong>{{@key}}:</strong> {{this.[0]}}</li>
+                  {{/each}}
+                </ul>
+              </div>
             {{/if}}
 
             <div class="mb-3">
@@ -56,10 +71,16 @@
             </div>
 
             <div class="mb-3">
+              <label class="form-label">Course Summary <span class="text-danger">*</span></label>
+              <input type="text" id="short_description" name="short_description" class="form-control" required value="{{oldData.short_description}}" placeholder="A brief summary of the course">
+              {{#if errorMessages.short_description}}<div class="text-danger small">{{errorMessages.short_description.[0]}}</div>{{/if}}
+            </div>
+
+            <div class="mb-3">
               <label class="form-label">Course Description <span class="text-danger">*</span></label>
               <div id="editor">{{{oldData.full_description}}}</div>
               <input type="hidden" id="full_description" name="full_description" />
-              {{#if errorMessages.description}}<div class="text-danger small">{{errorMessages.description.[0]}}</div>{{/if}}
+              {{#if errorMessages.full_description}}<div class="text-danger small">{{errorMessages.full_description.[0]}}</div>{{/if}}
             </div>
 
             <div class="mb-3">
@@ -69,58 +90,55 @@
             </div>
 
             <div class="mb-3">
+              <label class="form-label">Large Image URL</label>
+              <input type="url" id="largeImageUrl" name="large_image_url" class="form-control" value="{{oldData.large_image_url}}" placeholder="Optional - URL for larger course image">
+              {{#if errorMessages.large_image_url}}<div class="text-danger small">{{errorMessages.large_image_url.[0]}}</div>{{/if}}
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Category <span class="text-danger">*</span></label>
+              <select id="categoryId" name="category_id" class="form-select" required>
+                <option value="">-- Select Category --</option>
+                {{#each categories}}
+                <option value="{{category_id}}" {{#if (eq ../oldData.category_id category_id)}}selected{{/if}}>{{name}}</option>
+                {{/each}}
+              </select>
+              {{#if errorMessages.category_id}}<div class="text-danger small">{{errorMessages.category_id.[0]}}</div>{{/if}}
+            </div>
+
+            <div class="mb-3">
               <label class="form-label">Instructor <span class="text-danger">*</span></label>
               <select id="instructorId" name="instructor_id" class="form-select" required>
                 <option value="">-- Select Instructor --</option>
-                <option value="1" {{#if (eq oldData.instructor_id "1")}}selected{{/if}}>Yash Thakker</option>
-                <option value="2" {{#if (eq oldData.instructor_id "2")}}selected{{/if}}>Scott Duffy (1,000,000+ Students)</option>
-                <option value="3" {{#if (eq oldData.instructor_id "3")}}selected{{/if}}>Tracey Barron</option>
-                <option value="4" {{#if (eq oldData.instructor_id "4")}}selected{{/if}}>DFA Course Academy</option>
-                <option value="5" {{#if (eq oldData.instructor_id "5")}}selected{{/if}}>Gopaluni Sai Karthik</option>
-                <option value="6" {{#if (eq oldData.instructor_id "6")}}selected{{/if}}>Anton Voroniuk</option>
-                <option value="7" {{#if (eq oldData.instructor_id "7")}}selected{{/if}}>Start-Tech Academy</option>
+                {{#each instructors}}
+                <option value="{{user_id}}" {{#if (eq ../oldData.instructor_id user_id)}}selected{{/if}}>{{full_name}}</option>
+                {{/each}}
               </select>
               {{#if errorMessages.instructor_id}}<div class="text-danger small">{{errorMessages.instructor_id.[0]}}</div>{{/if}}
             </div>
 
             <div class="row">
-              <div class="col-md-6 mb-3">
-                <label class="form-label">Rating</label>
-                <input type="text" id="rating" name="rating" class="form-control" placeholder="4.5" value="{{oldData.rating}}">
-                {{#if errorMessages.rating}}<div class="text-danger small">{{errorMessages.rating.[0]}}</div>{{/if}}
+              <div class="col-md-3 mb-3">
+                <label class="form-label">Rating Average</label>
+                <input type="text" id="ratingAvg" name="rating_avg" class="form-control" placeholder="4.5" value="{{oldData.rating_avg}}">
+                {{#if errorMessages.rating_avg}}<div class="text-danger small">{{errorMessages.rating_avg.[0]}}</div>{{/if}}
               </div>
-              <div class="col-md-6 mb-3">
-                <label class="form-label">Total Reviews</label>
-                <input type="text" id="totalReviews" name="total_reviews" class="form-control" placeholder="150" value="{{oldData.total_reviews}}">
-                {{#if errorMessages.total_reviews}}<div class="text-danger small">{{errorMessages.total_reviews.[0]}}</div>{{/if}}
+              <div class="col-md-3 mb-3">
+                <label class="form-label">Rating Count</label>
+                <input type="text" id="ratingCount" name="rating_count" class="form-control" placeholder="100" value="{{oldData.rating_count}}">
+                {{#if errorMessages.rating_count}}<div class="text-danger small">{{errorMessages.rating_count.[0]}}</div>{{/if}}
               </div>
-            </div>
-
-            <div class="row">
-              <div class="col-md-6 mb-3">
-                <label class="form-label">Total Hours</label>
-                <input type="text" id="totalHours" name="total_hours" class="form-control" placeholder="10.5" value="{{oldData.total_hours}}">
-                {{#if errorMessages.total_hours}}<div class="text-danger small">{{errorMessages.total_hours.[0]}}</div>{{/if}}
+              <div class="col-md-3 mb-3">
+                <label class="form-label">View Count</label>
+                <input type="text" id="viewCount" name="view_count" class="form-control" placeholder="1000" value="{{oldData.view_count}}">
+                {{#if errorMessages.view_count}}<div class="text-danger small">{{errorMessages.view_count.[0]}}</div>{{/if}}
               </div>
-              <div class="col-md-6 mb-3">
-                <label class="form-label">Total Lectures</label>
-                <input type="text" id="totalLectures" name="total_lectures" class="form-control" placeholder="45" value="{{oldData.total_lectures}}">
-                {{#if errorMessages.total_lectures}}<div class="text-danger small">{{errorMessages.total_lectures.[0]}}</div>{{/if}}
+              <div class="col-md-3 mb-3">
+                <label class="form-label">Enrollment Count</label>
+                <input type="text" id="enrollmentCount" name="enrollment_count" class="form-control" placeholder="150" value="{{oldData.enrollment_count}}">
+                {{#if errorMessages.enrollment_count}}<div class="text-danger small">{{errorMessages.enrollment_count.[0]}}</div>{{/if}}
               </div>
             </div>
-
-            <div class="mb-3">
-              <label class="form-label">Course Level</label>
-              <select id="level" name="level" class="form-select">
-                <option value="">-- Select Level --</option>
-                <option value="Beginner" {{#if (eq oldData.level "Beginner")}}selected{{/if}}>Beginner</option>
-                <option value="Intermediate" {{#if (eq oldData.level "Intermediate")}}selected{{/if}}>Intermediate</option>
-                <option value="Advanced" {{#if (eq oldData.level "Advanced")}}selected{{/if}}>Advanced</option>
-                <option value="All Levels" {{#if (eq oldData.level "All Levels")}}selected{{/if}}>All Levels</option>
-              </select>
-              {{#if errorMessages.level}}<div class="text-danger small">{{errorMessages.level.[0]}}</div>{{/if}}
-            </div>
-
             <div class="row">
               <div class="col-md-6 mb-3">
                 <label class="form-label">Current Price (VND)</label>
@@ -145,8 +163,16 @@
               <label class="form-check-label" for="isBestseller"><i class="fa fa-crown text-warning me-1"></i> Mark as Bestseller</label>
             </div>
 
+            <div class="mb-3">
+              <label class="form-label">Course Requirements</label>
+              <div id="requirementsEditor">{{{oldData.requirements}}}</div>
+              <input type="hidden" id="requirements" name="requirements" />
+              {{#if errorMessages.requirements}}<div class="text-danger small">{{errorMessages.requirements.[0]}}</div>{{/if}}
+              <small class="text-muted">Enter course prerequisites, required skills, or materials needed</small>
+            </div>
+
             <div class="d-flex justify-content-end gap-2">
-              <a href="/courses" class="btn btn-outline-secondary">Back</a>
+              <a href="/admin/courses" class="btn btn-outline-secondary">Back</a>
               <button type="reset" class="btn btn-secondary">Reset</button>
               <button type="submit" class="btn btn-primary"><i class="fa fa-save me-1"></i> Create Course</button>
             </div>

@@ -59,6 +59,86 @@ export function findAll() {
   return db(TABLE_NAME);
 }
 
+export function findAllWithCategory() {
+  return db(TABLE_NAME)
+    .leftJoin('categories', 'courses.category_id', 'categories.category_id')
+    .select(
+      'courses.*',
+      'categories.name as category_name'
+    )
+    .orderBy('courses.course_id', 'asc');
+}
+
+export function findAllWithCategoryFiltered(filters = {}) {
+  let query = db(TABLE_NAME)
+    .leftJoin('categories', 'courses.category_id', 'categories.category_id')
+    .leftJoin('users', 'courses.instructor_id', 'users.user_id')
+    .select(
+      'courses.*',
+      'categories.name as category_name',
+      'users.full_name as instructor_name'
+    );
+
+  // Filter by category if provided
+  if (filters.categoryId) {
+    query = query.where('courses.category_id', filters.categoryId);
+  }
+
+  // Filter by status if provided
+  if (filters.status) {
+    query = query.where('courses.status', filters.status);
+  }
+
+  // Filter by instructor if provided
+  if (filters.instructorId) {
+    query = query.where('courses.instructor_id', filters.instructorId);
+  }
+
+  // Sort by specified field or default to ID
+  const direction = filters.order === 'desc' ? 'desc' : 'asc';
+  
+  if (filters.sortBy === 'enrollment') {
+    query = query.orderBy('courses.enrollment_count', direction);
+  } else {
+    // Default: sort by ID with the selected order
+    query = query.orderBy('courses.course_id', direction);
+  }
+
+  // Pagination
+  if (filters.limit) {
+    query = query.limit(filters.limit);
+  }
+  if (filters.offset) {
+    query = query.offset(filters.offset);
+  }
+
+  return query;
+}
+
+export async function countAllWithCategoryFiltered(filters = {}) {
+  let query = db(TABLE_NAME)
+    .leftJoin('categories', 'courses.category_id', 'categories.category_id')
+    .leftJoin('users', 'courses.instructor_id', 'users.user_id');
+
+  // Filter by category if provided
+  if (filters.categoryId) {
+    query = query.where('courses.category_id', filters.categoryId);
+  }
+
+  // Filter by status if provided
+  if (filters.status) {
+    query = query.where('courses.status', filters.status);
+  }
+
+  // Filter by instructor if provided
+  if (filters.instructorId) {
+    query = query.where('courses.instructor_id', filters.instructorId);
+  }
+
+  const result = await query.count('courses.course_id as total').first();
+  return parseInt(result.total || 0);
+}
+
 export function add(course) {
   return db(TABLE_NAME).insert(course).returning('course_id');
 }
@@ -69,6 +149,32 @@ export function patch(id, course) {
 
 export function del(id) {
   return db(TABLE_NAME).where('course_id', id).del();
+}
+
+export function approveCourse(courseId) {
+  return db(TABLE_NAME)
+    .where('course_id', courseId)
+    .update({ status: 'approved' });
+}
+
+export function hideCourse(courseId) {
+  return db(TABLE_NAME)
+    .where('course_id', courseId)
+    .update({ status: 'hidden' });
+}
+
+export function showCourse(courseId) {
+  return db(TABLE_NAME)
+    .where('course_id', courseId)
+    .update({ status: 'approved' });
+}
+
+export function countEnrollmentsByCourse(courseId) {
+  return db('enrollments')
+    .where('course_id', courseId)
+    .count('enrollment_id as count')
+    .first()
+    .then(result => parseInt(result.count || 0));
 }
 
 export function incrementEnrollment(courseId) {

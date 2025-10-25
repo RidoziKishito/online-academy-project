@@ -1,0 +1,80 @@
+{{#fillContent 'css'}}
+<style>
+  .auth-container {
+    min-height: 80vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .auth-card {
+    max-width: 500px;
+    width: 100%;
+  }
+  .success-icon {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background-color: #d1e7dd;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+  }
+</style>
+{{/fillContent}}
+
+<div class="container auth-container">
+  <div class="auth-card">
+    <div class="card shadow">
+      <div class="card-body p-5 text-center">
+        <div class="success-icon">
+          <i class="bi bi-envelope-check-fill text-success" style="font-size: 2.5rem;"></i>
+        </div>
+        
+        <h3 class="mb-3">Check Your Email</h3>
+        
+        <p class="text-muted mb-4">
+          We've sent a password reset token to:
+        </p>
+        
+        <div class="alert alert-info d-inline-block px-4">
+          <i class="bi bi-envelope-fill me-2"></i>
+          <strong>{{email}}</strong>
+        </div>
+        
+        <div class="mt-4 p-3 bg-light rounded">
+          <h6 class="mb-2">Next Steps:</h6>
+          <ol class="text-start small mb-0">
+            <li>Check your email inbox (and spam folder)</li>
+            <li>Copy the reset token from the email</li>
+            <li>Click the reset link or enter the token manually</li>
+            <li>Create your new password</li>
+          </ol>
+        </div>
+
+        <p class="text-muted small mt-4 mb-0">
+          <i class="bi bi-clock-fill me-1"></i>
+          The reset token will expire in <strong>15 minutes</strong>
+        </p>
+
+        <hr class="my-4">
+
+        <div class="d-grid gap-2">
+          <a href="/account/reset-password?email={{email}}" class="btn btn-outline-primary">
+            <i class="bi bi-key-fill me-2"></i>I Have My Token - Reset Password
+          </a>
+          <a href="/account/signin" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-2"></i>Back to Sign In
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <div class="text-center mt-3">
+      <small class="text-muted">
+        Didn't receive the email? 
+        <a href="/account/forgot-password" class="text-decoration-none">Try again</a>
+      </small>
+    </div>
+  </div>
+</div>

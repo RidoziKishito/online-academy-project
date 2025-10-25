@@ -1,35 +1,496 @@
 <div class="card">
     <h5 class="card-header d-flex justify-content-between">
-        Courses
-        <a name="" id="" class="btn btn-primary btn-sm" href="/admin/courses/create" role="button">
-            <i class="bi bi-plus-circle"></i>
-            New Course
+        <span>Courses</span>
+        <a href="/admin/courses/create" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Create Course
         </a>
     </h5>
+    <div class="card-body">
+        <form method="get" action="/admin/courses" class="row g-3 mb-3">
+            <div class="col-md-3">
+                <label for="categoryFilter" class="form-label">Filter by Category</label>
+                <select class="form-select" id="categoryFilter" name="category">
+                    <option value="">All Categories</option>
+                    {{#each categories}}
+                    <option value="{{category_id}}" {{#if (eq ../currentCategory category_id)}}selected{{/if}}>
+                        {{name}}
+                    </option>
+                    {{/each}}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="instructorFilter" class="form-label">Filter by Instructor</label>
+                <select class="form-select" id="instructorFilter" name="instructor">
+                    <option value="">All Instructors</option>
+                    {{#each instructors}}
+                    <option value="{{user_id}}" {{#if (eq ../currentInstructor user_id)}}selected{{/if}}>
+                        {{full_name}}
+                    </option>
+                    {{/each}}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="statusFilter" class="form-label">Filter by Status</label>
+                <select class="form-select" id="statusFilter" name="status">
+                    <option value="">All Status</option>
+                    <option value="pending" {{#if (eq currentStatus 'pending')}}selected{{/if}}>Pending</option>
+                    <option value="approved" {{#if (eq currentStatus 'approved')}}selected{{/if}}>Approved</option>
+                    <option value="hidden" {{#if (eq currentStatus 'hidden')}}selected{{/if}}>Hidden</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="sortBy" class="form-label">Sort by</label>
+                <select class="form-select" id="sortBy" name="sortBy">
+                    <option value="">Default (ID)</option>
+                    <option value="enrollment" {{#if (eq currentSort 'enrollment')}}selected{{/if}}>Enrollment</option>
+                </select>
+            </div>
+            <div class="col-md-1">
+                <label for="order" class="form-label">Order</label>
+                <select class="form-select" id="order" name="order">
+                    <option value="asc" {{#if (eq currentOrder 'asc')}}selected{{/if}}>Asc</option>
+                    <option value="desc" {{#if (eq currentOrder 'desc')}}selected{{/if}}>Desc</option>
+                </select>
+            </div>
+            <div class="col-md-1 d-flex align-items-end">
+                <button type="submit" class="btn btn-success w-100">
+                    <i class="bi bi-funnel"></i>
+                </button>
+            </div>
+        </form>
+    </div>
     <table class="table table-hover">
         <thead>
             <tr>
                 <th scope="col" class="text-center">#</th>
                 <th scope="col">Course</th>
+                <th scope="col">Instructor</th>
+                <th scope="col">Category</th>
+                <th scope="col">Status</th>
                 <th scope="col">Price</th>
-                <th scope="col">Quantity</th>
-                <th scope="col" class="text-end">Action</th>
+                <th scope="col">Sale price</th>
+                <th scope="col">Enrollment</th>
+                <th scope="col" class="text-end">Actions</th>
             </tr>
         </thead>
-        <tbody>
+        <tbody id="coursesTableBody">
             {{#each courses}}
             <tr>
                 <th scope="row" class="text-center">{{course_id}}</th>
                 <td>{{title}}</td>
-                <td>{{format_number current_price}}</td>
+                <td>
+                    {{#if instructor_name}}
+                    {{instructor_name}}
+                    {{else}}
+                    <span class="text-muted">N/A</span>
+                    {{/if}}
+                </td>
+                <td>
+                    {{#if category_name}}
+                    <span class="badge bg-info">{{category_name}}</span>
+                    {{else}}
+                    <span class="badge bg-secondary">N/A</span>
+                    {{/if}}
+                </td>
+                <td>
+                    {{#if (eq status 'pending')}}
+                    <span class="badge bg-warning text-dark">Pending</span>
+                    {{else if (eq status 'approved')}}
+                    <span class="badge bg-success">Approved</span>
+                    {{else if (eq status 'hidden')}}
+                    <span class="badge bg-secondary">Hidden</span>
+                    {{else}}
+                    <span class="badge bg-danger">Unknown</span>
+                    {{/if}}
+                </td>
+                <td>{{format_number price}}</td>
+                <td>{{format_number sale_price}}</td>
                 <td>{{enrollment_count}}</td>
                 <td class="text-end">
-                    <a name="" id="" class="btn btn-outline-primary btn-sm" href="/admin/courses/edit?id={{course_id}}" role="button">
+                    {{#if (eq status 'pending')}}
+                    <form method="post" action="/admin/courses/approve/{{course_id}}" style="display: inline;">
+                        <button type="submit" class="btn btn-success btn-sm" title="Approve">
+                            <i class="bi bi-check-circle"></i>
+                        </button>
+                    </form>
+                    {{else if (eq status 'approved')}}
+                    <form method="post" action="/admin/courses/hide/{{course_id}}" style="display: inline;">
+                        <button type="submit" class="btn btn-warning btn-sm" title="Hide">
+                            <i class="bi bi-eye-slash"></i>
+                        </button>
+                    </form>
+                    {{else if (eq status 'hidden')}}
+                    <form method="post" action="/admin/courses/show/{{course_id}}" style="display: inline;">
+                        <button type="submit" class="btn btn-info btn-sm" title="Show">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </form>
+                    {{/if}}
+                    <a class="btn btn-outline-primary btn-sm" href="/admin/courses/edit?id={{course_id}}" title="Edit">
                         <i class="bi bi-pencil-square"></i>
                     </a>
+                    <button type="button" class="btn btn-danger btn-sm delete-btn" data-course-id="{{course_id}}" data-course-title="{{title}}" title="Delete">
+                        <i class="bi bi-trash"></i>
+                    </button>
                 </td>
             </tr>
             {{/each}}
         </tbody>
     </table>
+    
+    {{#if pagination}}
+    <div class="card-footer">
+        <div class="d-flex justify-content-between align-items-center">
+            <div class="text-muted">
+                Showing {{courses.length}} of {{pagination.totalItems}} courses
+            </div>
+            <nav aria-label="Course pagination">
+                <ul class="pagination pagination-sm mb-0" id="paginationControls">
+                    <li class="page-item {{#if (eq pagination.currentPage 1)}}disabled{{/if}}">
+                        <a class="page-link" href="#" data-page="{{subtract pagination.currentPage 1}}">Previous</a>
+                    </li>
+                    {{#each (generatePages pagination.currentPage pagination.totalPages)}}
+                        {{#if (eq this '...')}}
+                        <li class="page-item disabled"><span class="page-link">...</span></li>
+                        {{else}}
+                        <li class="page-item {{#if (eq this ../pagination.currentPage)}}active{{/if}}">
+                            <a class="page-link" href="#" data-page="{{this}}">{{this}}</a>
+                        </li>
+                        {{/if}}
+                    {{/each}}
+                    <li class="page-item {{#if (eq pagination.currentPage pagination.totalPages)}}disabled{{/if}}">
+                        <a class="page-link" href="#" data-page="{{add pagination.currentPage 1}}">Next</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+    {{/if}}
 </div>
+
+{{#fillContent 'js'}}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let currentPage = {{pagination.currentPage}};
+    
+    // Function to format number
+    function formatNumber(num) {
+        if (!num) return '';
+        return new Intl.NumberFormat('vi-VN').format(num);
+    }
+
+    // Function to generate status badge HTML
+    function getStatusBadge(status) {
+        switch(status) {
+            case 'pending':
+                return '<span class="badge bg-warning text-dark">Pending</span>';
+            case 'approved':
+                return '<span class="badge bg-success">Approved</span>';
+            case 'hidden':
+                return '<span class="badge bg-secondary">Hidden</span>';
+            default:
+                return '<span class="badge bg-danger">Unknown</span>';
+        }
+    }
+
+    // Function to generate action buttons
+    function getActionButtons(course) {
+        let buttons = '';
+        
+        if (course.status === 'pending') {
+            buttons += `<form method="post" action="/admin/courses/approve/${course.course_id}" style="display: inline;">
+                <button type="submit" class="btn btn-success btn-sm" title="Approve">
+                    <i class="bi bi-check-circle"></i>
+                </button>
+            </form>`;
+        } else if (course.status === 'approved') {
+            buttons += `<form method="post" action="/admin/courses/hide/${course.course_id}" style="display: inline;">
+                <button type="submit" class="btn btn-warning btn-sm" title="Hide">
+                    <i class="bi bi-eye-slash"></i>
+                </button>
+            </form>`;
+        } else if (course.status === 'hidden') {
+            buttons += `<form method="post" action="/admin/courses/show/${course.course_id}" style="display: inline;">
+                <button type="submit" class="btn btn-info btn-sm" title="Show">
+                    <i class="bi bi-eye"></i>
+                </button>
+            </form>`;
+        }
+        
+        buttons += `
+            <a class="btn btn-outline-primary btn-sm" href="/admin/courses/edit?id=${course.course_id}" title="Edit">
+                <i class="bi bi-pencil-square"></i>
+            </a>
+            <button type="button" class="btn btn-danger btn-sm delete-btn" data-course-id="${course.course_id}" data-course-title="${course.title}" title="Delete">
+                <i class="bi bi-trash"></i>
+            </button>
+        `;
+        
+        return buttons;
+    }
+
+    // Function to update table with courses data
+    function updateTable(courses) {
+        const tbody = document.getElementById('coursesTableBody');
+        tbody.innerHTML = '';
+        
+        courses.forEach(course => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <th scope="row" class="text-center">${course.course_id}</th>
+                <td>${course.title}</td>
+                <td>${course.instructor_name || '<span class="text-muted">N/A</span>'}</td>
+                <td>${course.category_name ? '<span class="badge bg-info">' + course.category_name + '</span>' : '<span class="badge bg-secondary">N/A</span>'}</td>
+                <td>${getStatusBadge(course.status)}</td>
+                <td>${formatNumber(course.price)}</td>
+                <td>${formatNumber(course.sale_price)}</td>
+                <td>${course.enrollment_count || 0}</td>
+                <td class="text-end">${getActionButtons(course)}</td>
+            `;
+            tbody.appendChild(row);
+        });
+        
+        // Re-attach delete button listeners
+        attachDeleteListeners();
+    }
+
+    // Function to generate pagination HTML
+    function generatePagination(currentPage, totalPages) {
+        const pages = [];
+        const maxVisible = 7;
+        
+        if (totalPages <= maxVisible) {
+            for (let i = 1; i <= totalPages; i++) {
+                pages.push(i);
+            }
+        } else {
+            if (currentPage <= 4) {
+                for (let i = 1; i <= 5; i++) pages.push(i);
+                pages.push('...');
+                pages.push(totalPages);
+            } else if (currentPage >= totalPages - 3) {
+                pages.push(1);
+                pages.push('...');
+                for (let i = totalPages - 4; i <= totalPages; i++) pages.push(i);
+            } else {
+                pages.push(1);
+                pages.push('...');
+                for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i);
+                pages.push('...');
+                pages.push(totalPages);
+            }
+        }
+        
+        return pages;
+    }
+
+    // Function to update pagination controls
+    function updatePagination(pagination) {
+        const paginationControls = document.getElementById('paginationControls');
+        if (!paginationControls) return;
+        
+        const pages = generatePagination(pagination.currentPage, pagination.totalPages);
+        let html = '';
+        
+        // Previous button
+        html += `<li class="page-item ${pagination.currentPage === 1 ? 'disabled' : ''}">
+            <a class="page-link" href="#" data-page="${pagination.currentPage - 1}">Previous</a>
+        </li>`;
+        
+        // Page numbers
+        pages.forEach(page => {
+            if (page === '...') {
+                html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+            } else {
+                html += `<li class="page-item ${page === pagination.currentPage ? 'active' : ''}">
+                    <a class="page-link" href="#" data-page="${page}">${page}</a>
+                </li>`;
+            }
+        });
+        
+        // Next button
+        html += `<li class="page-item ${pagination.currentPage === pagination.totalPages ? 'disabled' : ''}">
+            <a class="page-link" href="#" data-page="${pagination.currentPage + 1}">Next</a>
+        </li>`;
+        
+        paginationControls.innerHTML = html;
+        
+        // Update showing text
+        const showingText = document.querySelector('.card-footer .text-muted');
+        if (showingText) {
+            showingText.textContent = `Showing ${pagination.limit} of ${pagination.totalItems} courses`;
+        }
+        
+        // Attach click listeners to pagination links
+        attachPaginationListeners();
+    }
+
+    // Function to load courses via AJAX
+    function loadCourses(page = 1) {
+        const filterForm = document.querySelector('form[action="/admin/courses"]');
+        const formData = new FormData(filterForm);
+        const params = new URLSearchParams(formData);
+        params.set('page', page);
+        
+        fetch(`/admin/courses?${params.toString()}`, {
+            headers: {
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            updateTable(data.courses);
+            updatePagination(data.pagination);
+            currentPage = data.pagination.currentPage;
+        })
+        .catch(error => {
+            console.error('Error loading courses:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Failed to load courses. Please try again.'
+            });
+        });
+    }
+
+    // Attach listeners to pagination links
+    function attachPaginationListeners() {
+        document.querySelectorAll('#paginationControls .page-link').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const page = parseInt(this.dataset.page);
+                if (page && page > 0) {
+                    loadCourses(page);
+                }
+            });
+        });
+    }
+
+    // Auto-submit form when filter changes
+    const filterForm = document.querySelector('form[action="/admin/courses"]');
+    const filterSelects = filterForm.querySelectorAll('select');
+    
+    filterSelects.forEach(select => {
+        select.addEventListener('change', function() {
+            loadCourses(1); // Reset to page 1 when filters change
+        });
+    });
+
+    // Attach delete button listeners
+    function attachDeleteListeners() {
+        document.querySelectorAll('.delete-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const courseId = this.dataset.courseId;
+                const courseTitle = this.dataset.courseTitle;
+
+                Swal.fire({
+                    title: 'Delete Course?',
+                    html: `Are you sure you want to delete <strong>${courseTitle}</strong>?<br>This action cannot be undone.`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6',
+                    confirmButtonText: 'Yes, delete it!',
+                    cancelButtonText: 'Cancel'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        const form = document.createElement('form');
+                        form.method = 'POST';
+                        form.action = `/admin/courses/delete/${courseId}`;
+                        document.body.appendChild(form);
+                        form.submit();
+                    }
+                });
+            });
+        });
+    }
+
+    // Initial setup
+    attachPaginationListeners();
+    attachDeleteListeners();
+
+    // Handle success/error messages from query parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const action = urlParams.get('action');
+    const error = urlParams.get('error');
+
+    if (action === 'approved') {
+        Swal.fire({
+            icon: 'success',
+            title: 'Course Approved',
+            text: 'The course has been approved successfully.',
+            timer: 2000,
+            showConfirmButton: false
+        });
+        } else if (action === 'created') {
+            Swal.fire({
+                icon: 'success',
+                title: 'Course Created',
+                text: 'The new course has been created successfully.',
+                timer: 2000,
+                showConfirmButton: false
+            });
+    } else if (action === 'hidden') {
+        Swal.fire({
+            icon: 'info',
+            title: 'Course Hidden',
+            text: 'The course has been hidden from public view.',
+            timer: 2000,
+            showConfirmButton: false
+        });
+    } else if (action === 'shown') {
+        Swal.fire({
+            icon: 'success',
+            title: 'Course Shown',
+            text: 'The course is now visible to the public.',
+            timer: 2000,
+            showConfirmButton: false
+        });
+    } else if (action === 'deleted') {
+        Swal.fire({
+            icon: 'success',
+            title: 'Course Deleted',
+            text: 'The course has been deleted successfully.',
+            timer: 2000,
+            showConfirmButton: false
+        });
+    }
+
+    if (error === 'approve_failed') {
+        Swal.fire({
+            icon: 'error',
+            title: 'Approval Failed',
+            text: 'Failed to approve the course. Please try again.'
+        });
+    } else if (error === 'hide_failed') {
+        Swal.fire({
+            icon: 'error',
+            title: 'Hide Failed',
+            text: 'Failed to hide the course. Please try again.'
+        });
+    } else if (error === 'show_failed') {
+        Swal.fire({
+            icon: 'error',
+            title: 'Show Failed',
+            text: 'Failed to show the course. Please try again.'
+        });
+    } else if (error === 'delete_failed') {
+        Swal.fire({
+            icon: 'error',
+            title: 'Delete Failed',
+            text: 'Failed to delete the course. Please try again.'
+        });
+    } else if (error === 'has_enrollments') {
+        Swal.fire({
+            icon: 'error',
+            title: 'Cannot Delete',
+            text: 'This course has enrollments and cannot be deleted.'
+        });
+    }
+
+    // Handle delete button clicks - already handled by attachDeleteListeners()
+});
+});
+</script>
+{{/fillContent}}

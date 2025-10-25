@@ -5,11 +5,42 @@ import bcrypt from 'bcrypt';
 
 const router = express.Router();
 
-// list all users
+// list users with pagination (supports AJAX JSON)
 router.get('/', restrict, isAdmin, async (req, res, next) => {
   try {
-    const users = await userModel.findAll();
-    res.render('vwAdmin/accounts-list', { users });
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
+
+    const filters = {
+      role: req.query.role || null,
+      isVerified: req.query.is_verified || null,
+      limit,
+      offset
+    };
+
+    const [users, total, roles] = await Promise.all([
+      userModel.findAllFiltered(filters),
+      userModel.countAllFiltered(filters),
+      userModel.getRoleOptions()
+    ]);
+
+    const totalPages = Math.ceil(total / limit) || 1;
+
+    if (req.xhr || req.headers.accept?.includes('application/json')) {
+      return res.json({
+        users,
+        pagination: { currentPage: page, totalPages, totalItems: total, limit }
+      });
+    }
+
+    res.render('vwAdmin/accounts-list', {
+      users,
+      roles,
+      currentRole: filters.role,
+      currentVerified: filters.isVerified,
+      pagination: { currentPage: page, totalPages, totalItems: total, limit }
+    });
   } catch (err) {
     next(err);
   }
@@ -18,13 +49,14 @@ router.get('/', restrict, isAdmin, async (req, res, next) => {
 // edit or create form
 router.get('/edit', restrict, isAdmin, async (req, res, next) => {
   const id = req.query.id;
+  const role = await userModel.getRoleOptions();
   if (!id) {
     // render create form
-    return res.render('vwAdmin/account-edit');
+    return res.render('vwAdmin/account-edit', { role });
   }
   try {
     const user = await userModel.findById(id);
-    res.render('vwAdmin/account-edit', { user });
+    res.render('vwAdmin/account-edit', { user, role });
   } catch (err) {
     next(err);
   }
@@ -76,6 +108,41 @@ router.post('/patch', restrict, isAdmin, async (req, res, next) => {
     await userModel.patch(user_id, patch);
     res.redirect('/admin/accounts');
   } catch (err) {
+    next(err);
+  }
+});
+
+// delete user (blocked if is_verified === true)
+router.post('/delete/:id', restrict, isAdmin, async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id);
+    const user = await userModel.findById(id);
+    if (!user) {
+      const msg = 'User not found';
+      if (req.xhr || req.headers.accept?.includes('application/json')) {
+        return res.status(404).json({ ok: false, error: msg });
+      }
+      return res.redirect('/admin/accounts?error=not_found');
+    }
+
+    if (user.is_verified === true) {
+      const msg = 'Cannot delete a verified user.';
+      if (req.xhr || req.headers.accept?.includes('application/json')) {
+        return res.status(400).json({ ok: false, error: msg, code: 'verified' });
+      }
+      return res.redirect('/admin/accounts?error=verified');
+    }
+
+    await userModel.del(id);
+
+    if (req.xhr || req.headers.accept?.includes('application/json')) {
+      return res.json({ ok: true });
+    }
+    res.redirect('/admin/accounts?action=deleted');
+  } catch (err) {
+    if (req.xhr || req.headers.accept?.includes('application/json')) {
+      return res.status(500).json({ ok: false, error: 'Delete failed' });
+    }
     next(err);
   }
 });
