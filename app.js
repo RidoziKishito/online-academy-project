@@ -7,9 +7,10 @@ import { fileURLToPath } from 'url';
 import Handlebars from 'handlebars';
 
 
+import { testEmailConfig } from './utils/mailer.js';
+testEmailConfig();
 // Import Middlewares
 import { restrict, isAdmin, isInstructor } from './middlewares/auth.mdw.js';
-
 // Import Models (chỉ cần cho middleware)
 import * as categoryModel from './models/category.model.js';
 
@@ -22,11 +23,14 @@ import instructorDashboardRouter from './routes/instructor-dashboard.route.js';
 import categoryAdminRouter from './routes/category.route.js';
 import instructorAdminRouter from './routes/instructor.route.js';
 import courseAdminRouter from './routes/course-admin.route.js';
-import adminPermissionsRouter from './routes/admin-permissions.route.js';
+import adminDashboardRouter from './routes/admin-dashboard.route.js';
 import adminAccountsRouter from './routes/admin-accounts.route.js';
 import contactRouter from './routes/contact.route.js';
 import sitemapRouter from './routes/sitemap.route.js';
-
+import instructorsRouter from './routes/instructors.route.js';
+import reviewRoute from './routes/review.route.js';
+import passport from './utils/passport.js';
+import authRouter from './routes/auth.route.js';
 
 const app = express();
 const PORT = 3000;
@@ -42,6 +46,10 @@ app.use(session({
   cookie: { secure: false }
 }));
 
+// Passport (after session)
+app.use(passport.initialize());
+app.use(passport.session());
+
 app.engine('handlebars', engine({
   defaultLayout: 'main',
   layoutsDir: path.join(__dirname, 'views', 'layouts'),
@@ -49,6 +57,18 @@ app.engine('handlebars', engine({
     fillContent: hsb_sections(),
     format_number(value) {
       return new Intl.NumberFormat('vi-VN').format(value);
+    },
+    format_date(value) {
+      if (!value) return '';
+      const d = new Date(value);
+      if (Number.isNaN(d.getTime())) return value;
+      return d.toLocaleString('vi-VN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
     },
     eq(a, b) {
       return a === b;
@@ -97,6 +117,67 @@ app.engine('handlebars', engine({
     // Kiểm tra category có subcategory con hay không
     hasSubCategories: function (parentId, categories) {
       return categories.some(c => c.parent_category_id === parentId);
+    },
+    repeat(count, options) {
+      let result = '';
+      for (let i = 0; i < Math.floor(count); i++) {
+        result += options.fn(this);
+      }
+      return result;
+    },
+    range(start, end) {
+      const result = [];
+      for (let i = start; i < end; i++) {
+        result.push(i);
+      }
+      return result;
+    },
+    lte(a, b) {
+      return a <= b;
+    },
+    formatDate(date) {
+      return new Date(date).toLocaleDateString('vi-VN');
+    },
+    and(a, b) {
+      return a && b;
+    },
+    slice(array, start, end) {
+      if (!array || !Array.isArray(array)) return [];
+      return array.slice(start, end);
+    },
+    add(a, b) {
+      return a + b;
+    },
+    subtract(a, b) {
+      return a - b;
+    },
+    generatePages(currentPage, totalPages) {
+      const pages = [];
+      const maxVisible = 7;
+      
+      if (totalPages <= maxVisible) {
+        for (let i = 1; i <= totalPages; i++) {
+          pages.push(i);
+        }
+      } else {
+        if (currentPage <= 4) {
+          for (let i = 1; i <= 5; i++) pages.push(i);
+          pages.push('...');
+          pages.push(totalPages);
+        } else if (currentPage >= totalPages - 3) {
+          pages.push(1);
+          pages.push('...');
+          for (let i = totalPages - 4; i <= totalPages; i++) pages.push(i);
+        } else {
+          pages.push(1);
+          pages.push('...');
+          for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i);
+          pages.push('...');
+          pages.push(totalPages);
+        }
+      }
+      
+      return pages;
     }
 
   }
@@ -121,7 +202,11 @@ app.use(function (req, res, next) {
   res.locals.isAdmin = !!(req.session && req.session.authUser && req.session.authUser.role === 'admin');
   next();
 });
-
+//Provide isInstructor flag to templates
+app.use(function (req, res, next) {
+  res.locals.isInstructor = !!(req.session && req.session.authUser && req.session.authUser.role === 'instructor');
+  next();
+});
 // Provide current year to templates
 app.use(function (req, res, next) {
   res.locals.currentYear = new Date().getFullYear();
@@ -139,6 +224,13 @@ app.use(async function (req, res, next) {
   }));
   next();
 });
+// Flash messages (simple session-based)
+app.use(function (req, res, next) {
+  res.locals.flash = req.session.flash || null;
+  // clear flash after exposing to view
+  delete req.session.flash;
+  next();
+});
 // =======================================================
 
 
@@ -151,11 +243,16 @@ app.get('/', (req, res) => {
 });
 app.use('/account', accountRouter);
 app.use('/courses', courseRouter);
+app.use('/auth', authRouter);
 
 // -- Routes của học viên (cần đăng nhập) --
 app.use('/student', restrict, studentRouter);
 app.use('/learn', restrict, learnRouter);
 
+// Public instructors profiles
+app.use('/instructors', instructorsRouter);
+
+app.use('/review', restrict, reviewRoute);
 // -- Routes của giảng viên (cần đăng nhập và là instructor) --
 app.use('/instructor', restrict, isInstructor, instructorDashboardRouter);
 
@@ -163,7 +260,7 @@ app.use('/instructor', restrict, isInstructor, instructorDashboardRouter);
 app.use('/admin/categories', restrict, isAdmin, categoryAdminRouter);
 app.use('/admin/instructors', restrict, isAdmin, instructorAdminRouter);
 app.use('/admin/courses', restrict, isAdmin, courseAdminRouter);
-app.use('/admin/permissions', restrict, isAdmin, adminPermissionsRouter);
+app.use('/admin/dashboard', restrict, isAdmin, adminDashboardRouter);
 app.use('/admin/accounts', restrict, isAdmin, adminAccountsRouter);
 app.use('/contact', contactRouter);
 app.use('/sitemap', sitemapRouter);
@@ -180,7 +277,6 @@ app.use((err, req, res, next) => {
   res.status(500).render('500');
 });
 // =======================================================
-
 app.listen(PORT, () => {
   console.log(`Application listening on port ${PORT}`);
 });

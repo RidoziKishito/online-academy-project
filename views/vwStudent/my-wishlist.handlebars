@@ -1,0 +1,48 @@
+<div class="container mt-4">
+    <h2>Danh sách yêu thích</h2>
+    
+    {{#if courses}}
+        <div class="row">
+            {{#each courses}}
+            <div class="col-md-4 mb-4">
+                <div class="card">
+                    <img src="{{image_url}}" class="card-img-top" alt="{{title}}">
+                    <div class="card-body">
+                        <h5 class="card-title">{{title}}</h5>
+                        <p class="card-text">{{brief_description}}</p>
+                        <p class="text-primary fw-bold">{{price_formatted}}</p>
+                        <div class="d-flex justify-content-between">
+                            <a href="/course/detail/{{course_id}}" class="btn btn-outline-primary">Xem chi tiết</a>
+                            <button class="btn btn-outline-danger remove-wishlist" data-course-id="{{course_id}}">
+                                <i class="fas fa-heart"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {{/each}}
+        </div>
+    {{else}}
+        <div class="alert alert-info">
+            <p>Danh sách yêu thích trống.</p>
+            <a href="/courses" class="btn btn-primary">Khám phá khóa học</a>
+        </div>
+    {{/if}}
+</div>
+
+<script>
+// Xử lý xóa khỏi wishlist
+document.querySelectorAll('.remove-wishlist').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+        const courseId = e.currentTarget.dataset.courseId;
+        const response = await fetch('/student/wishlist/remove', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({courseId})
+        });
+        if (response.ok) {
+            location.reload();
+        }
+    });
+});
+</script>

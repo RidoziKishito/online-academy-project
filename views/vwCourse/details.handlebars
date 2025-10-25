@@ -1,48 +1,45 @@
 <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
 
-
   <!-- 🧭 Breadcrumb -->
-<div class="card-header border-0 py-3">
-  <nav aria-label="breadcrumb">
-    
-    <ol class="breadcrumb mb-0 small" style="--bs-breadcrumb-divider-color: white;">
-      <li class="breadcrumb-item">
-        <a href="/" class="text-light fw-semibold text-decoration-none">Home</a>
-      </li>
+  <div class="card-header border-0 py-3 bg-dark text-light">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-0 small" style="--bs-breadcrumb-divider-color: white;">
+        <li class="breadcrumb-item">
+          <a href="/" class="text-light fw-semibold text-decoration-none">Home</a>
+        </li>
 
-      {{#if categories.parent.id}}
-      <li class="breadcrumb-item">
-        <a href="/category/{{categories.parent.id}}" class="text-light fw-semibold text-decoration-none">
-          {{categories.parent.name}}
-        </a>
-      </li>
-      {{/if}}
+        {{#if categories.parent.id}}
+        <li class="breadcrumb-item">
+          <a href="/category/{{categories.parent.id}}" class="text-light fw-semibold text-decoration-none">
+            {{categories.parent.name}}
+          </a>
+        </li>
+        {{/if}}
 
-      {{#if categories.child.id}}
-      <li class="breadcrumb-item">
-        <a href="/category/{{categories.child.id}}" class="text-light fw-semibold text-decoration-none">
-          {{categories.child.name}}
-        </a>
-      </li>
-      {{/if}}
+        {{#if categories.child.id}}
+        <li class="breadcrumb-item">
+          <a href="/category/{{categories.child.id}}" class="text-light fw-semibold text-decoration-none">
+            {{categories.child.name}}
+          </a>
+        </li>
+        {{/if}}
 
-      <li class="breadcrumb-item active text-light" aria-current="page">
-        {{course.title}}
-      </li>
-    </ol>
-
-  </nav>
-</div>
-
-
-
+        <li class="breadcrumb-item active text-light" aria-current="page">
+          {{course.title}}
+        </li>
+      </ol>
+    </nav>
+  </div>
 
   <!-- 📘 Course Body -->
   <div class="card-body p-4">
 
     <!-- 🎓 Course Header -->
     <div class="row g-4 align-items-start">
-      <h2 class="fw-bold mb-3">{{course.title}}</h2>
+      <div class="col-12">
+        <h2 class="fw-bold mb-3">{{course.title}}</h2>
+      </div>
+
       <!-- Left Info -->
       <div class="col-lg-4">
 
@@ -58,7 +55,7 @@
 
         <!-- Badges -->
         {{#if course.is_bestseller}}
-          <span class="badge bg-warning text-dark rounded-pill px-3 py-2 me-1">🔥 Bestseller</span>
+        <span class="badge bg-warning text-dark rounded-pill px-3 py-2 me-1">🔥 Bestseller</span>
         {{/if}}
 
         <!-- Instructor -->
@@ -82,9 +79,9 @@
       <!-- Right Card -->
       <div class="col-lg-8 d-flex align-items-stretch">
         <div class="card border-0 shadow-lg rounded-4 overflow-hidden flex-fill">
-          <div class="card-body p-4 d-flex">
+          <div class="card-body p-4 d-flex flex-wrap align-items-center">
             <!-- Ảnh bên trái -->
-            <div class="flex-shrink-0 me-4">
+            <div class="flex-shrink-0 me-4 mb-3">
               <img src="{{#if course.image_url}}{{course.image_url}}{{else}}https://via.placeholder.com/400x250?text=No+Image{{/if}}"
                   alt="{{course.title}}" class="rounded-4 shadow-sm"
                   style="width: 320px; height: 200px; object-fit: cover;">
@@ -102,19 +99,54 @@
                 {{/if}}
               </div>
 
-              <!-- Nút -->
-              <div class="d-grid gap-2">
-                <button class="btn btn-success rounded-pill py-2 shadow-sm fw-semibold">
-                  <i class="bi bi-cart3 me-2"></i>Add to Cart
-                </button>
-                <button class="btn btn-outline-success rounded-pill py-2 fw-semibold">
-                  <i class="bi bi-lightning-charge-fill me-2"></i>Buy Now
-                </button>
+              <!-- Nút hành động -->
+              <div class="d-grid gap-2 d-md-flex justify-content-center align-items-center">
+                {{#if isEnrolled}}
+                  <a class="btn btn-primary rounded-pill py-2 px-4 shadow-sm fw-semibold" href="/learn/{{course.course_id}}">
+                    <i class="bi bi-play-circle me-2"></i>Continue learning
+                  </a>
+                {{else}}
+                  <button class="btn btn-success rounded-pill py-2 shadow-sm fw-semibold me-2" id="addToCartBtn">
+                    <i class="bi bi-cart3 me-2"></i>Add to Cart
+                  </button>
+                  <button class="btn btn-outline-success rounded-pill py-2 fw-semibold me-2" id="buyNowBtn">
+                    <i class="bi bi-lightning-charge-fill me-2"></i>Buy Now
+                  </button>
+                {{/if}}
+
+                {{!-- Wishlist (show only when user logged in) --}}
+                {{#if @root.session.authUser}}
+                  {{#if isInWishlist}}
+                    <button type="button" class="btn btn-danger rounded-pill py-2" id="wishlistBtn" data-course-id="{{course.course_id}}">
+                      <i class="bi bi-heart-fill"></i>
+                      <span id="wishlistText">Remove from Wishlist</span>
+                    </button>
+                  {{else}}
+                    <button type="button" class="btn btn-outline-danger rounded-pill py-2" id="wishlistBtn" data-course-id="{{course.course_id}}">
+                      <i class="bi bi-heart"></i>
+                      <span id="wishlistText">Add to Wishlist</span>
+                    </button>
+                  {{/if}}
+                {{else}}
+                  <a href="/auth/login" class="btn btn-outline-danger rounded-pill py-2">
+                    <i class="bi bi-heart"></i> Add to Wishlist
+                  </a>
+                {{/if}}
               </div>
+
+              {{!-- Enroll form for free course (optional) --}}
+              {{#if course.is_free}}
+                {{#unless isEnrolled}}
+                  <form method="POST" action="/courses/detail/{{course.course_id}}/enroll" class="mt-3">
+                    <button type="submit" class="btn btn-outline-primary btn-sm">Enroll for Free</button>
+                  </form>
+                {{/unless}}
+              {{/if}}
             </div>
           </div>
         </div>
       </div>
+    </div>
 
     <!-- Course content -->
     <section class="mt-5">
@@ -138,7 +170,6 @@
                   {{#each this.lectures}}
                     <li class="list-group-item d-flex justify-content-between align-items-center">
                       <div class="d-flex align-items-center">
-
                         {{#if this.is_previewable}}
                           <a href="javascript:void(0)"
                             class="preview-btn text-decoration-none text-dark me-2"
@@ -147,11 +178,9 @@
                             <span class="badge bg-success ms-2 small">Preview</span>
                           </a>
                         {{else}}
-
                           <div class="text-decoration-none text-dark me-2">
-                          {{this.order_index}}. {{this.title}}
-                          </div>  
-
+                            {{this.order_index}}. {{this.title}}
+                          </div>
                         {{/if}}
                       </div>
                       <div>
@@ -170,7 +199,6 @@
       </div>
     </section>
 
-
     <!-- ✅ Requirements -->
     <section class="mt-5">
       <h4 class="fw-bold mb-3"><i class="bi bi-check-circle text-success me-2"></i>Requirements</h4>
@@ -187,16 +215,54 @@
       </div>
     </section>
 
-    <!-- 💬 Feedback -->
+    <!-- 💬 Feedback (Review Form when enrolled) -->
+    {{#if isEnrolled}}
     <section class="mt-5">
       <h4 class="fw-bold mb-3"><i class="bi bi-chat-dots text-success me-2"></i>Student Feedback</h4>
+
+      <!-- Review Form -->
+      <div class="card mb-4">
+        <div class="card-body">
+          <form id="reviewForm">
+            <div class="mb-3">
+              <label class="form-label">Rating:</label>
+              <div class="star-rating" style="font-size: 1.5rem;">
+                <span class="star" data-rating="1" style="cursor: pointer; ">⭐</span>
+                <span class="star" data-rating="2" style="cursor: pointer; ">⭐</span>
+                <span class="star" data-rating="3" style="cursor: pointer; ">⭐</span>
+                <span class="star" data-rating="4" style="cursor: pointer; ">⭐</span>
+                <span class="star" data-rating="5" style="cursor: pointer; ">⭐</span>
+              </div>
+              <input type="hidden" id="rating" name="rating" value="0" required>
+            </div>
+            <div class="mb-3">
+              <label for="comment" class="form-label">Nhận xét:</label>
+              <textarea class="form-control" id="comment" name="comment" rows="4"
+                        placeholder="Chia sẻ trải nghiệm của bạn...">{{#if userReview}}{{userReview.comment}}{{/if}}</textarea>
+            </div>
+            <div class="d-flex gap-2">
+              <button type="submit" class="btn btn-primary">
+                {{#if userReview}}Cập nhật đánh giá{{else}}Gửi đánh giá{{/if}}
+              </button>
+              {{#if userReview}}
+              <button type="button" class="btn btn-outline-danger" id="deleteReview">Xóa đánh giá</button>
+              {{/if}}
+            </div>
+          </form>
+        </div>
+      </div>
+    </section>
+    {{/if}}
+
+    <!-- 💬 Feedback Display -->
+    <section class="mt-4">
       <div class="row row-cols-1 row-cols-md-3 g-4">
         {{#each course.reviews}}
           <div class="col">
             <div class="card border-0 shadow-sm rounded-4 h-100">
               <div class="card-body">
                 <div class="d-flex align-items-center mb-3">
-                  <img src="{{this.avatar}}" class="rounded-circle me-3" width="50" height="50">
+                  <img src="{{this.avatar}}" class="rounded-circle me-3" width="50" height="50" alt="{{this.name}}">
                   <div>
                     <div class="fw-semibold">{{this.name}}</div>
                     <div class="text-warning small">{{{render_stars this.rating}}}</div>
@@ -207,6 +273,11 @@
             </div>
           </div>
         {{/each}}
+        {{#unless course.reviews.length}}
+          <div class="col-12">
+            <p class="text-muted small">Chưa có đánh giá nào.</p>
+          </div>
+        {{/unless}}
       </div>
     </section>
 
@@ -251,3 +322,220 @@
 
   </div>
 </div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header border-0">
+        <h5 class="modal-title text-danger" id="deleteConfirmModalLabel">
+          <i class="bi bi-exclamation-triangle-fill me-2"></i>Xác nhận xóa
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body text-center">
+        <div class="mb-3">
+          <i class="bi bi-trash3 text-danger" style="font-size: 3rem;"></i>
+        </div>
+        <h6>Bạn có chắc chắn muốn xóa đánh giá này không?</h6>
+        <p class="text-muted">Hành động này không thể hoàn tác.</p>
+      </div>
+      <div class="modal-footer border-0 justify-content-center">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+          <i class="bi bi-x-lg me-1"></i>Hủy
+        </button>
+        <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
+          <i class="bi bi-trash3 me-1"></i>Xóa đánh giá
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Note: global preview video modal is expected to exist on page (id="videoModal" and iframe id="previewVideo") -->
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    /* ---------- Preview video buttons (preview-btn) ---------- */
+    const previewBtns = document.querySelectorAll('.preview-btn');
+    const videoModalEl = document.getElementById('videoModal');
+    const videoIframe = document.getElementById('previewVideo');
+    if (previewBtns && videoModalEl && videoIframe) {
+      previewBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const url = btn.dataset.video;
+          if (url) {
+            videoIframe.src = url.includes('?') ? url + '&autoplay=1' : url + '?autoplay=1';
+            const myModal = new bootstrap.Modal(videoModalEl);
+            myModal.show();
+          }
+        });
+      });
+      videoModalEl.addEventListener('hidden.bs.modal', () => {
+        videoIframe.src = ''; // stop video when modal closed
+      });
+    }
+
+    /* ---------- Wishlist toggle ---------- */
+    const wishlistBtn = document.getElementById('wishlistBtn');
+    if (wishlistBtn) {
+      wishlistBtn.addEventListener('click', async function() {
+        const courseId = this.dataset.courseId;
+        const originalClass = this.className;
+        const originalContent = this.innerHTML;
+
+        this.disabled = true;
+        this.innerHTML = '<i class="bi bi-arrow-repeat spin"></i> Processing...';
+
+        try {
+          const res = await fetch('/courses/wishlist/toggle', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ courseId: parseInt(courseId) })
+          });
+          const result = await res.json();
+
+          if (result.success) {
+            if (result.action === 'added') {
+              this.className = 'btn btn-danger rounded-pill py-2';
+              this.innerHTML = '<i class="bi bi-heart-fill"></i> <span id="wishlistText">Remove from Wishlist</span>';
+            } else {
+              this.className = 'btn btn-outline-danger rounded-pill py-2';
+              this.innerHTML = '<i class="bi bi-heart"></i> <span id="wishlistText">Add to Wishlist</span>';
+            }
+          } else {
+            this.className = originalClass;
+            this.innerHTML = originalContent;
+            showAlert('Có lỗi: ' + (result.message || 'Không thể thao tác wishlist.'), 'danger');
+          }
+        } catch (err) {
+          this.className = originalClass;
+          this.innerHTML = originalContent;
+          showAlert('Có lỗi xảy ra khi thao tác wishlist', 'danger');
+          console.error(err);
+        } finally {
+          this.disabled = false;
+        }
+      });
+    }
+
+    /* ---------- Review form & star interaction (only if review form exists) ---------- */
+    const stars = document.querySelectorAll('.star');
+    const ratingInput = document.getElementById('rating');
+    const reviewForm = document.getElementById('reviewForm');
+    const deleteBtn = document.getElementById('deleteReview');
+
+    function showAlert(message, type = 'success') {
+      const existingAlert = document.querySelector('.alert');
+      if (existingAlert) existingAlert.remove();
+      const html = `
+        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+            <strong>${type === 'success' ? 'Thành công!' : (type === 'warning' ? 'Cảnh báo!' : 'Lỗi!')}</strong> ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>`;
+      if (reviewForm) reviewForm.insertAdjacentHTML('beforebegin', html);
+      else document.body.insertAdjacentHTML('afterbegin', html);
+      setTimeout(() => document.querySelector('.alert')?.remove(), 5000);
+    }
+
+    if (ratingInput && stars.length) {
+      function updateStarDisplay(rating) {
+        stars.forEach((s, idx) => s.style.color = (idx < rating ? 'gold' : 'lightgray'));
+      }
+
+      {{#if userReview}}
+      const currentRating = {{userReview.rating}};
+      ratingInput.value = currentRating;
+      updateStarDisplay(currentRating);
+      {{else}}
+      updateStarDisplay(0);
+      ratingInput.value = 0;
+      {{/if}}
+
+      stars.forEach(star => {
+        star.addEventListener('mouseenter', function () {
+          updateStarDisplay(this.dataset.rating);
+        });
+        star.addEventListener('click', function () {
+          ratingInput.value = this.dataset.rating;
+          updateStarDisplay(this.dataset.rating);
+        });
+      });
+
+      const starContainer = document.querySelector('.star-rating');
+      if (starContainer) {
+        starContainer.addEventListener('mouseleave', function () {
+          updateStarDisplay(ratingInput.value);
+        });
+      }
+
+      if (reviewForm) {
+        reviewForm.addEventListener('submit', async function (e) {
+          e.preventDefault();
+          if (ratingInput.value === "0") {
+            showAlert('Vui lòng chọn số sao đánh giá!', 'warning');
+            return;
+          }
+          const data = {
+            rating: ratingInput.value,
+            comment: document.getElementById('comment')?.value || ''
+          };
+          try {
+            const resp = await fetch(`/review/course/{{course.course_id}}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(data)
+            });
+            const result = await resp.json();
+            if (result.success) {
+              showAlert(result.message, 'success');
+              setTimeout(() => location.reload(), 1500);
+            } else showAlert(result.message || 'Có lỗi khi gửi đánh giá', 'danger');
+          } catch (err) {
+            console.error(err);
+            showAlert('Có lỗi xảy ra khi gửi đánh giá', 'danger');
+          }
+        });
+      }
+
+      if (deleteBtn) {
+        deleteBtn.addEventListener('click', function () {
+          const modal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+          modal.show();
+        });
+        const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+        if (confirmDeleteBtn) {
+          confirmDeleteBtn.addEventListener('click', async function () {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('deleteConfirmModal'));
+            modal.hide();
+            try {
+              const resp = await fetch(`/review/course/{{course.course_id}}`, { method: 'DELETE' });
+              const result = await resp.json();
+              if (result.success) {
+                showAlert(result.message, 'success');
+                setTimeout(() => location.reload(), 1500);
+              } else showAlert(result.message || 'Không thể xóa đánh giá', 'danger');
+            } catch (err) {
+              console.error(err);
+              showAlert('Có lỗi xảy ra khi xóa đánh giá', 'danger');
+            }
+          });
+        }
+      }
+    }
+
+    /* ---------- small spinner animation class already used by wishlist ---------- */
+    // (CSS for .spin is below; keep it in page or global stylesheet)
+});
+</script>
+
+<style>
+.spin {
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+</style>

@@ -1,0 +1,88 @@
+{{#fillContent 'css'}}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+{{/fillContent}}
+
+{{#fillContent 'js'}}
+<script>
+    // avatar preview
+    document.addEventListener('DOMContentLoaded', () => {
+        const avatarInput = document.querySelector('#avatarUrl');
+        const avatarPreview = document.querySelector('#avatarPreview');
+        if (avatarInput && avatarPreview) {
+            avatarInput.addEventListener('input', () => {
+                const v = avatarInput.value && avatarInput.value.trim();
+                avatarPreview.src = v || (avatarPreview.dataset.fallback || '/static/img/default-avatar.png');
+            });
+        }
+    });
+</script>
+{{/fillContent}}
+
+<div class="container mt-4">
+    <h4 class="mb-3">Instructor Profile</h4>
+
+    {{#if flash}}
+    {{#if flash.success}}<div class="alert alert-success">{{flash.success}}</div>{{/if}}
+    {{#if flash.error}}<div class="alert alert-danger">{{flash.error}}</div>{{/if}}
+    {{/if}}
+
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card mb-3">
+                <div class="card-body text-center">
+                    <img id="avatarPreview" data-fallback="/static/img/default-avatar.png"
+                        src="{{#if authUser.avatar_url}}{{authUser.avatar_url}}{{else}}/static/img/default-avatar.png{{/if}}"
+                        alt="Avatar" class="rounded-circle mb-3" style="width:160px;height:160px;object-fit:cover;" />
+                    <h5 class="card-title">{{authUser.full_name}}</h5>
+                    <p class="text-muted mb-0">{{authUser.email}}</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-body">
+                    <h6>Account</h6>
+                    <p class="small text-muted">Member since: {{format_date authUser.created_at}}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-body">
+                    <form action="/instructor/profile" method="POST">
+                        <div class="mb-3">
+                            <label class="form-label">Full name</label>
+                            <input type="text" name="full_name" class="form-control" value="{{authUser.full_name}}"
+                                required />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-control" value="{{authUser.email}}" disabled />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Avatar URL</label>
+                            <input id="avatarUrl" type="text" name="avatar_url" class="form-control"
+                                value="{{authUser.avatar_url}}" placeholder="https://picsum.photos/seed/you/200/200" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Bio</label>
+                            <textarea name="bio" class="form-control" rows="6">{{authUser.bio}}</textarea>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <button type="submit" class="btn btn-primary">Save Profile</button>
+                            </div>
+                            <div>
+                                <a href="/account/change-pwd" class="btn btn-outline-secondary">Change Password</a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

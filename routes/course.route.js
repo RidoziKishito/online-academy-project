@@ -3,9 +3,13 @@ import * as courseModel from '../models/courses.model.js';
 import * as categoryModel from '../models/category.model.js';
 import * as instructorModel from '../models/instructors.model.js';
 import * as chapterModel from '../models/chapter.model.js';
-import * as reviewModel from '../models/review.model.js';
 import * as lessonModel from '../models/lesson.model.js';
 import { ca } from 'zod/locales';
+import * as enrollmentModel from '../models/enrollment.model.js';
+import * as reviewModel from '../models/review.model.js';
+import * as wishlistModel from '../models/wishlist.model.js';
+import { restrict } from '../middlewares/auth.mdw.js';
+import session from 'express-session';
 
 const router = express.Router();
 
@@ -14,7 +18,6 @@ router.get('/', async (req, res) => {
   // 1️⃣ Lấy tất cả khóa học
   const courses = await courseModel.findAll();
   const courseIds = courses.map(c => c.course_id);
-
   // 2️⃣ Lấy tất cả chapters theo course_ids
   const allChapters = (await Promise.all(
     courseIds.map(id => chapterModel.findByCourseId(id))
@@ -39,7 +42,8 @@ router.get('/', async (req, res) => {
   // 5️⃣ Lấy instructors (nếu có)
   const instructorIds = [...new Set(courses.map(c => c.instructor_id).filter(Boolean))];
   let instructorsMap = {};
-  if (instructorIds.length) {
+  if (instructorIds.length)
+  {
     const instructors = await Promise.all(instructorIds.map(id => instructorModel.findById(id)));
     instructors.forEach(i => {
       if (!i) return;
@@ -77,9 +81,11 @@ router.get('/', async (req, res) => {
 
 
 // Route search: GET /courses/search?q=...
-router.get('/search', async (req, res) => {
+router.get('/search', async (req, res) =>
+{
   const q = (req.query.q || req.query.q || '').trim();
-  if (!q) {
+  if (!q)
+  {
     return res.render('vwCourse/search', { courses: [], q: '', empty: true, layout: 'main' });
   }
 
@@ -104,7 +110,6 @@ router.get('/search', async (req, res) => {
   res.render('vwCourse/search', { courses, q, empty: courses.length === 0, layout: 'main' });
 });
 
-
 // helper: format seconds -> H:MM:SS or MM:SS
 function formatDuration(seconds = 0) {
   seconds = Number(seconds) || 0;
@@ -115,33 +120,42 @@ function formatDuration(seconds = 0) {
   return `${m}:${String(s).padStart(2,'0')}`;
 }
 
+// Route xem chi tiết một khóa học
 router.get('/detail/:id', async (req, res) => {
   try {
     const courseId = req.params.id;
 
-    // 1) Lấy course
+    // 1️⃣ Lấy course
     const course = await courseModel.findById(courseId);
     if (!course) return res.redirect('/courses');
 
-    // 2) Lấy chapters, instructor, related, reviews
-    const [chapters, instructor, relatedCourses, reviews, categoriesRaw] = await Promise.all([
+    // 2️⃣ Lấy chapters, instructor, related, reviews, categories, rating stats
+    const [
+      chapters,
+      instructor,
+      relatedCourses,
+      reviewsRaw,
+      categoriesRaw,
+      ratingStats
+    ] = await Promise.all([
       chapterModel.findByCourseId(courseId),
       instructorModel.findById(course.instructor_id),
       courseModel.findRelated(course.category_id, courseId, 4),
-      reviewModel.findByCourseId(courseId), 
-      categoryModel.findParentSon(course.category_id) // có parent và con
+      reviewModel.getReviewsByCourse ? reviewModel.getReviewsByCourse(courseId) : reviewModel.findByCourseId(courseId),
+      categoryModel.findParentSon(course.category_id),
+      reviewModel.getCourseRatingStats ? reviewModel.getCourseRatingStats(courseId) : null
     ]);
 
     const categories = categoriesRaw || {
       parent: { id: null, name: null },
-      child:  { id: null, name: null }
+      child: { id: null, name: null }
     };
 
-    // 3) Lấy lessons theo chapterIds (nếu có chapters)
+    // 3️⃣ Lấy lessons cho từng chapter (nếu có)
     const chapterIds = (chapters || []).map(ch => ch.chapter_id ?? ch.id).filter(Boolean);
     const lessons = chapterIds.length ? await lessonModel.findByChapterIds(chapterIds) : [];
 
-    // 4) Gộp lesson vào sections theo chapter_id
+    // 4️⃣ Gộp lesson vào sections
     const sections = (chapters || []).map(ch => {
       const chId = ch.chapter_id ?? ch.id;
       const chapterLessons = (lessons || [])
@@ -166,7 +180,20 @@ router.get('/detail/:id', async (req, res) => {
       };
     });
 
-    // 5) Chuẩn hóa course (bổ sung fields cần thiết)
+    // 5️⃣ Kiểm tra trạng thái người dùng (nếu có đăng nhập)
+    let isEnrolled = false;
+    let userReview = null;
+    let isInWishlist = false;
+    if (req.session?.authUser) {
+      const userId = req.session.authUser.user_id;
+      [isEnrolled, userReview, isInWishlist] = await Promise.all([
+        enrollmentModel.checkEnrollment(userId, courseId),
+        reviewModel.getUserReview ? reviewModel.getUserReview(userId, courseId) : null,
+        wishlistModel.checkWishlist ? wishlistModel.checkWishlist(userId, courseId) : false
+      ]);
+    }
+
+    // 6️⃣ Chuẩn hóa course để render
     const normalizedCourse = {
       id: course.course_id,
       title: course.title,
@@ -189,7 +216,7 @@ router.get('/detail/:id', async (req, res) => {
       updated_at: course.updated_at || new Date(),
       requirements: course.requirements || [],
       sections,
-      reviews: (reviews || []).map(r => ({
+      reviews: (reviewsRaw || []).map(r => ({
         name: r.full_name,
         avatar: r.avatar_url || '/img/default-avatar.png',
         rating: r.rating,
@@ -197,13 +224,17 @@ router.get('/detail/:id', async (req, res) => {
       }))
     };
 
-
-    // 6) Render
+    // 7️⃣ Render
     res.render('vwCourse/details', {
       layout: 'main',
       course: normalizedCourse,
       related_courses: relatedCourses,
-      categories
+      categories,
+      ratingStats,
+      isEnrolled,
+      userReview,
+      isInWishlist,
+      session: req.session
     });
 
   } catch (err) {
@@ -212,18 +243,68 @@ router.get('/detail/:id', async (req, res) => {
   }
 });
 
+// Route ghi danh (enroll)
+router.post('/detail/:id/enroll', restrict, async (req, res) =>
+{
+  const courseId = req.params.id;
+  const userId = req.session.authUser.user_id;
+
+  const exists = await enrollmentModel.checkEnrollment(userId, courseId);
+  if (!exists)
+  {
+    await enrollmentModel.enroll(userId, courseId);
+  }
+
+  return res.redirect('/student/my-courses');
+});
+router.post('/wishlist/toggle', restrict, async (req, res) => {
+    try {
+        const userId = req.session.authUser.user_id;
+        const { courseId } = req.body;
+
+        if (!courseId) {
+            return res.status(400).json({ success: false, message: 'Missing courseId' });
+        }
+
+        // Kiểm tra đã có trong wishlist chưa
+        const isInWishlist = await wishlistModel.checkWishlist(userId, courseId);
+        
+        if (isInWishlist) {
+            // Remove from wishlist
+            await wishlistModel.remove(userId, courseId);
+            res.json({ 
+                success: true, 
+                action: 'removed',
+                message: 'Đã xóa khỏi danh sách yêu thích!' 
+            });
+        } else {
+            // Add to wishlist
+            await wishlistModel.add(userId, courseId);
+            res.json({ 
+                success: true, 
+                action: 'added',
+                message: 'Đã thêm vào danh sách yêu thích!' 
+            });
+        }
+    } catch (error) {
+        console.error('Wishlist toggle error:', error);
+        res.status(500).json({ success: false, message: 'Lỗi server' });
+    }
+});
 
 
 
 // Route xem các khóa học theo lĩnh vực (category)
-router.get('/by-category/:id', async (req, res) => {
+router.get('/by-category/:id', async (req, res) =>
+{
   const categoryId = req.params.id;
   const [category, coursesRawByCat] = await Promise.all([
     categoryModel.findById(categoryId),
     courseModel.findByCategory(categoryId)
   ]);
 
-  if (!category) {
+  if (!category)
+  {
     return res.redirect('/');
   }
 
@@ -241,7 +322,7 @@ router.get('/by-category/:id', async (req, res) => {
     total_lectures: c.total_lectures || 0,
   }));
 
-  res.render('vwCourse/byCategory', {
+  res.render('vwCourse/byCat', {
     category,
     courses,
     empty: courses.length === 0,

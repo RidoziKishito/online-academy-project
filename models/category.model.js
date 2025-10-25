@@ -4,7 +4,8 @@ import { findByCourseId } from './chapter.model.js';
 const TABLE_NAME = 'categories';
 
 export function findAll() {
-  return db(TABLE_NAME);
+  // Ensure categories are returned in ascending order by id for consistent listing
+  return db(TABLE_NAME).orderBy('category_id', 'asc');
 }
 
 export function add(category) {
@@ -49,4 +50,32 @@ export async function findParentSon(id) {
       : { id: null, name: 'None' },
     child: { id: child.category_id, name: child.name },
   };
+}
+
+export async function hasCourse(categoryId) {
+  return await db('courses')
+    .where('category_id', categoryId)
+    .count({ count: '*' })
+    .first()
+    .then((row) => Number(row?.count ?? 0) > 0);
+}
+
+export async function existsByName(name) {
+  // Case-insensitive check, trim spaces
+  const trimmed = String(name ?? '').trim();
+  if (!trimmed) return false;
+  const row = await db(TABLE_NAME)
+    .whereRaw('LOWER(name) = LOWER(?)', [trimmed])
+    .first('category_id');
+  return !!row;
+}
+
+export async function existsByNameExceptId(name, excludeId) {
+  const trimmed = String(name ?? '').trim();
+  if (!trimmed) return false;
+  const row = await db(TABLE_NAME)
+    .whereRaw('LOWER(name) = LOWER(?)', [trimmed])
+    .andWhereNot('category_id', excludeId)
+    .first('category_id');
+  return !!row;
 }

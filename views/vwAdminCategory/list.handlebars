@@ -1,3 +1,18 @@
+{{#fillContent 'js'}}
+{{#if updated}}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    Swal.fire({
+        icon: 'success',
+        title: 'Success!',
+        text: 'Category updated successfully.',
+        confirmButtonColor: '#198754',
+        timer: 2000
+    });
+</script>
+{{/if}}
+{{/fillContent}}
+
 <div class="card">
     <h5 class="card-header d-flex justify-content-between">
         Categories

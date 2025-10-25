@@ -1,10 +1,48 @@
+{{#fillContent 'js'}}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    (function () {
+        const input = document.getElementById('txtCatName');
+        const btn = document.getElementById('btnSave');
+        if (!input || !btn) return;
+        const toggle = () => {
+            const hasValue = input.value && input.value.trim().length > 0;
+            btn.disabled = !hasValue;
+        };
+        toggle();
+        input.addEventListener('input', toggle);
+
+        // Show error/success alerts with SweetAlert2
+        {{#if error}}
+        Swal.fire({
+            icon: 'error',
+            title: 'Error!',
+            text: '{{error}}',
+            confirmButtonColor: '#0d6efd'
+        });
+        {{/if}}
+
+        {{#if success}}
+        Swal.fire({
+            icon: 'success',
+            title: 'Success!',
+            text: 'Category added successfully.',
+            confirmButtonColor: '#198754'
+        });
+        {{/if}}
+    })();
+</script>
+{{/fillContent}}
+
+
 <form id="frmAddCategory" method="post">
     <div class="card">
         <div class="card-header">New Category</div>
         <div class="card-body">
             <div class="mb-3">
                 <label for="txtCatName" class="form-label">Category</label>
-                <input type="text" class="form-control" id="txtCatName" name="catname" autofocus>
+                <input type="text" class="form-control" id="txtCatName" name="catname" autofocus value="{{old.catname}}"
+                    required>
             </div>
         </div>
         <div class="card-footer text-muted">
@@ -12,7 +50,7 @@
                 <i class="bi bi-arrow-left"></i>
                 Back
             </a>
-            <button type="submit" class="btn btn-success">
+            <button type="submit" class="btn btn-success" id="btnSave" disabled>
                 <i class="bi bi-check2"></i>
                 Save
             </button>
