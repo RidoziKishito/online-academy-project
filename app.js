@@ -4,6 +4,8 @@ import hsb_sections from 'express-handlebars-sections';
 import session from 'express-session';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import Handlebars from 'handlebars';
+
 
 // Import Middlewares
 import { restrict, isAdmin, isInstructor } from './middlewares/auth.mdw.js';
@@ -56,6 +58,45 @@ app.engine('handlebars', engine({
         return options.fn(this);
       }
       return options.inverse(this);
+    },
+
+    render_stars(rating) {
+      const fullStars = Math.floor(rating || 0);
+      const halfStar = (rating % 1) >= 0.5;
+      let stars = '';
+
+      // ⭐ Full stars
+      for (let i = 0; i < fullStars; i++) {
+        stars += '<i class="bi bi-star-fill text-warning"></i>';
+      }
+
+      // 🌗 Half star
+      if (halfStar) {
+        stars += '<i class="bi bi-star-half text-warning"></i>';
+      }
+
+      // ☆ Empty stars
+      for (let i = fullStars + (halfStar ? 1 : 0); i < 5; i++) {
+        stars += '<i class="bi bi-star text-warning"></i>';
+      }
+
+      return new Handlebars.SafeString(stars);
+    },
+
+    format_date: function (timestamp) {
+      if (!timestamp) return '';
+      const date = new Date(timestamp);
+      return date.toLocaleDateString('vi-VN');
+    },
+
+    // Trả về danh sách category con của một category cha
+    subCategories: function (parentId, categories) {
+      return categories.filter(c => c.parent_category_id === parentId);
+    },
+
+    // Kiểm tra category có subcategory con hay không
+    hasSubCategories: function (parentId, categories) {
+      return categories.some(c => c.parent_category_id === parentId);
     }
 
   }
@@ -104,7 +145,9 @@ app.use(async function (req, res, next) {
 // ================= ROUTERS =================
 // -- Routes công khai (ai cũng xem được) --
 app.get('/', (req, res) => {
-  res.render('home');
+  res.render('home', {
+    layout: 'home-main'
+  });
 });
 app.use('/account', accountRouter);
 app.use('/courses', courseRouter);

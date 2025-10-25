@@ -5,6 +5,8 @@ CREATE OR REPLACE FUNCTION update_course_fts_document()
 RETURNS TRIGGER AS $$
 BEGIN
   NEW.fts_document :=
+    setweight(to_tsvector('simple', unaccent(coalesce(NEW.title, ''))), 'A') ||
+    setweight(to_tsvector('simple', unaccent(coalesce(NEW.short_description, ''))), 'B');
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
