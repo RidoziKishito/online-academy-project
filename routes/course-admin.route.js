@@ -3,6 +3,9 @@ import express from 'express';
 import fs from 'fs';
 import path from 'path';
 import * as courseModel from '../models/courses.model.js';
+import * as instructorModel from '../models/instructors.model.js';
+import * as categoryModel from '../models/category.model.js';
+import * as enrollmentModel from '../models/enrollment.model.js';
 import { z } from 'zod'; // <-- THÊM: Import Zod
 
 const router = express.Router();
@@ -10,28 +13,34 @@ const router = express.Router();
 // --- THÊM: Định nghĩa Schema (khuôn mẫu) cho dữ liệu course ---
 // Schema này sẽ tự động ép kiểu (string -> number) và kiểm tra dữ liệu
 const courseSchema = z.object({
-  title: z.string().min(1, "Tiêu đề không được để trống"),
-  description: z.string().min(1, "Mô tả không được để trống"), // Bạn có thể tăng min(50) nếu muốn
-  image_url: z.string().url("URL hình ảnh không hợp lệ"),
+  title: z.string().min(1, "Course title is required"),
+  short_description: z.string().min(1, "Short description is required"),
+  full_description: z.string().min(1, "Course description is required"),
+  image_url: z.string().url("Invalid image URL"),
+  large_image_url: z.string().url("Invalid large image URL").optional().or(z.literal('')),
+  requirements: z.string().optional().or(z.literal('')),
 
-  // Sử dụng .pipe() để validate là string không rỗng, SAU ĐÓ mới ép kiểu
-  instructor_id: z.string().min(1, "Vui lòng chọn giảng viên")
+  // Category is required
+  category_id: z.string().min(1, "Please select a category")
     .pipe(z.coerce.number().int()),
 
-  rating: z.coerce.number().min(0, "Rating phải lớn hơn 0").max(5, "Rating không được quá 5"),
-  total_reviews: z.coerce.number().int().min(0, "Reviews phải là số nguyên dương"),
-  total_hours: z.coerce.number().min(0, "Giờ học phải là số dương"),
-  total_lectures: z.coerce.number().int().min(0, "Số bài giảng phải là số nguyên dương"),
-  level: z.string().min(1, "Vui lòng chọn cấp độ"),
+  // Sử dụng .pipe() để validate là string không rỗng, SAU ĐÓ mới ép kiểu
+  instructor_id: z.string().min(1, "Please select an instructor")
+    .pipe(z.coerce.number().int()),
+
+  rating_avg: z.coerce.number().min(0, "Rating average must be at least 0").max(5, "Rating average cannot exceed 5").optional().default(0),
+  rating_count: z.coerce.number().int().min(0, "Rating count must be a positive integer").optional().default(0),
+  view_count: z.coerce.number().int().min(0, "View count must be a positive integer").optional().default(0),
+  enrollment_count: z.coerce.number().int().min(0, "Enrollment count must be a positive integer").optional().default(0),
 
   // Dùng preprocess để xóa dấu phẩy (,) trong giá tiền trước khi ép kiểu
   current_price: z.preprocess(
-    (val) => String(val).replace(/,/g, ''),
-    z.coerce.number().int().min(0)
+    (val) => String(val || '0').replace(/,/g, ''),
+    z.coerce.number().min(0).optional().default(0)
   ),
   original_price: z.preprocess(
-    (val) => String(val).replace(/,/g, ''),
-    z.coerce.number().int().min(0)
+    (val) => String(val || '0').replace(/,/g, ''),
+    z.coerce.number().min(0).optional().default(0)
   ),
 
   // Xử lý checkbox: nếu được check (value="true") -> true, nếu không (undefined) -> false
@@ -44,46 +53,174 @@ const courseSchema = z.object({
 
 
 router.get('/', async (req, res) => {
-  const list = await courseModel.findAll();
-  res.render('vwAdminCourse/list', { courses: list });
+  // Get filter and sort parameters from query string
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const offset = (page - 1) * limit;
+
+  const filters = {
+    categoryId: req.query.category ? parseInt(req.query.category) : null,
+    status: req.query.status || null,
+    instructorId: req.query.instructor ? parseInt(req.query.instructor) : null,
+    sortBy: req.query.sortBy || null,
+    order: req.query.order || 'asc',
+    limit: limit,
+    offset: offset
+  };
+
+  const list = await courseModel.findAllWithCategoryFiltered(filters);
+  const total = await courseModel.countAllWithCategoryFiltered(filters);
+  const totalPages = Math.ceil(total / limit);
+
+  // If AJAX request, return JSON
+  if (req.xhr || req.headers.accept?.includes('application/json')) {
+    return res.json({
+      courses: list,
+      pagination: {
+        currentPage: page,
+        totalPages: totalPages,
+        totalItems: total,
+        limit: limit
+      }
+    });
+  }
+
+  // Otherwise, render the full page
+  const categories = await categoryModel.findAll();
+  const instructors = await instructorModel.findAll();
+  res.render('vwAdminCourse/list', { 
+    courses: list,
+    categories,
+    instructors,
+    currentCategory: filters.categoryId,
+    currentStatus: filters.status,
+    currentInstructor: filters.instructorId,
+    currentSort: filters.sortBy,
+    currentOrder: filters.order,
+    pagination: {
+      currentPage: page,
+      totalPages: totalPages,
+      totalItems: total,
+      limit: limit
+    }
+  });
 });
 
-router.get('/create', (req, res) => {
-  // Render with empty oldData only; do not pass an empty errorMessages object
-  // because Handlebars treats an empty object as truthy and the template
-  // would show the error alert on first load.
-  res.render('vwAdminCourse/create-course', { oldData: {} });
+//admin can create course
+router.get('/create', async (req, res) => {
+  const categories = await categoryModel.findAll();
+  const instructors = await instructorModel.findAll();
+  res.render('vwAdminCourse/create-course', { categories, instructors });
 });
 
-// --- CHỈNH SỬA: Toàn bộ router.post('/create') ---
 router.post('/create', async (req, res) => {
   try {
-    // 1. Validate và dọn dẹp req.body bằng schema
-    // .parse() sẽ tự động ép kiểu (string -> number, v.v.)
-    // Nếu thất bại, nó sẽ ném ra lỗi và nhảy xuống khối catch
+    // Validate and parse the request body using Zod schema
     const courseData = courseSchema.parse(req.body);
 
-    // 2. Dữ liệu đã hợp lệ và đúng kiểu, chỉ cần gọi model
-    const ret = await courseModel.add(courseData);
-
-    // 3. Thành công, chuyển hướng về danh sách
-    res.redirect('/courses');
-
-  } catch (error) {
-    // 4. Nếu validation thất bại
-    if (error instanceof z.ZodError) {
-      console.error(error.flatten().fieldErrors); // Log lỗi ra console
-
-      // Render lại trang 'create-course' (use full view path)
-      res.status(400).render('vwAdminCourse/create-course', {
-        errorMessages: error.flatten().fieldErrors,
-        oldData: req.body 
-      });
+    // Map form fields to database fields:
+    // original_price (form) -> price (database - giá gốc)
+    // current_price (form) -> sale_price (database - giá sale)
+    const price = courseData.original_price || 0;
+    let salePrice = courseData.current_price || null;
+    
+    // Validate: sale_price must be NULL or less than price
+    if (salePrice !== null && salePrice > 0) {
+      if (salePrice >= price) {
+        salePrice = null; // If sale price >= original price, set to null
+      }
     } else {
-      // Xử lý các lỗi khác (ví dụ: lỗi database)
-      console.error(error);
-      res.status(500).send("Đã có lỗi xảy ra từ máy chủ.");
+      salePrice = null; // If sale price is 0 or empty, set to null
     }
+
+    const newCourse = {
+      title: courseData.title,
+      short_description: courseData.short_description,
+      full_description: courseData.full_description,
+      image_url: courseData.image_url,
+      large_image_url: courseData.large_image_url || null,
+      requirements: courseData.requirements || null,
+      category_id: courseData.category_id,
+      instructor_id: courseData.instructor_id,
+      rating_avg: courseData.rating_avg,
+      rating_count: courseData.rating_count,
+      view_count: courseData.view_count,
+      enrollment_count: courseData.enrollment_count,
+      is_bestseller: courseData.is_bestseller,
+      price: price,
+      sale_price: salePrice
+    };
+
+    await courseModel.add(newCourse);
+    res.redirect('/admin/courses?action=created');
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      const categories = await categoryModel.findAll();
+      const instructors = await instructorModel.findAll();
+      return res.status(400).render('vwAdminCourse/create-course', {
+        errorMessages: error.flatten().fieldErrors,
+        oldData: req.body,
+        categories,
+        instructors
+      });
+    }
+    console.error(error);
+    res.status(500).send('Server error');
+  }
+});
+
+// Approve course
+router.post('/approve/:id', async (req, res) => {
+  try {
+    const courseId = parseInt(req.params.id);
+    await courseModel.approveCourse(courseId);
+    res.redirect('/admin/courses?action=approved');
+  } catch (error) {
+    console.error(error);
+    res.redirect('/admin/courses?error=approve_failed');
+  }
+});
+
+// Hide course
+router.post('/hide/:id', async (req, res) => {
+  try {
+    const courseId = parseInt(req.params.id);
+    await courseModel.hideCourse(courseId);
+    res.redirect('/admin/courses?action=hidden');
+  } catch (error) {
+    console.error(error);
+    res.redirect('/admin/courses?error=hide_failed');
+  }
+});
+
+// Show (unhide) course
+router.post('/show/:id', async (req, res) => {
+  try {
+    const courseId = parseInt(req.params.id);
+    await courseModel.showCourse(courseId);
+    res.redirect('/admin/courses?action=shown');
+  } catch (error) {
+    console.error(error);
+    res.redirect('/admin/courses?error=show_failed');
+  }
+});
+
+// Delete course
+router.post('/delete/:id', async (req, res) => {
+  try {
+    const courseId = parseInt(req.params.id);
+    
+    // Check if course has enrollments
+    const hasEnrollments = await enrollmentModel.hasEnrollmentsByCourse(courseId);
+    if (hasEnrollments) {
+      return res.redirect('/admin/courses?error=has_enrollments');
+    }
+    
+    await courseModel.del(courseId);
+    res.redirect('/admin/courses?action=deleted');
+  } catch (error) {
+    console.error(error);
+    res.redirect('/admin/courses?error=delete_failed');
   }
 });
 

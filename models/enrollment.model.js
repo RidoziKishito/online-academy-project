@@ -29,8 +29,15 @@ export async function checkEnrollment(userId, courseId, withDetail = false) {
     .where({ user_id: userId, course_id: courseId })
     .first();
   console.log('[checkEnrollment]', { userId, courseId, found: !!row });
+  return !!row;
+}
 
-  return withDetail ? row : !!row;
+export async function hasEnrollmentsByCourse(courseId) {
+  const result = await db(TABLE_NAME)
+    .where('course_id', courseId)
+    .count({ count: '*' })
+    .first();
+  return parseInt(result.count) > 0;
 }
 
 export function findStudentsByCourse(courseId) {
