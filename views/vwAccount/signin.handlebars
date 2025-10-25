@@ -1,6 +1,9 @@
 <form action="" method="post">
     <div class="card">
-        <div class="card-header">Sign In</div>
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span>Sign In</span>
+            <a href="/account/signup" class="small text-decoration-none">Don't have an account? Sign up</a>
+        </div>
         <div class="card-body">
             {{#if success}}
                 <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -26,6 +29,13 @@
             <div class="mb-3 text-end">
                 <a href="/account/forgot-password" class="text-decoration-none small">
                     <i class="bi bi-key-fill me-1"></i>Forgot Password?
+                </a>
+            </div>
+
+            <div class="text-center my-3">
+                <div class="text-muted small mb-2">or continue with</div>
+                <a class="btn btn-outline-dark btn-sm" href="/auth/google">
+                    <i class="bi bi-google me-1"></i> Google
                 </a>
             </div>
         </div>

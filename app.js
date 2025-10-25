@@ -26,6 +26,8 @@ import adminAccountsRouter from './routes/admin-accounts.route.js';
 import contactRouter from './routes/contact.route.js';
 import sitemapRouter from './routes/sitemap.route.js';
 import reviewRoute from './routes/review.route.js';
+import passport from './utils/passport.js';
+import authRouter from './routes/auth.route.js';
 
 const app = express();
 const PORT = 3000;
@@ -40,6 +42,10 @@ app.use(session({
   saveUninitialized: true,
   cookie: { secure: false }
 }));
+
+// Passport (after session)
+app.use(passport.initialize());
+app.use(passport.session());
 
 app.engine('handlebars', engine({
   defaultLayout: 'main',
@@ -173,6 +179,7 @@ app.get('/', (req, res) => {
 });
 app.use('/account', accountRouter);
 app.use('/courses', courseRouter);
+app.use('/auth', authRouter);
 
 // -- Routes của học viên (cần đăng nhập) --
 app.use('/student', restrict, studentRouter);

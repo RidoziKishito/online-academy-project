@@ -88,6 +88,43 @@ export function del(id) {
   return db(TABLE_NAME).where('user_id', id).del();
 }
 
+// OAuth helpers
+export function findByOAuth(provider, oauthId) {
+  return db(TABLE_NAME)
+    .where('oauth_provider', provider)
+    .where('oauth_id', oauthId)
+    .first();
+}
+
+export function linkOAuth(userId, provider, oauthId, avatarUrl = null, fullName = null) {
+  const patch = {
+    oauth_provider: provider,
+    oauth_id: oauthId,
+  };
+  if (avatarUrl) patch.avatar_url = avatarUrl;
+  if (fullName) patch.full_name = fullName;
+  // OAuth users are verified by provider
+  patch.is_verified = true;
+  return db(TABLE_NAME)
+    .where('user_id', userId)
+    .update(patch);
+}
+
+export function createOAuthUser(data) {
+  const user = {
+    email: data.email,
+    full_name: data.full_name || null,
+    avatar_url: data.avatar_url || null,
+    oauth_provider: data.oauth_provider,
+    oauth_id: data.oauth_id,
+    is_verified: data.is_verified !== false,
+    role: data.role || 'student',
+    // optional random password hash for OAuth accounts
+  };
+  if (data.password_hash) user.password_hash = data.password_hash;
+  return db(TABLE_NAME).insert(user).returning('user_id');
+}
+
 // Password reset functions
 export function setResetToken(email, token, expiresAt) {
   return db(TABLE_NAME)
