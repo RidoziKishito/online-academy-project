@@ -10,13 +10,27 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     {{{_sections.css}}}
-        <style>
-            /* Sticky footer layout */
-            html, body { height: 100%; }
-            .site-wrapper { display: flex; flex-direction: column; min-height: 100vh; }
-            main.content { flex: 1 0 auto; }
-            footer { flex-shrink: 0; }
-        </style>
+    <style>
+        /* Sticky footer layout */
+        html,
+        body {
+            height: 100%;
+        }
+
+        .site-wrapper {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        main.content {
+            flex: 1 0 auto;
+        }
+
+        footer {
+            flex-shrink: 0;
+        }
+    </style>
 </head>
 
 <body>
@@ -32,7 +46,7 @@
                 <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                     <li class="nav-item">
                         <a class="nav-link active" aria-current="page" href="/courses">Courses</a>
-                    </li>                    
+                    </li>
                 </ul>
                 <form class="d-flex me-4" role="search" method="get" action="/courses/search">
                     <input class="form-control me-2" type="search" placeholder="Search" aria-label="Search" name="q" />
@@ -85,57 +99,79 @@
             </div>
         </div>
     </nav>
-        <div class="site-wrapper">
-            <main class="content">
-                <div class="container-fluid mt-4">
-                    <div class="row">
-                        <div class="col-lg-3 col-md-4 col-sm-6">
-                <div class="card mb-3">
-                    <h5 class="card-header">Categories</h5>
-                    <!-- <ul class="list-group list-group-flush">
+    <div class="site-wrapper">
+        <main class="content">
+            <div class="container-fluid mt-4">
+                <div class="row">
+                    <div class="col-lg-3 col-md-4 col-sm-6">
+                        <div class="card mb-3">
+                            <h5 class="card-header">Categories</h5>
+                            <!-- <ul class="list-group list-group-flush">
                         <li class="list-group-item">An item</li>
                         <li class="list-group-item">A second item</li>
                         <li class="list-group-item">A third item</li>
                     </ul> -->
-                    <div class="list-group list-group-flush">
-                        {{!-- <a href="#" class="list-group-item list-group-item-action active" aria-current="true">
-                            The current link item
-                        </a> --}}
-                        {{#each globalCategories}}
-                        <a href="/courses/by-category/{{catid}}"
-                            class="list-group-item list-group-item-action">{{catname}}</a>
-                        {{/each}}
-                    </div>
-                </div>
-                <div class="card">
-    <h5 class="card-header">
-        {{#if isAuthenticated}}My Learning{{else}}Featured{{/if}}
-    </h5>
-    <div class="card-body">
-        {{#if isAuthenticated}}
-            <div class="d-grid gap-2 mb-3">
-                <a href="/student/my-courses" class="btn btn-outline-primary btn-sm">
-                    <i class="bi bi-book"></i> My Courses
-                </a>
-                <a href="/student/my-wishlist" class="btn btn-outline-danger btn-sm">
-                    <i class="bi bi-heart"></i> Wishlist 
-                    <span class="badge bg-secondary">{{wishlistCount}}</span>
-                </a>
-                <a href="/student/profile" class="btn btn-outline-primary btn-sm">
-                    <i class="bi bi-person"></i> My Profile
-                </a>
-            </div>
-        {{else}}
-            <h5 class="card-title">Start Learning Today</h5>
-            <p class="card-text">Join thousands of learners worldwide.</p>
-            <a href="/account/signup" class="btn btn-primary btn-sm">Sign Up Now</a>
-        {{/if}}
-    </div>
-</div>
-            </div>
-                        <div class="col-lg-9 col-md-8 col-sm-6">
-                                {{{body}}}
+                            <div class="list-group list-group-flush">
+                                {{!-- <a href="#" class="list-group-item list-group-item-action active"
+                                    aria-current="true">
+                                    The current link item
+                                </a> --}}
+                                {{#each globalCategories}}
+                                <a href="/courses/by-category/{{catid}}"
+                                    class="list-group-item list-group-item-action">{{catname}}</a>
+                                {{/each}}
+                            </div>
                         </div>
+                        <div class="card">
+                            <h5 class="card-header">
+                                {{#if isAuthenticated}}
+                                {{#if (eq authUser.role 'instructor')}}Instructor Tools{{else}}My Learning{{/if}}
+                                {{else}}
+                                Featured
+                                {{/if}}
+                            </h5>
+                            <div class="card-body">
+                                {{#if isAuthenticated}}
+                                {{#if (eq authUser.role 'instructor')}}
+                                <div class="d-grid gap-2 mb-3">
+                                    <a href="/instructor" class="btn btn-outline-primary btn-sm">
+                                        <i class="bi bi-speedometer2"></i> Dashboard
+                                    </a>
+                                    <a href="/instructor/create" class="btn btn-outline-success btn-sm">
+                                        <i class="bi bi-plus-circle"></i> Create Course
+                                    </a>
+                                    <a href="/instructor/profile" class="btn btn-outline-info btn-sm">
+                                        <i class="bi bi-person-badge"></i> My Profile
+                                    </a>
+                                    <a href="/instructors/{{authUser.user_id}}"
+                                        class="btn btn-outline-secondary btn-sm">
+                                        <i class="bi bi-eye"></i> View Public Profile
+                                    </a>
+                                </div>
+                                {{else}}
+                                <div class="d-grid gap-2 mb-3">
+                                    <a href="/student/my-courses" class="btn btn-outline-primary btn-sm">
+                                        <i class="bi bi-book"></i> My Courses
+                                    </a>
+                                    <a href="/student/my-wishlist" class="btn btn-outline-danger btn-sm">
+                                        <i class="bi bi-heart"></i> Wishlist
+                                        <span class="badge bg-secondary">{{wishlistCount}}</span>
+                                    </a>
+                                    <a href="/student/profile" class="btn btn-outline-primary btn-sm">
+                                        <i class="bi bi-person"></i> My Profile
+                                    </a>
+                                </div>
+                                {{/if}}
+                                {{else}}
+                                <h5 class="card-title">Start Learning Today</h5>
+                                <p class="card-text">Join thousands of learners worldwide.</p>
+                                <a href="/account/signup" class="btn btn-primary btn-sm">Sign Up Now</a>
+                                {{/if}}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-9 col-md-8 col-sm-6">
+                        {{{body}}}
                     </div>
                 </div>
             </main>
@@ -150,14 +186,18 @@
             <div class="row">
                 <div class="col-md-8">
                     <h5 class="mb-2">About VietEdu Academy</h5>
-                    <p class="text-muted small">VietEdu Academy provides practical, project-based online courses to help learners upskill in programming, data, and business.</p>
+                    <p class="text-muted small">VietEdu Academy provides practical, project-based online courses to help
+                        learners upskill in programming, data, and business.</p>
                     <p class="text-muted small"> Our mission is to make quality education accessible to everyone.</p>
                 </div>
                 <div class="col-md-4 text-md-end">
                     <h6 class="mb-2">Contact</h6>
                     <p class="mb-1"><a href="/contact" class="text-decoration-none">Contact Us</a></p>
-                    <p class="mb-1">Địa chỉ: <a class="text-primary text-decoration-underline" href="https://www.google.com/maps/place/Tr%C6%B0%E1%BB%9Dng+%C4%90%E1%BA%A1i+h%E1%BB%8Dc+S%C6%B0+ph%E1%BA%A1m+K%E1%BB%B9+thu%E1%BA%ADt+Th%C3%A0nh+ph%E1%BB%91+H%E1%BB%93+Ch%C3%AD+Minh/@10.8511473,106.7695895,658m/data=!3m1!1e3!4m6!3m5!1s0x31752763f23816ab:0x282f711441b6916f!8m2!3d10.8506324!4d106.7719131!16s%2Fm%2F02pz17z?entry=ttu&g_ep=EgoyMDI1MTAxNC4wIKXMDSoASAFQAw%3D%3D" target="_blank" rel="noopener">Số 1 Võ Văn Ngân, Thủ Đức, TP. HCM</a></p>
-                    <p class="mb-1"><a href="/sitemap" class="text-primary text-decoration-underline">Where do you want to go?</a></p>
+                    <p class="mb-1">Địa chỉ: <a class="text-primary text-decoration-underline"
+                            href="https://www.google.com/maps/place/Tr%C6%B0%E1%BB%9Dng+%C4%90%E1%BA%A1i+h%E1%BB%8Dc+S%C6%B0+ph%E1%BA%A1m+K%E1%BB%B9+thu%E1%BA%ADt+Th%C3%A0nh+ph%E1%BB%91+H%E1%BB%93+Ch%C3%AD+Minh/@10.8511473,106.7695895,658m/data=!3m1!1e3!4m6!3m5!1s0x31752763f23816ab:0x282f711441b6916f!8m2!3d10.8506324!4d106.7719131!16s%2Fm%2F02pz17z?entry=ttu&g_ep=EgoyMDI1MTAxNC4wIKXMDSoASAFQAw%3D%3D"
+                            target="_blank" rel="noopener">Số 1 Võ Văn Ngân, Thủ Đức, TP. HCM</a></p>
+                    <p class="mb-1"><a href="/sitemap" class="text-primary text-decoration-underline">Where do you want
+                            to go?</a></p>
                     <p class="text-muted small mb-0">© {{currentYear}} VietEdu Academy</p>
                 </div>
             </div>
