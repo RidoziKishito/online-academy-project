@@ -13,6 +13,7 @@ testEmailConfig();
 import { restrict, isAdmin, isInstructor } from './middlewares/auth.mdw.js';
 // Import Models (chỉ cần cho middleware)
 import * as categoryModel from './models/category.model.js';
+import * as viewModel from './models/views.model.js';
 
 // Import Routers
 import accountRouter from './routes/account.route.js';
@@ -178,6 +179,10 @@ app.engine('handlebars', engine({
       }
       
       return pages;
+    },
+
+    iconOrDefault(categoryIcons, name) {
+      return categoryIcons[name] || "bi bi-folder";
     }
 
   }
@@ -191,9 +196,19 @@ app.use('/static', express.static('static'));
 
 // ================= MIDDLEWARES TOÀN CỤC =================
 // Middleware cung cấp thông tin đăng nhập cho tất cả các view
-app.use(function (req, res, next) {
+app.use(async function (req, res, next) {
   res.locals.isAuthenticated = req.session.isAuthenticated || false;
   res.locals.authUser = req.session.authUser || null;
+  res.locals.top3WeekCourses = await viewModel.findTop3WeekCourses();
+  res.locals.topCategories = await viewModel.findTopCategories();
+  res.locals.categoryIcons = {
+    "Development": "bi bi-code-slash",
+    "Design": "bi bi-palette",
+    "Data Science": "bi bi-bar-chart-line",
+    "Digital Marketing": "bi bi-megaphone"
+  },
+  res.locals.newestCourses = await viewModel.findNewestCourses();
+  res.locals.mostViewCourses = await viewModel.findMostViewCourses();
   next();
 });
 

@@ -21,10 +21,7 @@ export function del(id) {
 export function patch(id, category) {
   return db(TABLE_NAME).where('category_id', id).update(category);
 }
-export function findByCourseId(courseId) {
-    // Ví dụ với knex hoặc sequelize
-    return db('chapters').where('course_id', courseId);
-}
+
 export async function findChaptersWithLessonsByCourseId(courseId) {
   const chapters = await db('chapters').where('course_id', courseId).orderBy('order_index', 'asc');
   for (const chapter of chapters) {
