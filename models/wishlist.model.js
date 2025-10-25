@@ -15,3 +15,14 @@ export function findCoursesByUserId(userId) {
     .join('courses', 'user_wishlist.course_id', '=', 'courses.course_id')
     .where('user_wishlist.user_id', userId);
 }
+export async function checkWishlist(userId, courseId) {
+    try {
+        const result = await db(TABLE_NAME)
+            .where({ user_id: userId, course_id: courseId })
+            .first();
+        return !!result;
+    } catch (error) {
+        console.error('[checkWishlist] Error:', error);
+        return false;
+    }
+}
