@@ -57,6 +57,7 @@ app.engine('handlebars', engine({
       }
       return options.inverse(this);
     }
+
   }
 }));
 app.set('view engine', 'handlebars');

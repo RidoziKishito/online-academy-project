@@ -1,6 +1,6 @@
 import db from '../utils/db.js';
 
-const TABLE_NAME = 'categories';
+const TABLE_NAME = 'chapters';
 
 export function findAll() {
   return db(TABLE_NAME);
@@ -28,4 +28,8 @@ export async function findChaptersWithLessonsByCourseId(courseId) {
   chapter.lessons = await db('lessons').where('chapter_id', chapter.chapter_id).orderBy('order_index', 'asc');
   }
   return chapters;
+}
+
+export function findByCourseId(courseId) {
+  return db(TABLE_NAME).where('course_id', courseId).orderBy('order_index', 'asc');
 }

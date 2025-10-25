@@ -1,74 +1,705 @@
-{{#fillContent 'css'}}
-<style>
-    /* Add a little animation to feature cards */
-    .feature-card {
-        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-    }
-    .feature-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 16px rgba(0,0,0,0.1);
-    }
-</style>
-{{/fillContent}}
+<header class="header">
+    <nav id="mainNavbar" class="navbar navbar-expand-lg bg-white shadow-sm fixed-top">
+        <div class="container">
+            <a class="navbar-brand fs-3 fw-bold text-primary" href="#hero">
+                <i class="fa-solid fa-graduation-cap"></i> VietEdu Academy
+            </a>
 
-<!-- Hero Section -->
-<div class="container-fluid bg-light py-5 text-center">
-    <div class="py-5">
-        <h1 class="display-4 fw-bold text-primary">Unlock Your Potential</h1>
-        <p class="fs-4 text-muted mt-3 mb-4">
-            Explore thousands of high-quality courses taught by leading experts.
-        </p>
-        <a href="/courses" class="btn btn-primary btn-lg px-5 py-3">
-            <i class="bi bi-compass-fill me-2"></i>
-            Explore Now
-        </a>
-    </div>
-</div>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu" aria-controls="navMenu" aria-expanded="false" aria-label="Toggle navigation">
+                <i class="fa-solid fa-bars"></i>
+            </button>
 
-<!-- Key Features -->
-<div class="container my-5">
-    <div class="row g-4">
-        <!-- Feature 1 -->
-        <div class="col-lg-4 col-md-6">
-            <div class="card h-100 border-0 shadow-sm feature-card">
-                <div class="card-body text-center p-4">
-                    <div class="mb-3">
-                        <i class="bi bi-person-video display-4 text-primary"></i>
-                    </div>
-                    <h5 class="card-title fw-bold">Expert Instructors</h5>
-                    <p class="card-text text-muted">
-                        Learn from professionals with years of real-world experience.
-                    </p>
+            <div class="collapse navbar-collapse" id="navMenu">
+                <ul class="navbar-nav mx-auto mb-2 mb-lg-0 column-gap-3">
+                    <li class="nav-item"><a class="nav-link active" href="#hero">Trang chủ</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#featured-courses">Nổi bật</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#categories">Lĩnh vực</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#newest-courses">Mới nhất</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#testimonials">Feedback</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#contact">Liên hệ</a></li>
+                </ul>
+                
+                <div class="d-flex gap-2">
+                    <a href="/account/signin" class="btn btn-outline-primary rounded-pill">Đăng nhập</a>
+                    <a href="/account/signup" class="btn btn-primary rounded-pill">Đăng ký</a>
                 </div>
             </div>
         </div>
-        <!-- Feature 2 -->
-        <div class="col-lg-4 col-md-6">
-            <div class="card h-100 border-0 shadow-sm feature-card">
-                <div class="card-body text-center p-4">
-                    <div class="mb-3">
-                        <i class="bi bi-infinity display-4 text-primary"></i>
-                    </div>
-                    <h5 class="card-title fw-bold">Lifetime Access</h5>
-                    <p class="card-text text-muted">
-                        Pay once, learn forever. Access your courses anytime.
+    </nav>
+</header>
+<main>
+
+    <section id="hero" class="bg-light">
+        <div class="container">
+            <div class="row align-items-center g-5">
+                <div class="col-lg-6" data-aos="fade-right">
+                    <h1 class="display-3 fw-bold lh-1 mb-4">
+                        Khám phá tiềm năng,
+                        <br>
+                        <span class="text-primary">Mở lối tương lai</span>
+                    </h1>
+                    <p class="lead text-muted mb-4">
+                        VietAcademy là nền tảng học trực tuyến hàng đầu, cung cấp hàng ngàn khoá học chất lượng cao từ các chuyên gia đầu ngành.
                     </p>
+                    <a href="#categories" class="btn btn-primary btn-lg rounded-pill px-4">Bắt đầu học ngay</a>
+                </div>
+                
+                <div class="col-lg-6" data-aos="fade-left" data-aos-delay="200">
+                    <img src="https://images.unsplash.com/photo-1543269865-cbf427effbad?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80" alt="Học trực tuyến" class="img-fluid rounded-4 shadow-lg">
                 </div>
             </div>
         </div>
-        <!-- Feature 3 -->
-        <div class="col-lg-4 col-md-12">
-            <div class="card h-100 border-0 shadow-sm feature-card">
-                <div class="card-body text-center p-4">
-                    <div class="mb-3">
-                        <i class="bi bi-clock-history display-4 text-primary"></i>
+    </section>
+    <section id="featured-courses" class="bg-white">
+        <div class="container">
+            <h2 class="text-center mb-5" data-aos="fade-up">Nổi bật tuần qua</h2>
+            
+            <div class="row g-4">
+                
+                <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="100">
+                    <div class="card h-100 shadow-sm border-0 overflow-hidden">
+                        <div class="position-relative">
+                            <a href="/courses/detail/{{this.id}}"><img src="https://images.unsplash.com/photo-1517694712202-14dd9538aa97?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80" class="card-img-top" alt="Tên khoá học"></a>
+                            <span class="badge bg-primary position-absolute top-0 start-0 m-3 rounded-pill">Lập trình</span>
+                        </div>
+                        <div class="card-body d-flex flex-column">
+                            <a href="#" class="h5 card-title text-decoration-none text-body-emphasis mb-2">Lập trình Web Hiện Đại với React và Node.js</a>
+                            <div class="text-warning mb-3 small">
+                                <i class="fa-solid fa-star"></i>
+                                <i class="fa-solid fa-star"></i>
+                                <i class="fa-solid fa-star"></i>
+                                <i class="fa-solid fa-star"></i>
+                                <i class="fa-solid fa-star-half-stroke"></i>
+                                <span class="text-muted ms-1">4.5 (1,234)</span>
+                            </div>
+                        </div>
+                        <div class="card-footer bg-white pt-0 border-top-0 pb-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="d-flex align-items-center">
+                                    <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=100&h=100&q=80" alt="Author" class="rounded-circle" width="30" height="30">
+                                    <span class="ms-2 small text-muted">John Doe</span>
+                                </div>
+                                <span class="fs-5 fw-bold text-primary">1.200.000đ</span>
+                            </div>
+                        </div>
                     </div>
-                    <h5 class="card-title fw-bold">Flexible Learning</h5>
-                    <p class="card-text text-muted">
-                        Study anytime, anywhere, and at your own pace on any device.
+                </div>
+                
+                <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="200">
+                        <div class="card h-100 shadow-sm border-0 overflow-hidden">
+                        <div class="position-relative">
+                            <a href="#"><img src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80" class="card-img-top" alt="Tên khoá học"></a>
+                            <span class="badge bg-primary position-absolute top-0 start-0 m-3 rounded-pill">Data Science</span>
+                        </div>
+                        <div class="card-body d-flex flex-column">
+                            <a href="#" class="h5 card-title text-decoration-none text-body-emphasis mb-2">Phân tích Dữ liệu với Python và Pandas</a>
+                            <div class="text-warning mb-3 small">
+                                <i class="fa-solid fa-star"></i>
+                                <i class="fa-solid fa-star"></i>
+                                <i class="fa-solid fa-star"></i>
+                                <i class="fa-solid fa-star"></i>
+                                <i class="fa-solid fa-star"></i>
+                                <span class="text-muted ms-1">5.0 (890)</span>
+                            </div>
+                        </div>
+                        <div class="card-footer bg-white pt-0 border-top-0 pb-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="d-flex align-items-center">
+                                    <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=100&h=100&q=80" alt="Author" class="rounded-circle" width="30" height="30">
+                                    <span class="ms-2 small text-muted">Jane Smith</span>
+                                </div>
+                                <span class="fs-5 fw-bold text-primary">1.500.000đ</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="300">
+                        <div class="card h-100 shadow-sm border-0 overflow-hidden">
+                        <div class="position-relative">
+                            <a href="#"><img src="https://images.unsplash.com/photo-1516321318423-f06f85e504b3?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80" class="card-img-top" alt="Tên khoá học"></a>
+                            <span class="badge bg-primary position-absolute top-0 start-0 m-3 rounded-pill">Marketing</span>
+                        </div>
+                        <div class="card-body d-flex flex-column">
+                            <a href="#" class="h5 card-title text-decoration-none text-body-emphasis mb-2">Digital Marketing Toàn tập 2024</a>
+                            <div class="text-warning mb-3 small">
+                                <i class="fa-solid fa-star"></i>
+                                <i class="fa-solid fa-star"></i>
+                                <i class="fa-solid fa-star"></i>
+                                <i class="fa-solid fa-star"></i>
+                                <i class="fa-regular fa-star"></i>
+                                <span class="text-muted ms-1">4.0 (2,312)</span>
+                            </div>
+                        </div>
+                        <div class="card-footer bg-white pt-0 border-top-0 pb-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="d-flex align-items-center">
+                                    <img src="https://images.unsplash.com/photo-1521119989659-a83eee488004?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=100&h=100&q=80" alt="Author" class="rounded-circle" width="30" height="30">
+                                    <span class="ms-2 small text-muted">Alex Johnson</span>
+                                </div>
+                                <span class="fs-5 fw-bold text-primary">990.000đ</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+            </div>
+        </div>
+    </section>
+    <section id="categories" class="bg-light">
+        <div class="container">
+            <h2 class="text-center mb-5" data-aos="fade-up">Lĩnh vực hàng đầu</h2>
+            
+            <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4">
+                
+                <div class="col" data-aos="fade-up" data-aos-delay="100">
+                    <a href="#" class="card h-100 text-decoration-none text-center p-4 shadow-sm border-0 category-card-hover">
+                        <i class="fa-solid fa-code fs-1 text-primary mb-3"></i>
+                        <h4 class="h5 mb-1">Lập trình</h4>
+                        <p class="text-muted small mb-0">120+ khoá học</p>
+                    </a>
+                </div>
+                <div class="col" data-aos="fade-up" data-aos-delay="150">
+                    <a href="#" class="card h-100 text-decoration-none text-center p-4 shadow-sm border-0 category-card-hover">
+                        <i class="fa-solid fa-palette fs-1 text-primary mb-3"></i>
+                        <h4 class="h5 mb-1">Thiết kế</h4>
+                        <p class="text-muted small mb-0">80+ khoá học</p>
+                    </a>
+                </div>
+                <div class="col" data-aos="fade-up" data-aos-delay="200">
+                    <a href="#" class="card h-100 text-decoration-none text-center p-4 shadow-sm border-0 category-card-hover">
+                        <i class="fa-solid fa-bullhorn fs-1 text-primary mb-3"></i>
+                        <h4 class="h5 mb-1">Marketing</h4>
+                        <p class="text-muted small mb-0">95+ khoá học</p>
+                    </a>
+                </div>
+                <div class="col" data-aos="fade-up" data-aos-delay="250">
+                    <a href="#" class="card h-100 text-decoration-none text-center p-4 shadow-sm border-0 category-card-hover">
+                        <i class="fa-solid fa-chart-line fs-1 text-primary mb-3"></i>
+                        <h4 class="h5 mb-1">Kinh doanh</h4>
+                        <p class="text-muted small mb-0">60+ khoá học</p>
+                    </a>
+                </div>
+                <div class="col" data-aos="fade-up" data-aos-delay="300">
+                    <a href="#" class="card h-100 text-decoration-none text-center p-4 shadow-sm border-0 category-card-hover">
+                        <i class="fa-solid fa-camera fs-1 text-primary mb-3"></i>
+                        <h4 class="h5 mb-1">Nhiếp ảnh</h4>
+                        <p class="text-muted small mb-0">45+ khoá học</p>
+                    </a>
+                </div>
+                <div class="col" data-aos="fade-up" data-aos-delay="350">
+                    <a href="#" class="card h-100 text-decoration-none text-center p-4 shadow-sm border-0 category-card-hover">
+                        <i class="fa-solid fa-pen-ruler fs-1 text-primary mb-3"></i>
+                        <h4 class="h5 mb-1">Kiến trúc</h4>
+                        <p class="text-muted small mb-0">30+ khoá học</p>
+                    </a>
+                </div>
+                <div class="col" data-aos="fade-up" data-aos-delay="400">
+                    <a href="#" class="card h-100 text-decoration-none text-center p-4 shadow-sm border-0 category-card-hover">
+                        <i class="fa-solid fa-music fs-1 text-primary mb-3"></i>
+                        <h4 class="h5 mb-1">Âm nhạc</h4>
+                        <p class="text-muted small mb-0">55+ khoá học</p>
+                    </a>
+                </div>
+                <div class="col" data-aos="fade-up" data-aos-delay="450">
+                    <a href="#" class="card h-100 text-decoration-none text-center p-4 shadow-sm border-0 category-card-hover">
+                        <i class="fa-solid fa-brain fs-1 text-primary mb-3"></i>
+                        <h4 class="h5 mb-1">Khoa học</h4>
+                        <p class="text-muted small mb-0">70+ khoá học</p>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </section>
+    <section id="most-viewed" class="bg-white">
+        <div class="container position-relative">
+            <h2 class="text-center mb-5" data-aos="fade-up">Xem nhiều nhất</h2>
+            
+            <div class="swiper courses-swiper" id="most-viewed-swiper" data-aos="fade-up">
+                <div class="swiper-wrapper pb-5">
+                    
+                    <div class="swiper-slide h-auto">
+                        <div class="card h-100 shadow-sm border-0 overflow-hidden">
+                            <div class="position-relative">
+                                <a href="#"><img src="https://images.unsplash.com/photo-1587620962725-abab7e551591?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80" class="card-img-top" alt="Tên khoá học"></a>
+                                <span class="badge bg-primary position-absolute top-0 start-0 m-3 rounded-pill">JavaScript</span>
+                            </div>
+                            <div class="card-body d-flex flex-column">
+                                <a href="#" class="h5 card-title text-decoration-none text-body-emphasis mb-2">JavaScript Nâng cao và ES6+</a>
+                                <div class="text-warning mb-3 small">
+                                    <i class="fa-solid fa-star"></i>
+                                    <i class="fa-solid fa-star"></i>
+                                    <i class="fa-solid fa-star"></i>
+                                    <i class="fa-solid fa-star"></i>
+                                    <i class="fa-solid fa-star-half-stroke"></i>
+                                    <span class="text-muted ms-1">4.8 (3,102)</span>
+                                </div>
+                            </div>
+                            <div class="card-footer bg-white pt-0 border-top-0 pb-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div class="d-flex align-items-center">
+                                        <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=100&h=100&q=80" alt="Author" class="rounded-circle" width="30" height="30">
+                                        <span class="ms-2 small text-muted">David Lee</span>
+                                    </div>
+                                    <span class="fs-5 fw-bold text-primary">Miễn phí</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="swiper-slide h-auto">
+                        <div class="card h-100 shadow-sm border-0 overflow-hidden">
+                            <div class="position-relative">
+                                <a href="#"><img src="https://images.unsplash.com/photo-1522204523234-8729aa6e3d5f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80" class="card-img-top" alt="Tên khoá học"></a>
+                                <span class="badge bg-primary position-absolute top-0 start-0 m-3 rounded-pill">Kỹ năng mềm</span>
+                            </div>
+                            <div class="card-body d-flex flex-column">
+                                <a href="#" class="h5 card-title text-decoration-none text-body-emphasis mb-2">Nghệ thuật Giao tiếp và Đàm phán</a>
+                                <div class="text-warning mb-3 small">
+                                    <i class="fa-solid fa-star"></i>
+                                    <i class="fa-solid fa-star"></i>
+                                    <i class="fa-solid fa-star"></i>
+                                    <i class="fa-solid fa-star"></i>
+                                    <i class="fa-solid fa-star"></i>
+                                    <span class="text-muted ms-1">4.9 (5,120)</span>
+                                </div>
+                            </div>
+                            <div class="card-footer bg-white pt-0 border-top-0 pb-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div class="d-flex align-items-center">
+                                        <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=100&h=100&q=80" alt="Author" class="rounded-circle" width="30" height="30">
+                                        <span class="ms-2 small text-muted">Emily White</span>
+                                    </div>
+                                    <span class="fs-5 fw-bold text-primary">800.000đ</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="swiper-slide h-auto">
+                        <div class="card h-100 shadow-sm border-0 overflow-hidden">
+                            <div class="position-relative">
+                                <a href="#"><img src="https://images.unsplash.com/photo-1519389950473-47ba0277781c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80" class="card-img-top" alt="Tên khoá học"></a>
+                                <span class="badge bg-primary position-absolute top-0 start-0 m-3 rounded-pill">UI/UX</span>
+                            </div>
+                            <div class="card-body d-flex flex-column">
+                                <a href="#" class="h5 card-title text-decoration-none text-body-emphasis mb-2">Thiết kế UI/UX Chuyên nghiệp với Figma</a>
+                                <div class="text-warning mb-3 small">
+                                    <i class="fa-solid fa-star"></i>
+                                    <i class="fa-solid fa-star"></i>
+                                    <i class="fa-solid fa-star"></i>
+                                    <i class="fa-solid fa-star"></i>
+                                    <i class="fa-solid fa-star-half-stroke"></i>
+                                    <span class="text-muted ms-1">4.7 (2,200)</span>
+                                </div>
+                            </div>
+                            <div class="card-footer bg-white pt-0 border-top-0 pb-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div class="d-flex align-items-center">
+                                        <img src="https://images.unsplash.com/photo-1517841905240-472988babdf9?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=100&h=100&q=80" alt="Author" class="rounded-circle" width="30" height="30">
+                                        <span class="ms-2 small text-muted">Sarah Chen</span>
+                                    </div>
+                                    <span class="fs-5 fw-bold text-primary">1.350.000đ</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="swiper-slide h-auto">
+                        <div class="card h-100 shadow-sm border-0 overflow-hidden">
+                            <div class="position-relative">
+                                <a href="#"><img src="https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80" class="card-img-top" alt="Tên khoá học"></a>
+                                <span class="badge bg-primary position-absolute top-0 start-0 m-3 rounded-pill">Kinh doanh</span>
+                            </div>
+                            <div class="card-body d-flex flex-column">
+                                <a href="#" class="h5 card-title text-decoration-none text-body-emphasis mb-2">Quản trị Dự án theo chuẩn PMP</a>
+                                <div class="text-warning mb-3 small">
+                                    <i class="fa-solid fa-star"></i>
+                                    <i class="fa-solid fa-star"></i>
+                                    <i class="fa-solid fa-star"></i>
+                                    <i class="fa-solid fa-star"></i>
+                                    <i class="fa-solid fa-star"></i>
+                                    <span class="text-muted ms-1">4.9 (1,980)</span>
+                                </div>
+                            </div>
+                            <div class="card-footer bg-white pt-0 border-top-0 pb-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div class="d-flex align-items-center">
+                                        <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=100&h=100&q=80" alt="Author" class="rounded-circle" width="30" height="30">
+                                        <span class="ms-2 small text-muted">Michael Brown</span>
+                                    </div>
+                                    <span class="fs-5 fw-bold text-primary">2.000.000đ</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+                <div class="swiper-pagination position-absolute bottom-0"></div>
+            </div>
+
+            <div class="swiper-button-prev"></div>
+            <div class="swiper-button-next"></div>
+        </div>
+    </section>
+    <section id="newest-courses" class="bg-light">
+        <div class="container position-relative">
+            <h2 class="text-center mb-5" data-aos="fade-up">Khoá học mới nhất</h2>
+            
+            <div class="swiper courses-swiper" id="newest-courses-swiper" data-aos="fade-up">
+                <div class="swiper-wrapper pb-5">
+                    
+                    <div class="swiper-slide h-auto">
+                        <div class="card h-100 shadow-sm border-0 overflow-hidden">
+                            <div class="position-relative">
+                                <a href="#"><img src="https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1074&q=80" class="card-img-top" alt="Tên khoá học"></a>
+                                <span class="badge bg-primary position-absolute top-0 start-0 m-3 rounded-pill">Thiết kế</span>
+                            </div>
+                            <div class="card-body d-flex flex-column">
+                                <a href="#" class="h5 card-title text-decoration-none text-body-emphasis mb-2">Sáng tạo Nội dung với Adobe After Effects</a>
+                                <div class="text-warning mb-3 small">
+                                    <i class="fa-regular fa-star"></i>
+                                    <span class="text-muted ms-1">Mới</span>
+                                </div>
+                            </div>
+                            <div class="card-footer bg-white pt-0 border-top-0 pb-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div class="d-flex align-items-center">
+                                        <img src="https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=100&h=100&q=80" alt="Author" class="rounded-circle" width="30" height="30">
+                                        <span class="ms-2 small text-muted">Chris Evans</span>
+                                    </div>
+                                    <span class="fs-5 fw-bold text-primary">1.100.000đ</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="swiper-slide h-auto">
+                        <div class="card h-100 shadow-sm border-0 overflow-hidden">
+                            <div class="position-relative">
+                                <a href="#"><img src="https://images.unsplash.com/photo-1555949963-ff9fe0c870eb?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80" class="card-img-top" alt="Tên khoá học"></a>
+                                <span class="badge bg-primary position-absolute top-0 start-0 m-3 rounded-pill">DevOps</span>
+                            </div>
+                            <div class="card-body d-flex flex-column">
+                                <a href="#" class="h5 card-title text-decoration-none text-body-emphasis mb-2">DevOps Toàn tập: Docker và Kubernetes</a>
+                                <div class="text-warning mb-3 small">
+                                    <i class="fa-regular fa-star"></i>
+                                    <span class="text-muted ms-1">Mới</span>
+                                </div>
+                            </div>
+                            <div class="card-footer bg-white pt-0 border-top-0 pb-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div class="d-flex align-items-center">
+                                        <img src="https://images.unsplash.com/photo-1522529599102-193c0d76b5b6?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=100&h=100&q=80" alt="Author" class="rounded-circle" width="30" height="30">
+                                        <span class="ms-2 small text-muted">Ken Watanabe</span>
+                                    </div>
+                                    <span class="fs-5 fw-bold text-primary">1.800.000đ</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="swiper-slide h-auto">
+                        <div class="card h-100 shadow-sm border-0 overflow-hidden">
+                            <div class="position-relative">
+                                <a href="#"><img src="https://images.unsplash.com/photo-1547658719-da2b51169166?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1064&q=80" class="card-img-top" alt="Tên khoá học"></a>
+                                <span class="badge bg-primary position-absolute top-0 start-0 m-3 rounded-pill">Thiết kế</span>
+                            </div>
+                            <div class="card-body d-flex flex-column">
+                                <a href="#" class="h5 card-title text-decoration-none text-body-emphasis mb-2">Nguyên lý Thiết kế Đồ hoạ Căn bản</a>
+                                <div class="text-warning mb-3 small">
+                                    <i class="fa-regular fa-star"></i>
+                                    <span class="text-muted ms-1">Mới</span>
+                                </div>
+                            </div>
+                            <div class="card-footer bg-white pt-0 border-top-0 pb-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div class="d-flex align-items-center">
+                                        <img src="https://images.unsplash.com/photo-1517841905240-472988babdf9?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=100&h=100&q=80" alt="Author" class="rounded-circle" width="30" height="30">
+                                        <span class="ms-2 small text-muted">Sarah Chen</span>
+                                    </div>
+                                    <span class="fs-5 fw-bold text-primary">750.000đ</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="swiper-slide h-auto">
+                        <div class="card h-100 shadow-sm border-0 overflow-hidden">
+                            <div class="position-relative">
+                                <a href="#"><img src="https://images.unsplash.com/photo-1558544955-4a1d13998939?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80" class="card-img-top" alt="Tên khoá học"></a>
+                                <span class="badge bg-primary position-absolute top-0 start-0 m-3 rounded-pill">Âm nhạc</span>
+                            </div>
+                            <div class="card-body d-flex flex-column">
+                                <a href="#" class="h5 card-title text-decoration-none text-body-emphasis mb-2">Học Guitar đệm hát trong 30 ngày</a>
+                                <div class="text-warning mb-3 small">
+                                    <i class="fa-regular fa-star"></i>
+                                    <span class="text-muted ms-1">Mới</span>
+                                </div>
+                            </div>
+                            <div class="card-footer bg-white pt-0 border-top-0 pb-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div class="d-flex align-items-center">
+                                        <img src="https://img.com/a/img923/8357/1qcnLh.jpg" alt="Author" class="rounded-circle" width="30" height="30">
+                                        <span class="ms-2 small text-muted">Hà Lê</span>
+                                    </div>
+                                    <span class="fs-5 fw-bold text-primary">600.000đ</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="swiper-pagination position-absolute bottom-0"></div>
+            </div>
+
+            <div class="swiper-button-prev"></div>
+            <div class="swiper-button-next"></div>
+        </div>
+    </section>
+    <section id="testimonials" class="bg-secondary" style="background-color: var(--bs-secondary) !important;">
+        <div class="container" data-aos="fade-in">
+            <h2 class="text-center mb-5" style="color: var(--bs-primary-dark);">Học viên nói gì về VietAcademy</h2>
+            
+            <div id="testimonial-swiper" class="carousel slide" data-bs-ride="carousel" data-bs-interval="5000">
+                <div class="carousel-inner">
+                    
+                    <div class="carousel-item active">
+                        <div class="col-lg-8 col-md-10 mx-auto text-center p-4">
+                            <img src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=100&h=100&q=80" alt="Học viên" class="rounded-circle shadow-lg mx-auto mb-3 border border-3 border-white">
+                            <p class="fs-5 fst-italic my-4">
+                                "Khoá học React tại VietAcademy thật sự thay đổi tư duy lập trình của tôi. Giảng viên nhiệt tình, lộ trình rõ ràng và bài tập thực tế. Tôi đã tự tin đi làm ngay sau khi hoàn thành!"
+                            </p>
+                            <h4 class="h5 fw-bold mb-1">Nguyễn Thu Trang</h4>
+                            <span class="text-muted">Frontend Developer tại ABC Corp</span>
+                        </div>
+                    </div>
+                    
+                    <div class="carousel-item">
+                        <div class="col-lg-8 col-md-10 mx-auto text-center p-4">
+                            <img src="https://images.unsplash.com/photo-1552058544-f2b08422138a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=100&h=100&q=80" alt="Học viên" class="rounded-circle shadow-lg mx-auto mb-3 border border-3 border-white">
+                            <p class="fs-5 fst-italic my-4">
+                                "Tôi đã học khoá 'Phân tích Dữ liệu' và thực sự ấn tượng. Kiến thức được hệ thống hoá rất logic, dễ hiểu ngay cả với người mới bắt đầu như tôi."
+                            </p>
+                            <h4 class="h5 fw-bold mb-1">Trần Văn Minh</h4>
+                            <span class="text-muted">Sinh viên Đại học Bách Khoa</span>
+                        </div>
+                    </div>
+                    
+                    <div class="carousel-item">
+                        <div class="col-lg-8 col-md-10 mx-auto text-center p-4">
+                            <img src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=100&h=100&q=80" alt="Học viên" class="rounded-circle shadow-lg mx-auto mb-3 border border-3 border-white">
+                            <p class="fs-5 fst-italic my-4">
+                                "Là một Marketer, tôi cần cập nhật xu hướng liên tục. Khoá 'Digital Marketing' của VietAcademy đã cung cấp cho tôi những công cụ và chiến lược mới nhất, rất hữu ích cho công việc."
+                            </p>
+                            <h4 class="h5 fw-bold mb-1">Lê Thị Bích Hảo</h4>
+                            <span class="text-muted">Marketing Manager</span>
+                        </div>
+                    </div>
+                    
+                </div>
+                <button class="carousel-control-prev" type="button" data-bs-target="#testimonial-swiper" data-bs-slide="prev">
+                    <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                    <span class="visually-hidden">Previous</span>
+                </button>
+                <button class="carousel-control-next" type="button" data-bs-target="#testimonial-swiper" data-bs-slide="next">
+                    <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                    <span class="visually-hidden">Next</span>
+                </button>
+            </div>
+        </div>
+    </section>
+    <section id="contact" class="bg-light">
+        <div class="container">
+            <div class="col-lg-8 col-md-10 mx-auto text-center">
+                <h2 class="fw-bold display-5 mb-3 text-primary">
+                    Liên hệ với VietEdu Academy
+                </h2>
+    
+                <p class="text-muted mb-5 lead">
+                    Hỗ trợ từ 8:00 - 20:00 tất cả các ngày trong tuần
+                </p>
+    
+                <div class="mb-5">
+                    <p class="fs-5 d-flex justify-content-center align-items-center flex-wrap mb-3">
+                        <i class="fa-solid fa-location-dot text-primary fs-3 me-3" style="width: 30px;"></i>
+                        <span>01 Võ Văn Ngân, P. Linh Chiểu, TP. Thủ Đức, TP. HCM</span>
+                    </p>
+                    <p class="fs-5 d-flex justify-content-center align-items-center flex-wrap mb-3">
+                        <i class="fa-solid fa-envelope text-primary fs-3 me-3" style="width: 30px;"></i>
+                        <span>support@vietacademy.vn</span>
+                    </p>
+                    <p class="fs-5 d-flex justify-content-center align-items-center flex-wrap mb-3">
+                        <i class="fa-solid fa-phone text-primary fs-3 me-3" style="width: 30px;"></i>
+                        <span>(028) 1234 5678</span>
                     </p>
                 </div>
+    
+                <div class="d-flex justify-content-center gap-4">
+                    <a href="#" class="text-primary fs-1"><i class="fa-brands fa-facebook"></i></a>
+                    <a href="#" class="text-primary fs-1"><i class="fa-brands fa-youtube"></i></a>
+                    <a href="#" class="text-primary fs-1"><i class="fa-solid fa-envelope"></i></a>
+                    <a href="#" class="text-primary fs-1"><i class="fa-brands fa-tiktok"></i></a>
+                </div>
             </div>
+        </div>
+    </section>
+    </main>
+
+<footer class="footer bg-dark text-white pt-5 pb-4">
+    <div class="container">
+        <div class="row g-4">
+            
+            <div class="col-lg-4 col-md-6">
+                <a href="#hero" class="navbar-brand fs-3 text-white d-block mb-3 fw-bold">
+                    <i class="fa-solid fa-graduation-cap"></i> VietAcademy
+                </a>
+                <p class="text-white-50">Nền tảng học trực tuyến hàng đầu, giúp bạn chinh phục mọi kỹ năng để bứt phá trong sự nghiệp.</p>
+                <div class="d-flex gap-2 mt-4">
+                    <a href="#" class="btn btn-outline-light btn-sm rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;"><i class="fab fa-facebook-f"></i></a>
+                    <a href="#" class="btn btn-outline-light btn-sm rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;"><i class="fab fa-youtube"></i></a>
+                    <a href="#" class="btn btn-outline-light btn-sm rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;"><i class="fab fa-linkedin-in"></i></a>
+                    <a href="#" class="btn btn-outline-light btn-sm rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;"><i class="fab fa-tiktok"></i></a>
+                </div>
+            </div>
+            
+            <div class="col-lg-2 col-md-6">
+                <h5 class="fw-bold mb-4">Về chúng tôi</h5>
+                <ul class="list-unstyled d-grid gap-2">
+                    <li><a href="#" class="text-decoration-none text-white-50 footer-link">Giới thiệu</a></li>
+                    <li><a href="#" class="text-decoration-none text-white-50 footer-link">Cơ hội nghề nghiệp</a></li>
+                    <li><a href="#" class="text-decoration-none text-white-50 footer-link">Blog</a></li>
+                    <li><a href="#" class="text-decoration-none text-white-50 footer-link">Điều khoản dịch vụ</a></li>
+                    <li><a href="#" class="text-decoration-none text-white-50 footer-link">Chính sách bảo mật</a></li>
+                </ul>
+            </div>
+            
+            <div class="col-lg-3 col-md-6">
+                <h5 class="fw-bold mb-4">Hỗ trợ</h5>
+                <ul class="list-unstyled d-grid gap-2">
+                    <li><a href="#" class="text-decoration-none text-white-50 footer-link">Trung tâm trợ giúp</a></li>
+                    <li><a href="#" class="text-decoration-none text-white-50 footer-link">Câu hỏi thường gặp</a></li>
+                    <li><a href="#" class="text-decoration-none text-white-50 footer-link">Trở thành giảng viên</a></li>
+                    <li><a href="#contact" class="text-decoration-none text-white-50 footer-link">Liên hệ</a></li>
+                </ul>
+            </div>
+            
+            <div class="col-lg-3 col-md-6">
+                <h5 class="fw-bold mb-4">Lĩnh vực</h5>
+                <ul class="list-unstyled d-grid gap-2">
+                    <li><a href="#" class="text-decoration-none text-white-50 footer-link">Lập trình</a></li>
+                    <li><a href="#" class="text-decoration-none text-white-50 footer-link">Thiết kế</a></li>
+                    <li><a href="#" class="text-decoration-none text-white-50 footer-link">Marketing</a></li>
+                    <li><a href="#" class="text-decoration-none text-white-50 footer-link">Kinh doanh</a></li>
+                    <li><a href="#" class="text-decoration-none text-white-50 footer-link">Xem tất cả</a></li>
+                </ul>
+            </div>
+            
+        </div>
+        
+        <div class="text-center text-white-50 pt-4 mt-4 border-top border-secondary opacity-75">
+            &copy; 2024 VietAcademy. All rights reserved.
         </div>
     </div>
-</div>
+</footer>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+
+<script src="https://unpkg.com/aos@next/dist/aos.js"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        
+        // --- 1. KHỞI TẠO AOS (Animate on Scroll) ---
+        AOS.init({
+            duration: 800, // Thời gian animation
+            once: true,     // Chỉ chạy 1 lần
+            offset: 100,    // Kích hoạt khi cuộn qua 100px
+        });
+
+        // --- 2. KHỞI TẠO SWIPER (Carousels) ---
+        
+        // Carousel cho "Most Viewed"
+        var mostViewedSwiper = new Swiper('#most-viewed-swiper', {
+            loop: false,
+            autoplay: {
+                delay: 4000,
+                disableOnInteraction: false,
+            },
+            pagination: {
+                el: '#most-viewed-swiper .swiper-pagination',
+                clickable: true,
+            },
+            navigation: {
+                nextEl: '#most-viewed-swiper .swiper-button-next',
+                prevEl: '#most-viewed-swiper .swiper-button-prev',
+            },
+            slidesPerView: 1,
+            spaceBetween: 20,
+            breakpoints: {
+                768: { // md
+                    slidesPerView: 2,
+                    spaceBetween: 25
+                },
+                992: { // lg
+                    slidesPerView: 3,
+                    spaceBetween: 30
+                }
+            }
+        });
+
+        // Carousel cho "Newest Courses"
+        var newestCoursesSwiper = new Swiper('#newest-courses-swiper', {
+            loop: false, 
+            autoplay: {
+                delay: 4500,
+                disableOnInteraction: false,
+            },
+            pagination: {
+                el: '#newest-courses-swiper .swiper-pagination',
+                clickable: true,
+            },
+            navigation: {
+                nextEl: '#newest-courses-swiper .swiper-button-next',
+                prevEl: '#newest-courses-swiper .swiper-button-prev',
+            },
+            slidesPerView: 1,
+            spaceBetween: 20,
+            breakpoints: {
+                768: { // md
+                    slidesPerView: 2,
+                    spaceBetween: 25
+                },
+                992: { // lg
+                    slidesPerView: 3,
+                    spaceBetween: 30
+                }
+            }
+        });
+
+        // --- 3. KÍCH HOẠT BOOTSTRAP SCROLLSPY ---
+        // (Đã kích hoạt bằng data-attributes, nhưng có thể thêm code JS nếu cần)
+        // Tự động cập nhật nav-link 'active' khi cuộn
+        var scrollSpy = new bootstrap.ScrollSpy(document.body, {
+            target: '#mainNavbar',
+            offset: 100 // Tinh chỉnh offset cho khớp
+        });
+
+        // --- 4. TÙY CHỈNH NAVBAR SCROLL ---
+        // Thêm/bớt shadow cho navbar khi cuộn
+        const mainNavbar = document.getElementById('mainNavbar');
+        if (mainNavbar) {
+            window.addEventListener('scroll', () => {
+                if (window.scrollY > 50) {
+                    mainNavbar.classList.add('shadow-lg');
+                    mainNavbar.classList.remove('shadow-sm');
+                } else {
+                    mainNavbar.classList.remove('shadow-lg');
+                    mainNavbar.classList.add('shadow-sm');
+                }
+            });
+        }
+
+    });
+</script>

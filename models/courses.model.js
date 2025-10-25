@@ -67,4 +67,13 @@ export async function updateAverageRating(courseId) {
   return db(TABLE_NAME)
     .where('course_id', courseId)
     .update({ rating_avg: avg_rating, rating_count: rating_count });
+};
+
+export function findRelated(catId, courseId, numCourses = 4) {
+  return db('courses')
+    .where('category_id', catId)
+    .whereNot('course_id', courseId)
+    .orderBy('rating_avg', 'desc')
+    .orderBy('enrollment_count', 'desc')
+    .limit(numCourses);
 }

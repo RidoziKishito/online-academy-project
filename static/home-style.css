@@ -1,0 +1,105 @@
+
+:root {
+    /* Định nghĩa lại màu sắc của Bootstrap để hợp với thương hiệu */
+    --bs-primary: #46935f;
+    --bs-primary-rgb: 70, 147, 95;
+    --bs-primary-dark: #347571; /* Màu này dùng cho h2, h1... */
+
+    --bs-secondary: #ECF8E5; /* Nền xanh lá nhạt */
+    --bs-light: #f7fbf5;     /* Nền trắng-xanh */
+    
+    --bs-font-sans-serif: 'Cabin', sans-serif;
+    --bs-body-color: #2c3e50;
+    --bs-body-line-height: 1.6;
+}
+
+body {
+    /* Cần thiết cho scrollspy */
+    position: relative; 
+}
+
+h1, h2, h3, h4, h5, h6 {
+    color: var(--bs-primary-dark);
+    font-weight: 600;
+}
+
+h2 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    position: relative;
+}
+
+/* Hiệu ứng gạch chân cho tiêu đề h2 */
+h2::after {
+    content: '';
+    display: block;
+    width: 80px;
+    height: 4px;
+    background-color: var(--bs-primary);
+    margin: 15px auto 0;
+    border-radius: 2px;
+}
+
+/* Đảm bảo navbar không che mất nội dung */
+section {
+    padding-top: 80px;
+    padding-bottom: 80px;
+}
+#hero {
+    padding-top: 160px; /* Hero cần nhiều khoảng trống hơn */
+    padding-bottom: 120px;
+}
+
+/* Custom Card Hover */
+.category-card-hover {
+    transition: all 0.3s ease;
+}
+.category-card-hover:hover {
+    transform: translateY(-10px);
+    box-shadow: var(--bs-box-shadow-lg) !important;
+    background-color: var(--bs-light);
+    color: var(--bs-primary);
+}
+
+/* Footer Link Hover */
+.footer-link {
+    transition: all 0.3s ease;
+}
+.footer-link:hover {
+    color: var(--bs-white) !important;
+    opacity: 1 !important;
+    padding-left: 5px;
+}
+
+/* Tùy chỉnh nút Swiper */
+.courses-swiper .swiper-button-prev,
+.courses-swiper .swiper-button-next {
+    background: var(--bs-white);
+    border-radius: 50%;
+    box-shadow: var(--bs-box-shadow-sm);
+    color: var(--bs-primary);
+    width: 45px;
+    height: 45px;
+    transition: all 0.3s ease;
+}
+.courses-swiper .swiper-button-prev:hover,
+.courses-swiper .swiper-button-next:hover {
+    background: var(--bs-primary);
+    color: var(--bs-white);
+}
+.courses-swiper .swiper-button-next::after,
+.courses-swiper .swiper-button-prev::after {
+    font-size: 1.2rem;
+    font-weight: 700;
+}
+.swiper-pagination-bullet-active {
+    background: var(--bs-primary) !important;
+}
+
+/* Tùy chỉnh nút Bootstrap Carousel (cho Testimonials) */
+#testimonial-swiper .carousel-control-prev-icon,
+#testimonial-swiper .carousel-control-next-icon {
+        /* Dùng filter để đổi màu icon SVG mặc định */
+    filter: invert(0.5) sepia(1) saturate(5) hue-rotate(90deg);
+}
+
