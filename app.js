@@ -54,6 +54,10 @@ app.use(passport.session());
 app.engine('handlebars', engine({
   defaultLayout: 'main',
   layoutsDir: path.join(__dirname, 'views', 'layouts'),
+  partialsDir: [
+    path.join(__dirname, 'views', 'partials'),
+    path.join(__dirname, 'views', 'vwInstructor')
+  ],
   helpers: {
     fillContent: hsb_sections(),
     format_number(value) {
@@ -70,6 +74,16 @@ app.engine('handlebars', engine({
         hour: '2-digit',
         minute: '2-digit'
       });
+    },
+    format_duration(seconds) {
+      if (!seconds) return '0 min';
+      const hours = Math.floor(seconds / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+
+      if (hours > 0) {
+        return `${hours}h ${minutes}m`;
+      }
+      return `${minutes} min`;
     },
     eq(a, b) {
       return a === b;
@@ -155,7 +169,7 @@ app.engine('handlebars', engine({
     generatePages(currentPage, totalPages) {
       const pages = [];
       const maxVisible = 7;
-      
+
       if (totalPages <= maxVisible) {
         for (let i = 1; i <= totalPages; i++) {
           pages.push(i);
@@ -177,7 +191,7 @@ app.engine('handlebars', engine({
           pages.push(totalPages);
         }
       }
-      
+
       return pages;
     },
 
@@ -193,6 +207,7 @@ app.set('views', './views');
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json()); // Thêm dòng này để xử lý JSON body cho các API
 app.use('/static', express.static('static'));
+app.use(express.static('public')); // Add this line to serve files from public directory
 
 // ================= MIDDLEWARES TOÀN CỤC =================
 // Middleware cung cấp thông tin đăng nhập cho tất cả các view

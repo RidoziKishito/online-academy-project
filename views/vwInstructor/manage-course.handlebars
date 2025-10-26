@@ -2,11 +2,13 @@
 <link href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css" rel="stylesheet" />
 <link href="https://releases.transloadit.com/uppy/v5.1.5/uppy.min.css" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="stylesheet" href="/css/course-content.css">
 {{/fillContent}}
 
 {{#fillContent 'js'}}
 <script src="https://cdn.jsdelivr.net/npm/cleave.js@1.6.0/dist/cleave.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
+<script src="/js/course-content.js" defer></script>
 <script>
     // --- SỬA LỖI: Sửa ID cho đúng ---
     new Cleave('#currentPrice', { // <-- Sửa từ #txtPrice
@@ -46,6 +48,56 @@
             thumbnailPreview.src = v || fallback;
         });
     }
+
+    // Handle category selection changes
+    const parentCategorySelect = document.getElementById('parentCategory');
+    if (parentCategorySelect) {
+        const loadSubcategories = async (categoryId) => {
+            const container = document.getElementById('subcategoryContainer');
+            if (!categoryId) {
+                container.innerHTML = '';
+                return;
+            }
+
+            try {
+                const response = await fetch(`/instructor/api/categories/${categoryId}/subcategories`);
+                if (!response.ok) throw new Error('Failed to fetch subcategories');
+
+                const subcategories = await response.json();
+                // console.log('Loaded subcategories:', subcategories); // Debug log
+
+                if (subcategories && subcategories.length > 0) {
+                    const select = document.createElement('select');
+                    select.className = 'form-select';
+                    select.name = 'subcategory_id';
+                    select.id = 'subcategory';
+
+                    select.innerHTML = `
+                        <option value="">-- Select Sub Category --</option>
+                        ${subcategories.map(sub => `<option value="${sub.category_id}">${sub.name}</option>`).join('')}
+                    `;
+
+                    container.innerHTML = '';
+                    container.appendChild(select);
+                } else {
+                    container.innerHTML = '';
+                }
+            } catch (err) {
+                console.error('Error loading subcategories:', err);
+                container.innerHTML = '<div class="text-danger">Failed to load subcategories</div>';
+            }
+        };
+
+        // Load subcategories for initial selection
+        if (parentCategorySelect.value) {
+            loadSubcategories(parentCategorySelect.value);
+        }
+
+        // Handle change event
+        parentCategorySelect.addEventListener('change', function () {
+            loadSubcategories(this.value);
+        });
+    }
 </script>
 {{/fillContent}}
 <div class="container mt-4">
@@ -54,6 +106,9 @@
     <ul class="nav nav-tabs mb-3" id="manageCourseTabs">
         <li class="nav-item">
             <a class="nav-link active" data-bs-toggle="tab" href="#tab-course">Course Info</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" data-bs-toggle="tab" href="#tab-content">Course Content</a>
         </li>
         <li class="nav-item">
             <a class="nav-link" data-bs-toggle="tab" href="#tab-students">Students</a>
@@ -114,13 +169,29 @@
                                     value="{{course.sale_price}}" placeholder="0">
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label">Category</label>
-                                <select name="category_id" class="form-select">
-                                    {{#each categories}}
-                                    <option value="{{category_id}}" {{#ifEq category_id
-                                        ../course.category_id}}selected{{/ifEq}}>{{name}}</option>
-                                    {{/each}}
-                                </select>
+                                <label class="form-label fw-semibold">Category</label>
+                                <div class="category-selection">
+                                    <div class="mb-2">
+                                        <select name="category_id" class="form-select" id="parentCategory">
+                                            <option value="">-- Select Main Category --</option>
+                                            {{#each parentCategories}}
+                                            <option value="{{category_id}}" {{#ifEq category_id
+                                                ../course.category_id}}selected{{/ifEq}}>{{name}}</option>
+                                            {{/each}}
+                                        </select>
+                                    </div>
+                                    <div id="subcategoryContainer">
+                                        {{#if subcategories.length}}
+                                        <select name="subcategory_id" class="form-select" id="subcategory">
+                                            <option value="">-- Select Sub Category --</option>
+                                            {{#each subcategories}}
+                                            <option value="{{category_id}}" {{#ifEq category_id
+                                                ../course.subcategory_id}}selected{{/ifEq}}>{{name}}</option>
+                                            {{/each}}
+                                        </select>
+                                        {{/if}}
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -137,6 +208,11 @@
                     </form>
                 </div>
             </div>
+        </div>
+
+        <!-- CONTENT TAB -->
+        <div class="tab-pane fade" id="tab-content">
+            {{> course-content course=course chapters=chapters}}
         </div>
 
         <!-- STUDENTS TAB -->

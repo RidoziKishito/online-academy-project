@@ -1,0 +1,494 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Course Editor - Chapters & Lessons</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
+
+  <style>
+    /* CSS đã được tinh chỉnh một chút cho thoáng hơn */
+    body { background-color: #f8f9fa; }
+    .chapter-card { 
+      margin-bottom: 1.25rem; 
+      border-radius: .6rem; 
+      border: 0;
+      box-shadow: 0 0.125rem 0.5rem rgba(0,0,0,.075);
+    }
+    .lesson-row { 
+      border: 1px solid #e9ecef; 
+      border-radius: .5rem; 
+      padding: 1rem; /* Tăng padding */
+      margin-bottom: .75rem; 
+      background: #fff; 
+      transition: box-shadow .2s ease;
+    }
+    .lesson-row:hover {
+      box-shadow: 0 0.125rem 0.75rem rgba(0,0,0,.08);
+    }
+    /* Đồng bộ chiều cao quill với video preview */
+    .quill-container { 
+      min-height: 180px; 
+      height: 220px;
+    } 
+    .video-preview { 
+      width: 100%; 
+      height: 180px; 
+      border: 1px solid #e9ecef; 
+      border-radius: .375rem; 
+      overflow: hidden; 
+      background: #fafafa; 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+    }
+    .video-preview iframe { 
+      width: 100%; 
+      height: 100%; 
+      border: 0; 
+    }
+    .meta-small { font-size: .85rem; color: #6c757d; }
+  </style>
+</head>
+<body class="bg-light">
+
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="mb-0">Course Editor — Chapters & Lessons</h3>
+    <div>
+      <button id="addChapterBtn" class="btn btn-success"><i class="bi bi-plus-lg"></i> Thêm chapter</button>
+      <button id="saveBtn" class="btn btn-primary ms-2"><i class="bi bi-save"></i> Lưu (JSON)</button>
+    </div>
+  </div>
+  <div class="text-end mb-3">
+    <small class="text-muted">Bấm "Lưu (JSON)" sẽ in dữ liệu ra Console của trình duyệt.</small>
+  </div>
+
+
+  <div id="chaptersContainer"></div>
+
+  <script id="chapter-template" type="text/x-handlebars-template">
+    <div class="card chapter-card" data-chapter-id="{{id}}">
+      <div class="card-header d-flex align-items-center justify-content-between">
+        <div class="d-flex align-items-center gap-2">
+          <strong class="chapter-label">Chapter {{number}} — </strong>
+          <input type="text" class="form-control form-control-sm chapter-title" style="min-width:300px" value="{{title}}" placeholder="Tiêu đề chapter">
+        </div>
+        <div class="d-flex gap-2">
+          <button class="btn btn-sm btn-outline-secondary add-lesson"><i class="bi bi-file-plus"></i> Thêm lesson</button>
+          <button class="btn btn-sm btn-outline-danger remove-chapter">Xóa chapter</button>
+        </div>
+      </div>
+
+      <div class="card-body">
+        <div class="lessons-list mb-2">
+          {{! Handlebars sẽ tự động dùng partial 'lessonPartial' ở đây }}
+          {{#each lessons}}
+            {{> lessonPartial this}}
+          {{/each}}
+        </div>
+      </div>
+    </div>
+  </script>
+
+  <script id="lesson-template" type="text/x-handlebars-template">
+    <div class="lesson-row" data-lesson-id="{{id}}">
+      <div class="d-flex justify-content-between align-items-start mb-2">
+        <div>
+          <strong class="lesson-label">Lesson {{order_index}} — </strong>
+          <input type="text" class="form-control form-control-sm lesson-title d-inline-block" style="width:360px" value="{{title}}" placeholder="Tiêu đề lesson">
+          <div class="meta-small mt-1">ID: <code>{{id}}</code> — Created: {{created_at}}</div>
+        </div>
+        <div class="text-end">
+          <div class="btn-group" role="group">
+            <button class="btn btn-sm btn-outline-secondary lesson-up" title="Move up"><i class="bi bi-arrow-up"></i></button>
+            <button class="btn btn-sm btn-outline-secondary lesson-down" title="Move down"><i class="bi bi-arrow-down"></i></button>
+          </div>
+          <button class="btn btn-sm btn-outline-danger ms-2 remove-lesson" title="Remove lesson"><i class="bi bi-trash"></i></button>
+        </div>
+      </div>
+
+      <div class="row g-3">
+        <div class="col-12 col-md-6">
+          <label class="form-label mb-1">Video URL</label>
+          <div class="input-group mb-2">
+            <input type="text" class="form-control form-control-sm lesson-video" value="{{video_url}}" placeholder="https://www.youtube.com/watch?v=...">
+            <button class="btn btn-outline-secondary btn-sm preview-video">Preview</button>
+          </div>
+          <div class="d-flex gap-2">
+            <input type="number" min="0" class="form-control form-control-sm lesson-duration" style="width:120px" value="{{duration_seconds}}" placeholder="duration (s)">
+            <div class="form-check form-check-inline ms-2">
+              <input class="form-check-input lesson-previewable" type="checkbox" {{#if is_previewable}}checked{{/if}}>
+              <label class="form-check-label">is_previewable</label>
+            </div>
+          </div>
+          <div class="mt-2 video-preview-box">
+            {{#if video_embed}}
+              <div class="video-preview"><iframe src="{{video_embed}}" allowfullscreen></iframe></div>
+            {{else}}
+              <div class="video-preview"><div class="text-muted">Chưa có preview</div></div>
+            {{/if}}
+          </div>
+        </div>
+
+        <div class="col-12 col-md-6">
+          <label class="form-label mb-1">Nội dung lesson (rich text)</label>
+          <div id="quill-{{id}}" class="quill-container"></div>
+        </div>
+      </div>
+    </div>
+  </script>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/handlebars@4.7.7/dist/handlebars.min.js"></script>
+<script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
+
+<script>
+(() => {
+  // state
+  let chapterCounter = 0;
+  //   let lessonCounter = 0; // Không còn cần thiết vì ta đếm theo chapter
+  const editors = {}; // map lessonId -> quill instance
+
+  // compile templates
+  const chapterTpl = Handlebars.compile(document.getElementById('chapter-template').innerHTML);
+  const lessonTpl = Handlebars.compile(document.getElementById('lesson-template').innerHTML);
+
+  // *** Đăng ký 'lesson-template' như một "partial" ***
+  // Điều này cho phép template chapter (chapterTpl) có thể gọi {{> lessonPartial ...}}
+  Handlebars.registerPartial('lessonPartial', document.getElementById('lesson-template').innerHTML);
+
+  // helper to convert youtube/vimeo -> embed url
+  function toEmbedUrl(raw) {
+    if (!raw) return '';
+    try {
+      const url = new URL(raw.trim());
+      const host = url.hostname.replace('www.', '');
+      if (host.includes('youtube.com')) {
+        const v = url.searchParams.get('v');
+        if (v) return 'https://www.youtube.com/embed/' + v;
+      }
+      if (host === 'youtu.be') {
+        const id = url.pathname.slice(1);
+        if (id) return 'https://www.youtube.com/embed/' + id;
+      }
+      if (raw.includes('embed') || host.includes('vimeo.com')) return raw;
+      return raw;
+    } catch (e) {
+      return raw;
+    }
+  }
+
+  function makeId(prefix) {
+    return prefix + '-' + Date.now().toString(36) + '-' + Math.floor(Math.random() * 10000);
+  }
+
+  // escape helper
+  function escapeHtml(str) {
+    if (!str) return '';
+    return str.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
+  }
+
+  // add chapter
+  function addChapter(initial = {}) {
+    chapterCounter++;
+    const chapId = makeId('chap');
+    const data = {
+      id: chapId,
+      number: chapterCounter,
+      title: initial.title || `Chương ${chapterCounter}`,
+      lessons: []
+    };
+
+    // allow passing initial lessons array (optional)
+    if (Array.isArray(initial.lessons)) {
+      data.lessons = initial.lessons.map((l, idx) => ({
+        id: l.id || makeId('les'),
+        order_index: l.order_index || (idx + 1),
+        title: l.title || ('Lesson ' + (idx + 1)),
+        video_url: l.video_url || '',
+        video_embed: toEmbedUrl(l.video_url || ''),
+        duration_seconds: l.duration_seconds || 0,
+        is_previewable: !!l.is_previewable,
+        created_at: l.created_at || (new Date()).toLocaleString(),
+        content: l.content || ''
+      }));
+    }
+    
+    // Render HTML bằng template chapter (template này sẽ tự động render các lesson partials)
+    const html = chapterTpl(data);
+    const container = document.getElementById('chaptersContainer');
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = html;
+    container.appendChild(wrapper.firstElementChild);
+
+    // init Quill for each lesson in this chapter (if any)
+    const chapterEl = container.querySelector(`[data-chapter-id="${chapId}"]`);
+    const lessonsList = chapterEl.querySelector('.lessons-list');
+
+    // init existing lessons
+    lessonsList.querySelectorAll('.lesson-row').forEach(lEl => {
+      const lid = lEl.getAttribute('data-lesson-id');
+      initLessonQuill(lEl, lid, findInitContent(data.lessons, lid));
+      wireLessonEvents(lEl);
+    });
+
+    // wire chapter-level buttons
+    chapterEl.querySelector('.add-lesson').addEventListener('click', () => {
+      addLessonToChapter(chapterEl);
+    });
+
+    chapterEl.querySelector('.remove-chapter').addEventListener('click', () => {
+      if (!confirm('Xóa chapter này?')) return;
+      // remove all quill editors inside
+      chapterEl.querySelectorAll('.lesson-row').forEach(l => {
+        const lid = l.getAttribute('data-lesson-id');
+        if (editors[lid]) {
+          delete editors[lid];
+        }
+      });
+      chapterEl.remove();
+      renumberChapters();
+    });
+
+    renumberChapters();
+  }
+
+  function findInitContent(lessonsArr, lid) {
+    if (!lessonsArr) return '';
+    const ff = lessonsArr.find(x => x.id === lid);
+    return ff ? (ff.content || '') : '';
+  }
+
+  // add lesson inside specified chapter element
+  function addLessonToChapter(chapterEl, init = {}) {
+    const lessonsList = chapterEl.querySelector('.lessons-list');
+    const lid = init.id || makeId('les');
+    const nextIndex = lessonsList.querySelectorAll('.lesson-row').length + 1;
+
+    // *** ĐÃ REFACTOR ***
+    // Tạo data object cho lesson mới
+    const lessonData = {
+        id: lid,
+        order_index: nextIndex,
+        title: init.title || 'Tiêu đề mới',
+        video_url: init.video_url || '',
+        video_embed: toEmbedUrl(init.video_url || ''),
+        duration_seconds: init.duration_seconds || 0,
+        is_previewable: !!init.is_previewable,
+        created_at: init.created_at || (new Date()).toLocaleString(),
+        content: init.content || ''
+    };
+
+    // Render HTML bằng template lesson (lessonTpl)
+    const lessonHtml = lessonTpl(lessonData);
+    
+    const frag = document.createElement('div');
+    frag.innerHTML = lessonHtml;
+    lessonsList.appendChild(frag.firstElementChild);
+    
+    // Gắn event và khởi tạo Quill
+    const newLessonEl = lessonsList.querySelector(`.lesson-row[data-lesson-id="${lid}"]`);
+    initLessonQuill(newLessonEl, lid, lessonData.content);
+    wireLessonEvents(newLessonEl);
+
+    renumberLessons(chapterEl);
+  }
+
+  // initialize Quill for a lesson
+  function initLessonQuill(lessonEl, lessonId, initialContent = '') {
+    const quillEl = lessonEl.querySelector('#quill-' + lessonId);
+    if (!quillEl) return;
+    const quill = new Quill(quillEl, {
+      theme: 'snow',
+      modules: {
+        toolbar: [
+          [{ header: [1, 2, false] }],
+          ['bold', 'italic', 'underline'],
+          [{ list: 'ordered' }, { list: 'bullet' }],
+          ['link', 'image'],
+          ['clean']
+        ]
+      }
+    });
+    if (initialContent) quill.clipboard.dangerouslyPasteHTML(initialContent);
+    editors[lessonId] = quill;
+  }
+
+  // attach lesson buttons (delete, preview, up/down)
+  // Logic này giữ nguyên như của bạn
+  function wireLessonEvents(lessonEl) {
+    const lid = lessonEl.getAttribute('data-lesson-id');
+
+    lessonEl.querySelector('.remove-lesson').addEventListener('click', () => {
+      if (!confirm('Xóa lesson này?')) return;
+      // remove quill instance
+      if (editors[lid]) delete editors[lid];
+      const chapterEl = lessonEl.closest('.chapter-card');
+      lessonEl.remove();
+      renumberLessons(chapterEl);
+    });
+
+    lessonEl.querySelector('.preview-video').addEventListener('click', () => {
+      const input = lessonEl.querySelector('.lesson-video');
+      const raw = input.value.trim();
+      const embed = toEmbedUrl(raw);
+      const box = lessonEl.querySelector('.video-preview-box');
+      box.innerHTML = '';
+      if (embed) {
+        const d = document.createElement('div');
+        d.className = 'video-preview';
+        const iframe = document.createElement('iframe');
+        iframe.setAttribute('src', embed);
+        iframe.setAttribute('allowfullscreen', '');
+        d.appendChild(iframe);
+        box.appendChild(d);
+      } else {
+        box.innerHTML = `<div class="video-preview"><div class="text-muted">Không thể preview</div></div>`;
+      }
+    });
+
+    lessonEl.querySelector('.lesson-up').addEventListener('click', () => {
+      const row = lessonEl;
+      const prev = row.previousElementSibling;
+      if (prev && prev.classList.contains('lesson-row')) {
+        row.parentNode.insertBefore(row, prev);
+        renumberLessons(row.closest('.chapter-card'));
+      }
+    });
+
+    lessonEl.querySelector('.lesson-down').addEventListener('click', () => {
+      const row = lessonEl;
+      const next = row.nextElementSibling;
+      if (next && next.classList.contains('lesson-row')) {
+        row.parentNode.insertBefore(next, row);
+        renumberLessons(row.closest('.chapter-card'));
+      }
+    });
+  }
+
+  function renumberChapters() {
+    document.querySelectorAll('.chapter-card').forEach((c, idx) => {
+      c.querySelector('.chapter-label').textContent = `Chapter ${idx + 1} — `;
+    });
+  }
+
+  function renumberLessons(chapterEl) {
+    if (!chapterEl) return;
+    const rows = chapterEl.querySelectorAll('.lesson-row');
+    rows.forEach((r, i) => {
+      r.querySelector('.lesson-label').textContent = `Lesson ${i + 1} — `;
+    });
+  }
+
+  // collect JSON matching DB schema
+  function collectAll() {
+    const chapters = [];
+    document.querySelectorAll('.chapter-card').forEach((cEl, chapterIdx) => {
+      const chapId = cEl.getAttribute('data-chapter-id');
+      const chapTitle = cEl.querySelector('.chapter-title').value;
+      const chapterObj = {
+        id: chapId,
+        number: chapterIdx + 1,
+        title: chapTitle,
+        lessons: []
+      };
+      cEl.querySelectorAll('.lesson-row').forEach((lEl, li) => {
+        const lid = lEl.getAttribute('data-lesson-id');
+        const title = lEl.querySelector('.lesson-title').value;
+        const video_url = lEl.querySelector('.lesson-video').value;
+        const duration_seconds = parseInt(lEl.querySelector('.lesson-duration').value || 0, 10);
+        const is_previewable = !!lEl.querySelector('.lesson-previewable').checked;
+        const content = editors[lid] ? editors[lid].root.innerHTML : '';
+        
+        // *** ĐÃ SỬA LỖI LOGIC ***
+        // Logic cũ của bạn (dùng querySelector code) luôn trả về null
+        const metaEl = lEl.querySelector('.meta-small');
+        const metaText = metaEl ? metaEl.textContent : ''; // "ID: ... — Created: 26/10/2025, 11:34:20"
+        let created_at_val = (new Date()).toISOString(); // Mặc định là bây giờ
+
+        if (metaText.includes('— Created: ')) {
+            const dateStr = metaText.split('— Created: ')[1];
+            if (dateStr) {
+                // Thử parse lại ngày từ chuỗi locale. 
+                // Cách này có thể không ổn định 100% nếu format ngày thay đổi, 
+                // nhưng nó tôn trọng định dạng bạn đang hiển thị.
+                const parsedDate = new Date(dateStr);
+                if (!isNaN(parsedDate)) {
+                    created_at_val = parsedDate.toISOString();
+                }
+            }
+        }
+        
+        chapterObj.lessons.push({
+          id: lid,
+          chapter_id: chapId,
+          title,
+          video_url,
+          duration_seconds,
+          is_previewable,
+          order_index: li + 1,
+          created_at: created_at_val, // Đã sửa
+          content
+        });
+      });
+      chapters.push(chapterObj);
+    });
+    return chapters;
+  }
+
+  // wire global
+  document.getElementById('addChapterBtn').addEventListener('click', () => addChapter({ title: 'Chapter mới' }));
+  document.getElementById('saveBtn').addEventListener('click', () => {
+    const out = collectAll();
+    console.log('COURSE JSON ->', JSON.stringify(out, null, 2));
+    alert('Đã log JSON ra console (mở devtools). Bạn có thể gửi data này lên server.');
+  });
+
+  // sample initial data (Giữ nguyên)
+  addChapter({
+    title: 'Chung',
+    lessons: [
+      {
+        id: 'les-sample-1',
+        order_index: 1,
+        title: 'What is HTML?',
+        video_url: 'https://www.youtube.com/watch?v=UB1O30fR-EE',
+        duration_seconds: 540,
+        is_previewable: true,
+        created_at: (new Date()).toLocaleString(),
+        content: '<p>Giới thiệu HTML — cấu trúc trang web...</p>'
+      }
+    ]
+  });
+
+  addChapter({
+    title: 'Day 1 (29/08)',
+    lessons: [
+      {
+        title: 'Compare Serial Computing vs Parallel Computing',
+        video_url: '',
+        duration_seconds: 0,
+        is_previewable: false,
+        content: '<p>Nội dung lesson...</p>'
+      },
+      {
+        title: 'Slides',
+        video_url: '',
+        duration_seconds: 0,
+        is_previewable: false,
+        content: '<p>Tài liệu slides...</p>'
+      }
+    ]
+  });
+
+})();
+</script>
+
+</body>
+</html>
