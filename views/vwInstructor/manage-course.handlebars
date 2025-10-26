@@ -2,11 +2,13 @@
 <link href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css" rel="stylesheet" />
 <link href="https://releases.transloadit.com/uppy/v5.1.5/uppy.min.css" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="stylesheet" href="/css/course-content.css">
 {{/fillContent}}
 
 {{#fillContent 'js'}}
 <script src="https://cdn.jsdelivr.net/npm/cleave.js@1.6.0/dist/cleave.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
+<script src="/js/course-content.js" defer></script>
 <script>
     // --- SỬA LỖI: Sửa ID cho đúng ---
     new Cleave('#currentPrice', { // <-- Sửa từ #txtPrice
@@ -54,6 +56,9 @@
     <ul class="nav nav-tabs mb-3" id="manageCourseTabs">
         <li class="nav-item">
             <a class="nav-link active" data-bs-toggle="tab" href="#tab-course">Course Info</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" data-bs-toggle="tab" href="#tab-content">Course Content</a>
         </li>
         <li class="nav-item">
             <a class="nav-link" data-bs-toggle="tab" href="#tab-students">Students</a>
@@ -137,6 +142,11 @@
                     </form>
                 </div>
             </div>
+        </div>
+
+        <!-- CONTENT TAB -->
+        <div class="tab-pane fade" id="tab-content">
+            {{> course-content course=course chapters=chapters}}
         </div>
 
         <!-- STUDENTS TAB -->
