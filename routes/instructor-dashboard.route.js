@@ -200,8 +200,55 @@ router.delete('/api/courses/:courseId/chapters/:chapterId', async (req, res) => 
 });
 
 router.get('/create', async (req, res) => {
-    const instructorId = req.session.authUser.user_id;
-    res.render('vwInstructor/create');
+    const instructorId = req.session.authUser.user_id
+    const categories = await categoryModel.findAll();
+    // pass empty oldData and categories so the select can render
+    res.render('vwInstructor/create', { categories, oldData: {} })
+})
+
+// Handle create course by instructor
+router.post('/create', async (req, res) => {
+    try {
+        const instructorId = req.session.authUser.user_id;
+
+        // Basic mapping from form fields to course model fields
+        const {
+            title,
+            full_description,
+            image_url,
+            large_image_url,
+            requirements,
+            category_id,
+            current_price,
+            original_price,
+            is_bestseller
+        } = req.body;
+
+        // normalize numeric fields (remove commas)
+        const sale_price = current_price && String(current_price).trim() !== '' ? parseFloat(String(current_price).replace(/,/g, '')) : null;
+        const price = original_price && String(original_price).trim() !== '' ? parseFloat(String(original_price).replace(/,/g, '')) : 0;
+
+        const newCourse = {
+            title,
+            full_description,
+            image_url,
+            large_image_url: large_image_url || null,
+            requirements: requirements || null,
+            category_id: category_id ? parseInt(category_id) : null,
+            instructor_id: instructorId,
+            price,
+            sale_price,
+            is_bestseller: is_bestseller === 'true' || is_bestseller === 'on' || is_bestseller === '1'
+        };
+
+        await courseModel.add(newCourse);
+        req.session.flash = { success: 'Course created.' };
+        res.redirect('/instructor');
+    } catch (err) {
+        console.error(err);
+        const categories = await categoryModel.findAll();
+        return res.status(400).render('vwInstructor/create', { errorMessages: { general: ['Invalid data'] }, oldData: req.body, categories });
+    }
 });
 
 // Instructor profile (view & update)

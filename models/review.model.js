@@ -34,7 +34,6 @@ export async function updateReview(userId, courseId, rating, comment) {
         .update({
             rating: rating,
             comment: comment || null,
-            updated_at: new Date()
         });
 }
 
