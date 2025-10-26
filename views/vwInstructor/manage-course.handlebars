@@ -48,6 +48,56 @@
             thumbnailPreview.src = v || fallback;
         });
     }
+
+    // Handle category selection changes
+    const parentCategorySelect = document.getElementById('parentCategory');
+    if (parentCategorySelect) {
+        const loadSubcategories = async (categoryId) => {
+            const container = document.getElementById('subcategoryContainer');
+            if (!categoryId) {
+                container.innerHTML = '';
+                return;
+            }
+
+            try {
+                const response = await fetch(`/instructor/api/categories/${categoryId}/subcategories`);
+                if (!response.ok) throw new Error('Failed to fetch subcategories');
+
+                const subcategories = await response.json();
+                // console.log('Loaded subcategories:', subcategories); // Debug log
+
+                if (subcategories && subcategories.length > 0) {
+                    const select = document.createElement('select');
+                    select.className = 'form-select';
+                    select.name = 'subcategory_id';
+                    select.id = 'subcategory';
+
+                    select.innerHTML = `
+                        <option value="">-- Select Sub Category --</option>
+                        ${subcategories.map(sub => `<option value="${sub.category_id}">${sub.name}</option>`).join('')}
+                    `;
+
+                    container.innerHTML = '';
+                    container.appendChild(select);
+                } else {
+                    container.innerHTML = '';
+                }
+            } catch (err) {
+                console.error('Error loading subcategories:', err);
+                container.innerHTML = '<div class="text-danger">Failed to load subcategories</div>';
+            }
+        };
+
+        // Load subcategories for initial selection
+        if (parentCategorySelect.value) {
+            loadSubcategories(parentCategorySelect.value);
+        }
+
+        // Handle change event
+        parentCategorySelect.addEventListener('change', function () {
+            loadSubcategories(this.value);
+        });
+    }
 </script>
 {{/fillContent}}
 <div class="container mt-4">
@@ -119,13 +169,29 @@
                                     value="{{course.sale_price}}" placeholder="0">
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label">Category</label>
-                                <select name="category_id" class="form-select">
-                                    {{#each categories}}
-                                    <option value="{{category_id}}" {{#ifEq category_id
-                                        ../course.category_id}}selected{{/ifEq}}>{{name}}</option>
-                                    {{/each}}
-                                </select>
+                                <label class="form-label fw-semibold">Category</label>
+                                <div class="category-selection">
+                                    <div class="mb-2">
+                                        <select name="category_id" class="form-select" id="parentCategory">
+                                            <option value="">-- Select Main Category --</option>
+                                            {{#each parentCategories}}
+                                            <option value="{{category_id}}" {{#ifEq category_id
+                                                ../course.category_id}}selected{{/ifEq}}>{{name}}</option>
+                                            {{/each}}
+                                        </select>
+                                    </div>
+                                    <div id="subcategoryContainer">
+                                        {{#if subcategories.length}}
+                                        <select name="subcategory_id" class="form-select" id="subcategory">
+                                            <option value="">-- Select Sub Category --</option>
+                                            {{#each subcategories}}
+                                            <option value="{{category_id}}" {{#ifEq category_id
+                                                ../course.subcategory_id}}selected{{/ifEq}}>{{name}}</option>
+                                            {{/each}}
+                                        </select>
+                                        {{/if}}
+                                    </div>
+                                </div>
                             </div>
                         </div>
 

@@ -11,6 +11,72 @@ export function add(category) {
   return db(TABLE_NAME).insert(category);
 }
 
+export async function findParentCategories() {
+  return db(TABLE_NAME)
+    .whereNull('parent_category_id')
+    .orderBy('name', 'asc');
+}
+
+export async function findSubcategories(parentId) {
+  try {
+    console.log('Finding subcategories for parent:', parentId);
+    const results = await db(TABLE_NAME)
+      .where('parent_category_id', parentId)
+      .orderBy('name', 'asc');
+    console.log('Found subcategories:', results);
+    return results;
+  } catch (err) {
+    console.error('Error in findSubcategories:', err);
+    throw err;
+  }
+}
+
+// Thêm hàm để lấy thông tin category cùng với parent category
+export async function findByIdWithParent(id) {
+  const category = await db(TABLE_NAME)
+    .where('category_id', id)
+    .first();
+
+  if (category && category.parent_category_id) {
+    const parent = await db(TABLE_NAME)
+      .where('category_id', category.parent_category_id)
+      .first();
+    category.parent = parent;
+  }
+
+  return category;
+}
+
+// Thêm hàm để lấy toàn bộ category tree
+export async function findCategoryTree() {
+  // Lấy tất cả categories
+  const categories = await db(TABLE_NAME)
+    .select('*')
+    .orderBy('name', 'asc');
+
+  // Tạo map để dễ dàng tìm kiếm
+  const categoryMap = new Map(
+    categories.map(cat => [cat.category_id, { ...cat, children: [] }])
+  );
+
+  // Tạo cây phân cấp
+  const rootCategories = [];
+
+  categories.forEach(cat => {
+    const category = categoryMap.get(cat.category_id);
+    if (cat.parent_category_id === null) {
+      rootCategories.push(category);
+    } else {
+      const parent = categoryMap.get(cat.parent_category_id);
+      if (parent) {
+        parent.children.push(category);
+      }
+    }
+  });
+
+  return rootCategories;
+}
+
 export function findById(id) {
   return db(TABLE_NAME).where('category_id', id).first();
 }
