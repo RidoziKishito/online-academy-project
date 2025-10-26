@@ -19,21 +19,35 @@ router.get('/', async (req, res) => {
 
 // Trang quản lý chi tiết 1 khóa học (thêm/sửa chương, bài giảng)
 router.get('/manage-course/:id', async (req, res) => {
-    // TODO: Thêm logic để lấy chi tiết khóa học, chương, bài giảng
-    // Tương tự như route /learn
     const instructorId = req.session.authUser.user_id;
     const courseId = req.params.id;
+
+    // Lấy thông tin cơ bản của khóa học
     const course = await courseModel.findDetail(courseId, instructorId);
+    if (!course) return res.status(404).render('404');
+
+    // Lấy danh sách học viên và tính progress
     const enrollments = await enrollmentModel.findStudentsByCourse(courseId);
     const totalLessons = await progressModel.countLessonsByCourse(courseId);
-    // compute progress_percent (view expects `progress_percent` and `students` variable name)
+
     for (const enrollment of enrollments) {
         const completedLessons = await progressModel.countCompletedLessons(courseId, enrollment.user_id);
         enrollment.progress_percent = totalLessons === 0 ? 0 : Math.round((completedLessons / totalLessons) * 100);
     }
+
+    // Lấy categories cho dropdown
     const categories = await categoryModel.findAll();
-    // pass students (renamed from enrollments) and categories to match the view
-    res.render('vwInstructor/manage-course', { course, students: enrollments, categories });
+
+    // Lấy chapters và lessons cho tab content
+    const chapters = await (await import('../models/chapter.model.js')).findChaptersWithLessonsByCourseId(courseId);
+
+    // Render với đầy đủ data
+    res.render('vwInstructor/manage-course', {
+        course,
+        students: enrollments,
+        categories,
+        chapters
+    });
 });
 
 router.get('/student-progress/:courseId/:userId', async (req, res) => {
@@ -57,6 +71,122 @@ router.get('/student-progress/:courseId/:userId', async (req, res) => {
         lessons,
     });
 });
+// API Endpoints for Course Content Management
+router.get('/api/courses/:courseId/content', async (req, res) => {
+    try {
+        const instructorId = req.session.authUser.user_id;
+        const courseId = req.params.courseId;
+
+        // Verify ownership
+        const course = await courseModel.findDetail(courseId, instructorId);
+        if (!course) return res.status(403).json({ error: 'Not authorized' });
+
+        // Get chapters with lessons
+        const chapterModel = await import('../models/chapter.model.js');
+        const chapters = await chapterModel.findChaptersWithLessonsByCourseId(courseId);
+
+        res.json({ chapters });
+    } catch (err) {
+        console.error('Error fetching course content:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+router.post('/api/courses/:courseId/content', async (req, res) => {
+    const trx = await db.transaction();
+    try {
+        const instructorId = req.session.authUser.user_id;
+        const courseId = req.params.courseId;
+        const { chapters } = req.body;
+
+        // Verify ownership
+        const course = await courseModel.findDetail(courseId, instructorId);
+        if (!course) return res.status(403).json({ error: 'Not authorized' });
+
+        const chapterModel = await import('../models/chapter.model.js');
+        const lessonModel = await import('../models/lesson.model.js');
+
+        // Process each chapter
+        for (const chapter of chapters) {
+            if (chapter.chapter_id) {
+                // Update existing chapter
+                await chapterModel.patch(chapter.chapter_id, {
+                    title: chapter.title,
+                    order_index: chapter.order_index
+                });
+            } else {
+                // Insert new chapter
+                const [newChapterId] = await chapterModel.add({
+                    course_id: courseId,
+                    title: chapter.title,
+                    order_index: chapter.order_index
+                });
+                chapter.chapter_id = newChapterId;
+            }
+
+            // Process lessons for this chapter
+            if (Array.isArray(chapter.lessons)) {
+                for (const lesson of chapter.lessons) {
+                    const lessonData = {
+                        title: lesson.title,
+                        video_url: lesson.video_url,
+                        duration_seconds: lesson.duration_seconds,
+                        is_previewable: lesson.is_previewable,
+                        order_index: lesson.order_index,
+                        content: lesson.content
+                    };
+
+                    if (lesson.lesson_id) {
+                        // Update existing lesson
+                        await lessonModel.patch(lesson.lesson_id, lessonData);
+                    } else {
+                        // Insert new lesson
+                        await lessonModel.add({
+                            ...lessonData,
+                            chapter_id: chapter.chapter_id
+                        });
+                    }
+                }
+            }
+        }
+
+        await trx.commit();
+        res.json({ success: true });
+    } catch (err) {
+        await trx.rollback();
+        console.error('Error saving course content:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});// Delete chapter endpoint
+router.delete('/api/courses/:courseId/chapters/:chapterId', async (req, res) => {
+    try {
+        const { courseId, chapterId } = req.params;
+        const instructorId = req.session.authUser.user_id;
+
+        // Verify ownership
+        const course = await courseModel.findDetail(courseId, instructorId);
+        if (!course) return res.status(403).json({ error: 'Not authorized' });
+
+        // Delete chapter using model (cascades to lessons)
+        const chapterModel = await import('../models/chapter.model.js');
+        await chapterModel.del(chapterId);
+
+        // Reorder remaining chapters
+        const chapters = await chapterModel.findByCourseId(courseId);
+        await chapterModel.reorderChapters(courseId,
+            chapters.map((ch, idx) => ({
+                chapter_id: ch.chapter_id,
+                order_index: idx + 1
+            }))
+        );
+
+        res.json({ success: true });
+    } catch (err) {
+        console.error('Error deleting chapter:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 router.get('/create', async (req, res) => {
     const instructorId = req.session.authUser.user_id
     const categories = await categoryModel.findAll();

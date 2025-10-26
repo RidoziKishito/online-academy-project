@@ -1,0 +1,132 @@
+.course-content {
+    --chapter-header-height: 56px;
+}
+
+.chapter-card {
+    background: #fff;
+    border: 1px solid rgba(0, 0, 0, .125);
+    border-radius: 8px;
+    transition: all .2s ease-in-out;
+}
+
+.chapter-card:hover {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, .075);
+}
+
+.chapter-card .card-header {
+    background: #f8f9fa;
+    border-bottom: 1px solid rgba(0, 0, 0, .125);
+    height: var(--chapter-header-height);
+}
+
+.chapter-title {
+    border-color: transparent;
+    background: transparent;
+    font-weight: 500;
+    transition: all .2s;
+}
+
+.chapter-title:hover,
+.chapter-title:focus {
+    border-color: #dee2e6;
+    background: #fff;
+}
+
+.lesson-row {
+    background: #fff;
+    transition: all .15s ease-in-out;
+}
+
+.lesson-row:hover {
+    border-color: #0d6efd !important;
+    background-color: #f8f9fa;
+}
+
+.lesson-number {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #6c757d;
+    border: 2px solid #dee2e6;
+}
+
+.lesson-title {
+    font-weight: 500;
+}
+
+.quill-editor {
+    height: 220px;
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 0.25rem;
+}
+
+/* Make video preview same height as editor */
+.video-preview {
+    height: 180px !important;
+}
+
+.video-preview {
+    position: relative;
+    width: 100%;
+    height: 160px;
+    border: 1px solid #dee2e6;
+    border-radius: 0.25rem;
+    background: #f8f9fa;
+    overflow: hidden;
+}
+
+.video-preview iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+}
+
+.chapter-card {
+    background: #fff;
+    border: 1px solid rgba(0, 0, 0, .125);
+    transition: box-shadow .15s ease-in-out;
+}
+
+.chapter-card:hover {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, .075);
+}
+
+.lesson-row {
+    background: #fff;
+    transition: background-color .15s ease-in-out;
+}
+
+.lesson-row:hover {
+    background-color: #f8f9fa;
+}
+
+/* Animation for auto-save button */
+@keyframes pulse {
+    0% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.6;
+    }
+
+    100% {
+        opacity: 1;
+    }
+}
+
+#autoSaveBtn.btn-warning {
+    animation: pulse 2s infinite;
+}
+
+/* Disabled state for move buttons */
+.move-chapter-up:disabled,
+.move-chapter-down:disabled,
+.move-lesson-up:disabled,
+.move-lesson-down:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
