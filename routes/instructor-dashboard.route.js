@@ -4,6 +4,7 @@ import * as courseModel from '../models/courses.model.js';
 import * as progressModel from '../models/progress.model.js';
 import * as enrollmentModel from '../models/enrollment.model.js';
 import * as categoryModel from '../models/category.model.js';
+import ChatService from '../services/chat.service.js';
 
 const router = express.Router();
 
@@ -34,6 +35,31 @@ router.get('/manage-course/:id', async (req, res) => {
     const categories = await categoryModel.findAll();
     // pass students (renamed from enrollments) and categories to match the view
     res.render('vwInstructor/manage-course', { course, students: enrollments, categories });
+});
+
+// Students chat page
+router.get('/students-chat/:courseId', async (req, res) => {
+    try {
+        const { courseId } = req.params;
+        const instructorId = req.session.authUser.user_id;
+
+        // Get course details
+        const course = await courseModel.findDetail(courseId, instructorId);
+        if (!course) {
+            return res.status(404).render('404');
+        }
+
+        // Get students enrolled in this course
+        const students = await enrollmentModel.findStudentsByCourse(courseId);
+
+        res.render('vwInstructor/students-chat', {
+            course: course,
+            students: students
+        });
+    } catch (error) {
+        console.error('Error loading students chat page:', error);
+        res.status(500).render('500');
+    }
 });
 
 router.get('/student-progress/:courseId/:userId', async (req, res) => {

@@ -1,0 +1,102 @@
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Test Chat System</h5>
+                </div>
+                <div class="card-body">
+                    <p>Click "Chat" next to any user to start a conversation.</p>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>User</th>
+                                    <th>Email</th>
+                                    <th>Role</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {{#each users}}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar me-2">
+                                                <i class="bi bi-person-circle text-muted" style="font-size: 1.5rem;"></i>
+                                            </div>
+                                            <div>
+                                                <div class="fw-semibold">{{full_name}}</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>{{email}}</td>
+                                    <td>
+                                        <span class="badge bg-{{#if (eq role 'instructor')}}primary{{else}}success{{/if}}">
+                                            {{role}}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary" onclick="openChat({{../currentUser.user_id}}, {{user_id}})">
+                                            <i class="bi bi-chat-dots"></i> Chat
+                                        </button>
+                                    </td>
+                                </tr>
+                                {{/each}}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">Debug Info</h6>
+                </div>
+                <div class="card-body">
+                    <h6>Current User:</h6>
+                    <p><strong>Name:</strong> {{currentUser.full_name}}</p>
+                    <p><strong>Email:</strong> {{currentUser.email}}</p>
+                    <p><strong>Role:</strong> {{currentUser.role}}</p>
+                    <p><strong>ID:</strong> {{currentUser.user_id}}</p>
+                    
+                    <hr>
+                    
+                    <h6>Instructions:</h6>
+                    <ol>
+                        <li>Click "Chat" next to any user</li>
+                        <li>Chat box should open on the right</li>
+                        <li>Send a message</li>
+                        <li>Open another browser tab and login as that user</li>
+                        <li>Click "Chat" to see the conversation</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Debug function to test chat opening
+window.testChat = function() {
+    console.log('Testing chat system...');
+    console.log('Current user:', window.authUser);
+    console.log('Chat system:', window.chatSystem);
+    
+    if (window.chatSystem) {
+        console.log('Chat system is available');
+    } else {
+        console.error('Chat system not available');
+    }
+};
+
+// Test on page load
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Test chat page loaded');
+    console.log('Auth user:', window.authUser);
+    console.log('Chat system:', window.chatSystem);
+});
+</script>
