@@ -62,8 +62,8 @@ router.get('/profile', restrict, async (req, res) => {
         const coursesWithProgress = await Promise.all(
             enrolledCourses.map(async (course) => {
                 const [allLessons, completedInCourse] = await Promise.all([
-                    progressModel.getTotalLessonsByCourse(course.course_id),
-                    progressModel.getCompletedLessonsByCourse(userId, course.course_id)
+                    progressModel.countLessonsByCourse(course.course_id),
+                    progressModel.countCompletedLessons(course.course_id, userId)
                 ]);
                 
                 const progress = allLessons > 0 ? Math.round((completedInCourse / allLessons) * 100) : 0;

@@ -72,7 +72,7 @@
             <div class="mb-3">
                 <label for="comment" class="form-label">Nhận xét:</label>
                 <textarea class="form-control" id="comment" name="comment" rows="4"
-                    placeholder="Chia sẻ trải nghiệm của bạn..."></textarea>
+                    placeholder="Chia sẻ trải nghiệm của bạn...">{{#if userReview}}{{userReview.comment}}{{/if}}</textarea>
             </div>
             <button type="submit" class="btn btn-primary">
                 {{#if userReview}}Cập nhật đánh giá{{else}}Gửi đánh giá{{/if}}
