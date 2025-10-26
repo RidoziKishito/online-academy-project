@@ -252,9 +252,16 @@ app.use(function (req, res, next) {
 // ================= ROUTERS =================
 // -- Routes công khai (ai cũng xem được) --
 app.get('/', (req, res) => {
-  res.render('home', {
-    layout: 'home-main'
-  });
+  if (!req.session.isAuthenticated) {
+    res.render('home', {
+      layout: 'home-main'
+    });
+  }
+  else {
+    res.render('home-authen', {
+      layout: 'main'
+    });
+  }
 });
 app.use('/account', accountRouter);
 app.use('/courses', courseRouter);
@@ -293,5 +300,5 @@ app.use((err, req, res, next) => {
 });
 // =======================================================
 app.listen(PORT, () => {
-  console.log(`Application listening on port ${PORT}`);
+  console.log('Application listening on port ' + PORT + ' | http://localhost:' + PORT);
 });
