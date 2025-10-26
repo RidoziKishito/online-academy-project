@@ -36,7 +36,17 @@ router.get('/manage-course/:id', async (req, res) => {
     }
 
     // Lấy categories cho dropdown
-    const categories = await categoryModel.findAll();
+    const parentCategories = await categoryModel.findParentCategories();
+
+    // Nếu course đã có category, lấy thông tin đầy đủ của nó
+    let currentCategory = null;
+    if (course.category_id) {
+        currentCategory = await categoryModel.findByIdWithParent(course.category_id);
+    }
+
+    // Lấy subcategories dựa trên parent category
+    const currentParentId = currentCategory?.parent_category_id || course.category_id || parentCategories[0]?.category_id;
+    const subcategories = currentParentId ? await categoryModel.findSubcategories(currentParentId) : [];
 
     // Lấy chapters và lessons cho tab content
     const chapters = await (await import('../models/chapter.model.js')).findChaptersWithLessonsByCourseId(courseId);
@@ -45,7 +55,9 @@ router.get('/manage-course/:id', async (req, res) => {
     res.render('vwInstructor/manage-course', {
         course,
         students: enrollments,
-        categories,
+        currentCategory,
+        parentCategories,
+        subcategories,
         chapters
     });
 });
@@ -307,6 +319,36 @@ router.post('/update-course/:id', async (req, res) => {
     }
 
     res.redirect(`/instructor/manage-course/${courseId}`);
+});
+
+// API endpoint để lấy subcategories
+router.get('/api/categories/:categoryId/subcategories', async (req, res) => {
+    try {
+        const categoryId = parseInt(req.params.categoryId, 10);
+        if (isNaN(categoryId)) {
+            return res.status(400).json({ error: 'Invalid Category ID' });
+        }
+
+        console.log('Fetching subcategories for category:', categoryId); // Debug log
+
+        // Kiểm tra xem category có tồn tại không
+        const category = await categoryModel.findById(categoryId);
+        if (!category) {
+            return res.status(404).json({ error: 'Category not found' });
+        }
+
+        const subcategories = await categoryModel.findSubcategories(categoryId);
+        console.log('Found subcategories:', subcategories); // Debug log
+
+        // Luôn trả về một mảng, ngay cả khi không có subcategories
+        res.json(subcategories || []);
+    } catch (err) {
+        console.error('Error fetching subcategories:', err);
+        res.status(500).json({
+            error: 'Internal server error',
+            details: err.message
+        });
+    }
 });
 
 export default router;
