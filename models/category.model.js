@@ -47,36 +47,6 @@ export async function findByIdWithParent(id) {
   return category;
 }
 
-// Thêm hàm để lấy toàn bộ category tree
-export async function findCategoryTree() {
-  // Lấy tất cả categories
-  const categories = await db(TABLE_NAME)
-    .select('*')
-    .orderBy('name', 'asc');
-
-  // Tạo map để dễ dàng tìm kiếm
-  const categoryMap = new Map(
-    categories.map(cat => [cat.category_id, { ...cat, children: [] }])
-  );
-
-  // Tạo cây phân cấp
-  const rootCategories = [];
-
-  categories.forEach(cat => {
-    const category = categoryMap.get(cat.category_id);
-    if (cat.parent_category_id === null) {
-      rootCategories.push(category);
-    } else {
-      const parent = categoryMap.get(cat.parent_category_id);
-      if (parent) {
-        parent.children.push(category);
-      }
-    }
-  });
-
-  return rootCategories;
-}
-
 export function findById(id) {
   return db(TABLE_NAME).where('category_id', id).first();
 }
