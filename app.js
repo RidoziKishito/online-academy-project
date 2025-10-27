@@ -5,7 +5,10 @@ import session from 'express-session';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import Handlebars from 'handlebars';
+import dotenv from 'dotenv';
 
+// Load environment variables first
+dotenv.config();
 
 import { testEmailConfig } from './utils/mailer.js';
 testEmailConfig();
@@ -23,10 +26,14 @@ const __dirname = path.dirname(__filename);
 
 app.set('trust proxy', 1)
 app.use(session({
-  secret: 'jgiejghewhuoweofijw2t498hjwoifjw4twnfowejhf',
+  secret: process.env.SESSION_SECRET || 'fallback-secret-please-set-SESSION_SECRET-in-env',
   resave: false,
   saveUninitialized: true,
-  cookie: { secure: false }
+  cookie: { 
+    secure: process.env.NODE_ENV === 'production', // true in production with HTTPS
+    httpOnly: true,
+    maxAge: 1000 * 60 * 60 * 24 // 24 hours
+  }
 }));
 
 // Passport (after session)
