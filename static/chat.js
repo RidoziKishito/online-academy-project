@@ -185,11 +185,70 @@ class ChatSystem {
         document.getElementById('conversationsList').style.display = 'none';
         document.getElementById('chatMessages').style.display = 'block';
 
+        // Update chat header with user name
+        await this.updateChatHeader(conversationId);
+
         // Load messages
         await this.loadMessages(conversationId);
 
         // Subscribe to real-time updates
         this.subscribeToMessages(conversationId);
+    }
+
+    async updateChatHeader(conversationId) {
+        try {
+            const response = await fetch(`/api/chat/conversations/${conversationId}`);
+            const data = await response.json();
+
+            if (data.success) {
+                const otherUser = data.data.other_user;
+                const chatHeader = document.querySelector('.chat-header h6');
+                
+                // Update header with user name and add back button
+                chatHeader.innerHTML = `
+                    <button id="backToConversations" class="btn btn-sm btn-outline-secondary me-2" style="padding: 0.25rem 0.5rem;">
+                        <i class="bi bi-arrow-left"></i>
+                    </button>
+                    <span>Chat with ${otherUser.full_name}</span>
+                `;
+
+                // Add back button event listener
+                document.getElementById('backToConversations').addEventListener('click', () => {
+                    this.showConversationsList();
+                });
+            }
+        } catch (error) {
+            console.error('Error updating chat header:', error);
+            // Fallback to generic header
+            const chatHeader = document.querySelector('.chat-header h6');
+            chatHeader.innerHTML = `
+                <button id="backToConversations" class="btn btn-sm btn-outline-secondary me-2" style="padding: 0.25rem 0.5rem;">
+                    <i class="bi bi-arrow-left"></i>
+                </button>
+                <span>Chat</span>
+            `;
+            document.getElementById('backToConversations').addEventListener('click', () => {
+                this.showConversationsList();
+            });
+        }
+    }
+
+    showConversationsList() {
+        // Hide messages container and show conversations list
+        document.getElementById('chatMessages').style.display = 'none';
+        document.getElementById('conversationsList').style.display = 'block';
+        
+        // Reset header to generic "Chat"
+        const chatHeader = document.querySelector('.chat-header h6');
+        chatHeader.innerHTML = 'Chat';
+        
+        // Stop polling for messages
+        if (this.messagePollingInterval) {
+            clearInterval(this.messagePollingInterval);
+            this.messagePollingInterval = null;
+        }
+        
+        this.currentConversationId = null;
     }
 
     async loadMessages(conversationId) {
