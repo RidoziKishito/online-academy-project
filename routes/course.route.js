@@ -283,6 +283,7 @@ router.get('/detail/:id', async (req, res) => {
       }))
     };
 
+
     // 7️⃣ Render
     res.render('vwCourse/details', {
       layout: 'main',
@@ -293,7 +294,8 @@ router.get('/detail/:id', async (req, res) => {
       isEnrolled,
       userReview,
       isInWishlist,
-      session: req.session
+      session: req.session,
+      retUrl: req.originalUrl, 
     });
 
   } catch (err) {

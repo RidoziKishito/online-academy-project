@@ -6,8 +6,9 @@ import { sendResetEmail, sendVerifyEmail } from '../utils/mailer.js';
 
 const router = express.Router();
 
-router.get('/signup', (req, res) => {
-  res.render('vwAccount/signup');
+router.get('/signin', (req, res) => {
+  if (req.query.ret) req.session.retUrl = req.query.ret;
+  res.render('vwAccount/signin', { error: false});
 });
 
 router.post('/signup', async (req, res) => {
@@ -83,8 +84,8 @@ router.get('/is-email-available', async (req, res) => {
   res.json(false);
 });
 
-router.get('/signin', (req, res) => {
-  res.render('vwAccount/signin', { error: false });
+router.get('/signup', (req, res) => {
+  res.render('vwAccount/signup');
 });
 
 router.post('/signin', async (req, res) => {

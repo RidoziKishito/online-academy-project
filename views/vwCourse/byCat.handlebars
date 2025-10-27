@@ -1,6 +1,6 @@
 <div class="card">
-    <div class="card-header">Courses in Category: '{{catname}}'</div>
-    <div class="card-body">
+    <div class="card-header">{{category.name}}</div>
+    <div class="card-body"> 
         {{#if empty}}
         <div class="row">
             <div class="col">
@@ -11,9 +11,14 @@
         {{/if}}
         <div class="row row-gap-3">
             {{#each courses}}
-            <div class="col-md-6">
-                <div class="card">
-                    <img src="{{#if image_url}}{{image_url}}{{else}}https://via.placeholder.com/600x400?text=No+Image{{/if}}" class="card-img-top" alt="{{title}}">
+            <div class="col-md-6 col-lg-4 d-flex">
+                <div class="card flex-fill h-100 shadow-sm">
+                    {{#if image_url}}
+                    <img src="{{image_url}}" class="card-img-top" alt="{{title}}">
+                    {{else}}
+                    <img src="https://via.placeholder.com/600x400?text=No+Image" class="card-img-top" alt="{{title}}">
+                    {{/if}}
+
                     <div class="card-body">
                         <h4 class="card-title">{{title}}</h4>
                         <h5 class="card-title text-danger">{{format_number current_price}}</h5>
@@ -21,10 +26,6 @@
                         <a href="/courses/detail/{{course_id}}" class="btn btn-sm btn-outline-primary">
                             <i class="bi bi-eye"></i>
                             View Details
-                        </a>
-                        <a href="#" class="btn btn-sm btn-outline-success">
-                            <i class="bi bi-book"></i>
-                            Enroll
                         </a>
                     </div>
                 </div>
@@ -57,5 +58,4 @@
             </ul>
         </nav>
     </div>
-    <div class="card-footer text-muted"></div>
 </div>

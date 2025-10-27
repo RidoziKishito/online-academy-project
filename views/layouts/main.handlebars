@@ -60,6 +60,8 @@
     .dropdown-toggle-icon {
       font-size: 1rem;
     }
+
+    
   </style>
 </head>
 
@@ -67,9 +69,11 @@
   <!-- Navbar -->
   <nav class="navbar navbar-expand-lg bg-body-tertiary shadow">
     <div class="container-fluid px-4">
-      <a class="navbar-brand text-primary fw-bold" href="/">
-          <i class="bi bi-mortarboard-fill text-success"></i> VietEdu Academy
+      <a class="navbar-brand text-primary fw-bold d-flex align-items-center" href="/">
+        <i class="bi bi-mortarboard-fill text-success me-2 fs-4"></i>
+        <b>VietEdu Academy</b>
       </a>
+
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent"
         aria-controls="navbarContent" aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>
@@ -79,12 +83,17 @@
         <ul class="navbar-nav me-auto mb-2 mb-lg-0">
 
           <li class="nav-item">
-            <a class="nav-link active" href="/courses"><b>Courses</b></a>
+            <a class="nav-link" href="/courses"><b>Courses</b></a>
           </li>
 
           <li class="nav-item">
-            <a class="nav-link active" href="/courses/allCat"><b>Category</b></a>
+            <a class="nav-link" href="/courses/allCat"><b>Category</b></a>
           </li>
+
+          <li class="nav-item">
+            <a class="nav-link" href="/instructors"><b>Instructor</b></a>
+          </li>
+
 
         </ul>
 

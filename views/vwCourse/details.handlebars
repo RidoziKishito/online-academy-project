@@ -65,7 +65,7 @@
           <div>
             <div class="fw-semibold">
               Instructor:
-              <a href="/instructor/{{course.instructor_id}}" class="text-success text-decoration-none">
+              <a href="/instructors/{{course.instructor_id}}" class="text-success text-decoration-none">
                 {{course.instructor_name}}
               </a>
             </div>
@@ -103,36 +103,29 @@
               <!-- Nút hành động -->
 <div class="text-center">
   {{#if isEnrolled}}
-    <a class="btn btn-primary rounded-pill py-2 px-4 shadow-sm fw-semibold" href="/learn/{{course.course_id}}">
+    <a class="btn btn-primary rounded-pill py-2 px-4 shadow-sm fw-semibold" href="/learn/{{course.id}}">
       <i class="bi bi-play-circle me-2"></i>Continue learning
     </a>
   {{else}}
     <!-- Hàng 1: Add to Cart + Buy Now -->
     <div class="d-flex justify-content-center align-items-center mb-3 flex-wrap">
-      <button class="btn btn-success rounded-pill py-2 shadow-sm fw-semibold me-2" id="addToCartBtn">
-        <i class="bi bi-cart3 me-2"></i>Add to Cart
-      </button>
       <button class="btn btn-outline-success rounded-pill py-2 fw-semibold me-2" id="buyNowBtn">
         <i class="bi bi-lightning-charge-fill me-2"></i>Buy Now
       </button>
-    </div>
-
-    <!-- Hàng 2: Wishlist -->
-    <div class="d-flex justify-content-center">
       {{#if @root.session.authUser}}
         {{#if isInWishlist}}
-          <button type="button" class="btn btn-danger rounded-pill py-2" id="wishlistBtn" data-course-id="{{course.course_id}}">
+          <button type="button" class="btn btn-danger rounded-pill py-2" id="wishlistBtn" data-course-id="{{course.id}}">
             <i class="bi bi-heart-fill"></i>
-            <span id="wishlistText">Remove from Wishlist</span>
+            <span id="wishlistText">Remove</span>
           </button>
         {{else}}
-          <button type="button" class="btn btn-outline-danger rounded-pill py-2" id="wishlistBtn" data-course-id="{{course.course_id}}">
+          <button type="button" class="btn btn-outline-danger rounded-pill py-2" id="wishlistBtn" data-course-id="{{course.id}}">
             <i class="bi bi-heart"></i>
             <span id="wishlistText">Add to Wishlist</span>
           </button>
         {{/if}}
       {{else}}
-        <a href="/auth/login" class="btn btn-outline-danger rounded-pill py-2">
+      <a href="/account/signin?ret={{retUrl}}" class="btn btn-outline-danger rounded-pill py-2">
           <i class="bi bi-heart"></i> Add to Wishlist
         </a>
       {{/if}}
@@ -144,7 +137,7 @@
               {{!-- Enroll form for free course (optional) --}}
               {{#if course.is_free}}
                 {{#unless isEnrolled}}
-                  <form method="POST" action="/courses/detail/{{course.course_id}}/enroll" class="mt-3">
+                  <form method="POST" action="/courses/detail/{{course.id}}/enroll" class="mt-3">
                     <button type="submit" class="btn btn-outline-primary btn-sm">Enroll for Free</button>
                   </form>
                 {{/unless}}
@@ -298,7 +291,7 @@
           <div>
             <h5 class="fw-bold mb-1">{{course.instructor_name}}</h5>
             <p class="text-muted small mb-2">{{course.instructor_bio}}</p>
-            <a href="/instructor/{{course.instructor_id}}" class="btn btn-outline-success rounded-pill btn-sm">
+            <a href="/instructors/{{course.instructor_id}}" class="btn btn-outline-success rounded-pill btn-sm">
               View More Courses
             </a>
           </div>
@@ -311,7 +304,7 @@
       <h4 class="fw-bold mb-3"><i class="bi bi-book text-success me-2"></i>Related Courses</h4>
       <div class="row row-cols-1 row-cols-md-4 g-4">
         {{#each related_courses}}
-          <a class="col text-decoration-none" href="/courses/detail/{{this.course_id}}">
+          <a class="col text-decoration-none" href="/courses/detail/{{this.id}}">
             <div class="card border-0 shadow-sm rounded-4 h-100">
               <img src="{{this.image_url}}" class="card-img-top" height="180" alt="{{this.title}}">
               <div class="card-body">
@@ -403,11 +396,12 @@ document.addEventListener('DOMContentLoaded', function () {
             body: JSON.stringify({ courseId: parseInt(courseId) })
           });
           const result = await res.json();
+          console.log(result);
 
           if (result.success) {
             if (result.action === 'added') {
               this.className = 'btn btn-danger rounded-pill py-2';
-              this.innerHTML = '<i class="bi bi-heart-fill"></i> <span id="wishlistText">Remove from Wishlist</span>';
+              this.innerHTML = '<i class="bi bi-heart-fill"></i> <span id="wishlistText">Remove</span>';
             } else {
               this.className = 'btn btn-outline-danger rounded-pill py-2';
               this.innerHTML = '<i class="bi bi-heart"></i> <span id="wishlistText">Add to Wishlist</span>';

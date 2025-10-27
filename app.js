@@ -15,6 +15,33 @@ import { restrict, isAdmin, isInstructor } from './middlewares/auth.mdw.js';
 import * as categoryModel from './models/category.model.js';
 import * as viewModel from './models/views.model.js';
 
+const app = express();
+const PORT = 3000;
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+app.set('trust proxy', 1)
+app.use(session({
+  secret: 'jgiejghewhuoweofijw2t498hjwoifjw4twnfowejhf',
+  resave: false,
+  saveUninitialized: true,
+  cookie: { secure: false }
+}));
+
+// Passport (after session)
+app.use(passport.initialize());
+app.use(passport.session());
+
+
+app.set('view engine', 'handlebars');
+app.set('views', './views');
+
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json()); // Thêm dòng này để xử lý JSON body cho các API
+app.use('/static', express.static('static'));
+app.use(express.static('public')); // Add this line to serve files from public directory
+
 // Import Routers
 import accountRouter from './routes/account.route.js';
 import courseRouter from './routes/course.route.js';
@@ -35,24 +62,6 @@ import testChatRouter from './routes/test-chat.route.js';
 import passport from './utils/passport.js';
 import authRouter from './routes/auth.route.js';
 import rateLimit from 'express-rate-limit';
-
-const app = express();
-const PORT = 3000;
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-app.set('trust proxy', 1)
-app.use(session({
-  secret: 'jgiejghewhuoweofijw2t498hjwoifjw4twnfowejhf',
-  resave: false,
-  saveUninitialized: true,
-  cookie: { secure: false }
-}));
-
-// Passport (after session)
-app.use(passport.initialize());
-app.use(passport.session());
 
 app.engine('handlebars', engine({
   defaultLayout: 'main',
@@ -200,17 +209,14 @@ app.engine('handlebars', engine({
 
     iconOrDefault(categoryIcons, name) {
       return categoryIcons[name] || "bi bi-folder";
+    },
+    encodeURIComponent(str) {
+    return encodeURIComponent(str);
     }
 
   }
 }));
-app.set('view engine', 'handlebars');
-app.set('views', './views');
 
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json()); // Thêm dòng này để xử lý JSON body cho các API
-app.use('/static', express.static('static'));
-app.use(express.static('public')); // Add this line to serve files from public directory
 
 // ================= MIDDLEWARES TOÀN CỤC =================
 // Middleware cung cấp thông tin đăng nhập cho tất cả các view

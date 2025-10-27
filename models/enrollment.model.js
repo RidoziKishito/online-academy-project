@@ -28,7 +28,6 @@ export async function checkEnrollment(userId, courseId, withDetail = false) {
   const row = await db(TABLE_NAME)
     .where({ user_id: userId, course_id: courseId })
     .first();
-  console.log('[checkEnrollment]', { userId, courseId, found: !!row });
   return !!row;
 }
 
