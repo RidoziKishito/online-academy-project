@@ -60,6 +60,7 @@ import instructorAdminRouter from './routes/instructor.route.js';
 import courseAdminRouter from './routes/course-admin.route.js';
 import adminDashboardRouter from './routes/admin-dashboard.route.js';
 import adminAccountsRouter from './routes/admin-accounts.route.js';
+import adminContactRouter from './routes/admin-contact.route.js';
 import contactRouter from './routes/contact.route.js';
 import sitemapRouter from './routes/sitemap.route.js';
 import instructorsRouter from './routes/instructors.route.js';
@@ -373,6 +374,7 @@ app.use('/admin/instructors', restrict, isAdmin, instructorAdminRouter);
 app.use('/admin/courses', restrict, isAdmin, courseAdminRouter);
 app.use('/admin/dashboard', restrict, isAdmin, adminDashboardRouter);
 app.use('/admin/accounts', restrict, isAdmin, adminAccountsRouter);
+app.use('/admin/contact', restrict, isAdmin, adminContactRouter);
 app.use('/contact', contactRouter);
 app.use('/sitemap', sitemapRouter);
 
