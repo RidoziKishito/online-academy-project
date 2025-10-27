@@ -13,7 +13,7 @@ export const CHAT_CONFIG = {
     RATE_LIMIT_MAX_MESSAGES: process.env.RATE_LIMIT_MAX_MESSAGES || 30,
     
     // Message types
-    ALLOWED_MESSAGE_TYPES: ['text', 'emoji'],
+    ALLOWED_MESSAGE_TYPES: ['text'],
     
     // UI configuration
     SCROLL_DELAY: 100, // milliseconds

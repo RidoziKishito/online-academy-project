@@ -155,7 +155,7 @@ router.post('/conversations/:id/messages', restrict, messageRateLimit, async (re
         }
 
         // Validate message type
-        const allowedTypes = ['text', 'emoji'];
+        const allowedTypes = ['text'];
         if (!allowedTypes.includes(messageType)) {
             return res.status(400).json({
                 success: false,

@@ -71,16 +71,35 @@ const Message = {
             .first();
 
         if (!messageStorage || !messageStorage.messages) {
-            return [];
+            return {
+                messages: [],
+                pagination: {
+                    page,
+                    limit,
+                    total: 0,
+                    totalPages: 0
+                }
+            };
         }
 
         const messages = messageStorage.messages;
         const totalMessages = messages.length;
         
-        // Get messages in chronological order (oldest first) with pagination
-        const startIndex = offset;
-        const endIndex = Math.min(offset + limit, totalMessages);
-        const paginatedMessages = messages.slice(startIndex, endIndex);
+        // For "load older messages", we need to get messages from the end of the array
+        // Page 1: newest messages (last N messages in chronological order)
+        // Page 2+: older messages (previous N messages going backwards)
+        let paginatedMessages;
+        
+        if (page === 1) {
+            // First page: get the most recent messages
+            const startIndex = Math.max(0, totalMessages - limit);
+            paginatedMessages = messages.slice(startIndex);
+        } else {
+            // Subsequent pages: get older messages going backwards
+            const startIndex = Math.max(0, totalMessages - (page * limit));
+            const endIndex = totalMessages - ((page - 1) * limit);
+            paginatedMessages = messages.slice(startIndex, endIndex);
+        }
 
         return {
             messages: paginatedMessages,
