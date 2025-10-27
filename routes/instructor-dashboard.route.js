@@ -131,7 +131,6 @@ router.get('/api/courses/:courseId/content', async (req, res) => {
 });
 
 router.post('/api/courses/:courseId/content', async (req, res) => {
-    const trx = await db.transaction();
     try {
         const instructorId = req.session.authUser.user_id;
         const courseId = req.params.courseId;
@@ -141,61 +140,16 @@ router.post('/api/courses/:courseId/content', async (req, res) => {
         const course = await courseModel.findDetail(courseId, instructorId);
         if (!course) return res.status(403).json({ error: 'Not authorized' });
 
-        const chapterModel = await import('../models/chapter.model.js');
-        const lessonModel = await import('../models/lesson.model.js');
+        // Gọi model xử lý toàn bộ DB logic
+        await courseModel.updateCourseContent(courseId, chapters);
 
-        // Process each chapter
-        for (const chapter of chapters) {
-            if (chapter.chapter_id) {
-                // Update existing chapter
-                await chapterModel.patch(chapter.chapter_id, {
-                    title: chapter.title,
-                    order_index: chapter.order_index
-                });
-            } else {
-                // Insert new chapter
-                const [newChapterId] = await chapterModel.add({
-                    course_id: courseId,
-                    title: chapter.title,
-                    order_index: chapter.order_index
-                });
-                chapter.chapter_id = newChapterId;
-            }
-
-            // Process lessons for this chapter
-            if (Array.isArray(chapter.lessons)) {
-                for (const lesson of chapter.lessons) {
-                    const lessonData = {
-                        title: lesson.title,
-                        video_url: lesson.video_url,
-                        duration_seconds: lesson.duration_seconds,
-                        is_previewable: lesson.is_previewable,
-                        order_index: lesson.order_index,
-                        content: lesson.content
-                    };
-
-                    if (lesson.lesson_id) {
-                        // Update existing lesson
-                        await lessonModel.patch(lesson.lesson_id, lessonData);
-                    } else {
-                        // Insert new lesson
-                        await lessonModel.add({
-                            ...lessonData,
-                            chapter_id: chapter.chapter_id
-                        });
-                    }
-                }
-            }
-        }
-
-        await trx.commit();
         res.json({ success: true });
     } catch (err) {
-        await trx.rollback();
         console.error('Error saving course content:', err);
         res.status(500).json({ error: 'Internal server error' });
     }
-});// Delete chapter endpoint
+});
+
 router.delete('/api/courses/:courseId/chapters/:chapterId', async (req, res) => {
     try {
         const { courseId, chapterId } = req.params;
@@ -226,10 +180,32 @@ router.delete('/api/courses/:courseId/chapters/:chapterId', async (req, res) => 
 });
 
 router.get('/create', async (req, res) => {
-    const instructorId = req.session.authUser.user_id
-    const categories = await categoryModel.findAll();
-    // pass empty oldData and categories so the select can render
-    res.render('vwInstructor/create', { categories, oldData: {} })
+    try {
+        const instructorId = req.session.authUser.user_id;
+        // Lấy danh sách parent categories và subcategories
+        const parentCategories = await categoryModel.findParentCategories();
+        let subcategories = [];
+
+        // Nếu có parent categories, lấy subcategories của parent đầu tiên
+        if (parentCategories.length > 0) {
+            subcategories = await categoryModel.findSubcategories(parentCategories[0].category_id);
+        }
+
+        res.render('vwInstructor/create', {
+            parentCategories,
+            subcategories,
+            oldData: {},
+            // Thêm helper text cho instructor
+            helpText: {
+                draft: 'Save as draft to continue editing later',
+                submit: 'Submit for review to make your course available after approval'
+            }
+        });
+    } catch (err) {
+        console.error('Error loading create course page:', err);
+        req.session.flash = { error: 'Failed to load create course page' };
+        res.redirect('/instructor/create');
+    }
 })
 
 // Handle create course by instructor
@@ -237,39 +213,65 @@ router.post('/create', async (req, res) => {
     try {
         const instructorId = req.session.authUser.user_id;
 
-        // Basic mapping from form fields to course model fields
         const {
             title,
+            short_description,
             full_description,
             image_url,
             large_image_url,
             requirements,
             category_id,
-            current_price,
-            original_price,
-            is_bestseller
+            subcategory_id, // Thêm subcategory_id
+            price,
+            sale_price,
+            save_type
         } = req.body;
 
+        // Kiểm tra subcategory có thuộc parent category không
+        if (subcategory_id) {
+            const subcategory = await categoryModel.findById(subcategory_id);
+            if (!subcategory || subcategory.parent_category_id !== parseInt(category_id)) {
+                throw new Error('Invalid subcategory selection');
+            }
+        }
+
+        // Validate required fields
+        if (!title || !short_description || !full_description || !image_url || !category_id || !price) {
+            throw new Error('Missing required fields');
+        }
+
         // normalize numeric fields (remove commas)
-        const sale_price = current_price && String(current_price).trim() !== '' ? parseFloat(String(current_price).replace(/,/g, '')) : null;
-        const price = original_price && String(original_price).trim() !== '' ? parseFloat(String(original_price).replace(/,/g, '')) : 0;
+        const normalizedPrice = parseFloat(String(price).replace(/,/g, ''));
+        const normalizedSalePrice = sale_price ? parseFloat(String(sale_price).replace(/,/g, '')) : null;
+
+        // Validate price logic
+        if (normalizedSalePrice && normalizedSalePrice >= normalizedPrice) {
+            throw new Error('Sale price must be less than regular price');
+        }
 
         const newCourse = {
-            title,
+            title: title.trim(),
+            short_description: short_description.trim(),
             full_description,
             image_url,
             large_image_url: large_image_url || null,
             requirements: requirements || null,
-            category_id: category_id ? parseInt(category_id) : null,
+            category_id: parseInt(category_id),
             instructor_id: instructorId,
-            price,
-            sale_price,
-            is_bestseller: is_bestseller === 'true' || is_bestseller === 'on' || is_bestseller === '1'
+            price: normalizedPrice,
+            sale_price: normalizedSalePrice,
+            status: save_type === 'draft' ? 'draft' : 'pending',
+            is_complete: false,
+            is_bestseller: false, // Only admin can set bestseller status
+            view_count: 0,
+            enrollment_count: 0,
+            rating_avg: 0,
+            rating_count: 0
         };
 
         await courseModel.add(newCourse);
         req.session.flash = { success: 'Course created.' };
-        res.redirect('/instructor');
+        res.redirect('/instructor/create');
     } catch (err) {
         console.error(err);
         const categories = await categoryModel.findAll();

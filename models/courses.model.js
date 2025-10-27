@@ -10,6 +10,63 @@ export function findByCategory(categoryId) {
   return db(TABLE_NAME).where('category_id', categoryId);
 }
 
+export async function updateCourseContent(courseId, chapters) {
+  return db.transaction(async (trx) => {
+    try {
+      const chapterModel = await import('./chapter.model.js');
+      const lessonModel = await import('./lesson.model.js');
+
+      // Process each chapter
+      for (const chapter of chapters) {
+        if (chapter.chapter_id) {
+          // Update existing chapter
+          await chapterModel.patch(chapter.chapter_id, {
+            title: chapter.title,
+            order_index: chapter.order_index
+          }, trx);
+        } else {
+          // Insert new chapter
+          const [newChapterId] = await chapterModel.add({
+            course_id: courseId,
+            title: chapter.title,
+            order_index: chapter.order_index
+          }, trx);
+          chapter.chapter_id = newChapterId;
+        }
+
+        // Process lessons for this chapter
+        if (Array.isArray(chapter.lessons)) {
+          for (const lesson of chapter.lessons) {
+            const lessonData = {
+              title: lesson.title,
+              video_url: lesson.video_url,
+              duration_seconds: lesson.duration_seconds,
+              is_previewable: lesson.is_previewable,
+              order_index: lesson.order_index,
+              content: lesson.content
+            };
+
+            if (lesson.lesson_id) {
+              // Update existing lesson
+              await lessonModel.patch(lesson.lesson_id, lessonData, trx);
+            } else {
+              // Insert new lesson
+              await lessonModel.add({
+                ...lessonData,
+                chapter_id: chapter.chapter_id
+              }, trx);
+            }
+          }
+        }
+      }
+
+      return true;
+    } catch (err) {
+      throw err;
+    }
+  });
+}
+
 export function findPageByCategory(categoryId, offset, limit) {
   return db(TABLE_NAME)
     .where('category_id', categoryId)
@@ -44,9 +101,52 @@ export function findByInstructor(instructorId) {
 export function findDetail(courseId, instructorId) {
   return db('courses as c')
     .leftJoin('categories as cat', 'c.category_id', 'cat.category_id')
-    .select('c.*', 'cat.name as category_name')
-    .where({ 'c.course_id': courseId, 'c.instructor_id': instructorId })
+    .select(
+      'c.*',
+      'cat.name as category_name',
+      'cat.parent_category_id'
+    )
+    .where({
+      'c.course_id': courseId,
+      'c.instructor_id': instructorId
+    })
     .first();
+}
+
+// Lấy danh sách khóa học theo trạng thái
+export function findByInstructorAndStatus(instructorId, status) {
+  return db('courses as c')
+    .leftJoin('categories as cat', 'c.category_id', 'cat.category_id')
+    .select(
+      'c.course_id',
+      'c.title',
+      'c.image_url',
+      'c.price',
+      'c.sale_price',
+      'c.is_complete',
+      'c.status',
+      'c.enrollment_count',
+      'c.rating_avg',
+      'c.rating_count',
+      'c.created_at',
+      'cat.name as category_name'
+    )
+    .where({
+      'c.instructor_id': instructorId,
+      'c.status': status
+    })
+    .orderBy('c.created_at', 'desc');
+}
+
+// Check if course belongs to instructor
+export async function verifyInstructorOwnership(courseId, instructorId) {
+  const course = await db(TABLE_NAME)
+    .where({
+      course_id: courseId,
+      instructor_id: instructorId
+    })
+    .first();
+  return !!course;
 }
 
 export function search(keyword) {
@@ -158,8 +258,50 @@ export function countEnrollmentsByCourse(courseId) {
     .then(result => parseInt(result.count || 0));
 }
 
+export function incrementViewCount(courseId) {
+  return db(TABLE_NAME)
+    .where('course_id', courseId)
+    .increment('view_count', 1);
+}
+
 export function incrementEnrollment(courseId) {
-  return db(TABLE_NAME).where('course_id', courseId).increment('enrollment_count', 1);
+  return db(TABLE_NAME)
+    .where('course_id', courseId)
+    .increment('enrollment_count', 1);
+}
+
+// Cập nhật trạng thái của khóa học
+export function updateStatus(courseId, status) {
+  return db(TABLE_NAME)
+    .where('course_id', courseId)
+    .update({
+      status,
+      updated_at: new Date()
+    });
+}
+
+// Kiểm tra xem khóa học đã hoàn thành chưa
+export async function checkCourseCompletion(courseId) {
+  // Đếm tổng số chapter và lesson
+  const stats = await db('chapters as ch')
+    .leftJoin('lessons as l', 'ch.chapter_id', 'l.chapter_id')
+    .where('ch.course_id', courseId)
+    .count('ch.chapter_id as chapter_count')
+    .count('l.lesson_id as lesson_count')
+    .first();
+
+  // Nếu có ít nhất 1 chapter và 1 lesson, coi như đã hoàn thành
+  const isComplete = parseInt(stats.chapter_count) > 0 && parseInt(stats.lesson_count) > 0;
+
+  // Cập nhật trạng thái hoàn thành
+  await db(TABLE_NAME)
+    .where('course_id', courseId)
+    .update({
+      is_complete: isComplete,
+      updated_at: new Date()
+    });
+
+  return isComplete;
 }
 
 export async function updateAverageRating(courseId) {
@@ -208,6 +350,6 @@ export async function findByCategories(categoryIds) {
   const rows = await db(TABLE_NAME)
     .whereIn('category_id', categoryIds)
     .select('*');
-  
+
   return rows;
 }
