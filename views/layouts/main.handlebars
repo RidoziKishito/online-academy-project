@@ -23,6 +23,9 @@
 
   <!-- Local style (optional) -->
   <link rel="stylesheet" href="/static/style.css">
+  
+  <!-- Chat System CSS -->
+  <link rel="stylesheet" href="/static/chat.css">
 
   <style>
     /* Sticky footer layout */
@@ -318,7 +321,31 @@
   <!-- SweetAlert2 JS -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
+  <!-- Supabase JS (for real-time features) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  
+  <!-- Chat System JS -->
+  <script src="/static/chat.js"></script>
+
   {{{_sections.js}}}
+  
+  <!-- Initialize Supabase and Chat System -->
+  <script>
+    // Make auth user available globally
+    window.authUser = {{#if authUser}}{
+      user_id: {{authUser.user_id}},
+      full_name: "{{authUser.full_name}}",
+      email: "{{authUser.email}}",
+      role: "{{authUser.role}}"
+    }{{else}}null{{/if}};
+    
+    // Initialize Supabase if configured
+    {{#if supabaseUrl}}
+    window.supabase = supabase.createClient('{{supabaseUrl}}', '{{supabaseAnonKey}}');
+    {{else}}
+    console.log('Supabase not configured. Real-time features disabled.');
+    {{/if}}
+  </script>
 </body>
 
 </html>

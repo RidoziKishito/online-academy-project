@@ -30,8 +30,11 @@ import contactRouter from './routes/contact.route.js';
 import sitemapRouter from './routes/sitemap.route.js';
 import instructorsRouter from './routes/instructors.route.js';
 import reviewRoute from './routes/review.route.js';
+import chatRouter from './routes/chat.route.js';
+import testChatRouter from './routes/test-chat.route.js';
 import passport from './utils/passport.js';
 import authRouter from './routes/auth.route.js';
+import rateLimit from 'express-rate-limit';
 
 const app = express();
 const PORT = 3000;
@@ -243,6 +246,13 @@ app.use(function (req, res, next) {
   next();
 });
 
+// Provide Supabase configuration to templates
+app.use(function (req, res, next) {
+  res.locals.supabaseUrl = process.env.SUPABASE_URL;
+  res.locals.supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+  next();
+});
+
 // Middleware cung cấp danh sách lĩnh vực cho layout
 app.use(async function (req, res, next) {
   const list = await categoryModel.findAll();
@@ -301,6 +311,31 @@ app.use('/admin/dashboard', restrict, isAdmin, adminDashboardRouter);
 app.use('/admin/accounts', restrict, isAdmin, adminAccountsRouter);
 app.use('/contact', contactRouter);
 app.use('/sitemap', sitemapRouter);
+
+// Rate limiting for chat endpoints
+const chatRateLimit = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 100, // limit each IP to 100 requests per windowMs
+    message: {
+        success: false,
+        message: 'Too many requests, please try again later'
+    }
+});
+
+const messageRateLimit = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 30, // limit each IP to 30 message requests per windowMs
+    message: {
+        success: false,
+        message: 'Too many messages, please slow down'
+    }
+});
+
+// -- Chat API Routes (need authentication) --
+app.use('/api/chat', restrict, chatRateLimit, chatRouter);
+
+// -- Test Chat Route (for debugging) --
+app.use('/test', restrict, testChatRouter);
 // =======================================================
 
 
