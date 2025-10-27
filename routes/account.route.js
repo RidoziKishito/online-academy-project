@@ -188,7 +188,8 @@ router.post('/profile', restrict, async (req, res) => {
   // Dữ liệu cần cập nhật
   const updatedUser = {
     full_name: req.body.fullName,
-    email: req.body.email
+    email: req.body.email,
+    avatar_url: req.body.avt_url
   };
   await userModel.patch(user_id, updatedUser);
 

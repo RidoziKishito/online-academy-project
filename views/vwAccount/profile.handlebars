@@ -1,24 +1,82 @@
 <form action="" method="post">
-    <div class="card">
-        <div class="card-header">Profile</div>
-        <div class="card-body">
-            {{#if success}}
-                <div class="alert alert-success">Profile updated.</div>
-            {{/if}}
-            <div class="mb-3">
-                <label for="txtName" class="form-label">Full name</label>
-                <input type="text" class="form-control" id="txtName" name="fullName" autofocus value="{{authUser.full_name}}">
-            </div>
-            <div class="mb-3">
-                <label for="txtEmail" class="form-label">Email</label>
-                <input type="email" class="form-control" id="txtEmail" name="email" value="{{authUser.email}}">
-            </div>
+  <div class="card">
+    <div class="card-header">Profile</div>
+    <div class="card-body">
+      {{#if success}}
+        <div class="alert alert-success">Profile updated.</div>
+      {{/if}}
+
+      <div class="mb-3">
+        <label for="txtName" class="form-label">Full name</label>
+        <input type="text" class="form-control" id="txtName" name="fullName" autofocus value="{{authUser.full_name}}">
+      </div>
+
+      <div class="mb-3">
+        <label for="txtEmail" class="form-label">Email</label>
+        <input type="email" class="form-control" id="txtEmail" name="email" value="{{authUser.email}}">
+      </div>
+
+      <!-- 🖼️ Change Avatar Section -->
+      <hr>
+      <div class="mb-3">
+        <label for="txtAvatar" class="form-label">Change Avatar</label>
+        <div class="input-group">
+          <input type="url" class="form-control" id="txtAvatar" name="avt_url"
+                 placeholder="Enter image URL (https://...)" value="{{authUser.avatar_url}}">
+          <button type="button" class="btn btn-outline-primary" id="btnCheckAvatar">
+            <i class="bi bi-check-circle"></i>
+          </button>
         </div>
-        <div class="card-footer text-muted">
-            <button type="submit" class="btn btn-outline-success">
-                <i class="bi bi-save"></i>
-                Save
-            </button>
+        <div class="mt-3 text-center">
+          <img id="avatarPreview" src="{{authUser.avatar_url}}" 
+               alt="Avatar preview" class="img-thumbnail rounded-circle" 
+               style="width: 120px; height: 120px; object-fit: cover; display: none;">
         </div>
+      </div>
     </div>
+
+    <div class="card-footer text-muted text-center">
+      <button type="submit" class="btn btn-outline-success">
+        <i class="bi bi-save"></i> Save
+      </button>
+    </div>
+  </div>
 </form>
+
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const btnCheck = document.getElementById('btnCheckAvatar');
+  const input = document.getElementById('txtAvatar');
+  const preview = document.getElementById('avatarPreview');
+
+  btnCheck.addEventListener('click', () => {
+    const url = input.value.trim();
+    if (!url) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Please enter an image URL!',
+        showConfirmButton: false,
+        timer: 1500
+      });
+      return;
+    }
+
+    // Tạo 1 ảnh mới để kiểm tra
+    const img = new Image();
+    img.onload = () => {
+      preview.src = url;
+      preview.style.display = 'inline-block';
+    };
+    img.onerror = () => {
+      preview.style.display = 'none';
+      Swal.fire({
+        icon: 'error',
+        title: 'Picture not available',
+        text: 'The provided link is invalid or image not accessible.',
+      });
+    };
+    img.src = url;
+  });
+});
+</script>
