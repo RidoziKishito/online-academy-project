@@ -1,361 +1,414 @@
-<div class="container-fluid p-0">
-    <div class="row g-0">
-        <!-- Video Player Section -->
-        <div class="col-lg-12">
-            <div class="video-container bg-dark position-relative">
-                {{#if currentLesson.video_url}}
-
-                {{#if (isYouTube currentLesson.video_url)}}
-                <!-- YouTube iframe -->
+<!-- WATCH PAGE: Video (Left) + Sidebar (Right) -->
+<div class="container-fluid">
+  <div class="row gx-4 align-items-start">
+    
+    <!-- Main Content: Video player - BÊN TRÁI -->
+    <section class="col-lg-9 col-md-8 mb-4">
+      <div class="card h-100 border-0 shadow-sm rounded-4">
+        <div class="card-body p-0">
+          <!-- Video Container -->
+          <div class="video-container bg-dark position-relative rounded-top-4 overflow-hidden">
+            {{#if currentLesson.video_url}}
+              {{#if (isYouTube currentLesson.video_url)}}
                 <div class="ratio ratio-16x9" style="min-height: 450px;">
-                    <iframe id="youtubePlayer" src="{{getYouTubeEmbedUrl currentLesson.video_url}}"
-                        title="{{currentLesson.title}}" frameborder="0"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                        allowfullscreen></iframe>
+                  <iframe id="youtubePlayer" src="{{getYouTubeEmbedUrl currentLesson.video_url}}"
+                    title="{{currentLesson.title}}" frameborder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowfullscreen></iframe>
                 </div>
-                {{else}}
-                <!-- Regular video file -->
+              {{else}}
                 <video id="mainVideo" class="w-100"
-                    style="max-height: 720px; min-height: 450px; width: 100%; object-fit: contain;">
-                    <source src="{{currentLesson.video_url}}" type="video/mp4">
-                    Your browser does not support the video tag.
+                  style="max-height:720px; min-height:450px; width:100%; object-fit:contain;">
+                  <source src="{{currentLesson.video_url}}" type="video/mp4">
                 </video>
+                
+                <!-- Custom Controls -->
+                <div id="videoControls" class="position-absolute bottom-0 start-0 end-0 bg-dark bg-opacity-75 p-3">
+                  <div class="mb-2">
+                    <input id="progressBar" class="form-range" type="range" min="0" max="100" step="0.1" value="0">
+                  </div>
+                  <div class="d-flex justify-content-between align-items-center text-white">
+                    <div class="d-flex align-items-center gap-2">
+                      <button id="playPauseBtn" class="btn btn-link text-white p-0">
+                        <i id="playIcon" class="bi bi-play-fill fs-4"></i>
+                      </button>
+                      <small id="timeDisplay">0:00 / 0:00</small>
 
-                <!-- Custom Video Controls -->
-                <div class="position-absolute bottom-0 start-0 end-0 bg-dark bg-opacity-75 p-3" id="videoControls">
-                    <div class="mb-2">
-                        <input type="range" class="form-range" id="progressBar" min="0" max="100" value="0" step="0.1">
+                      <div class="d-flex align-items-center gap-2 ms-3">
+                        <i id="volumeIcon" class="bi bi-volume-up-fill"></i>
+                        <input id="volumeBar" class="form-range" type="range" min="0" max="100" value="100" style="width:80px;">
+                      </div>
                     </div>
 
-                    <div class="d-flex justify-content-between align-items-center text-white">
-                        <div class="d-flex align-items-center gap-2">
-                            <button class="btn btn-link text-white p-0" id="playPauseBtn">
-                                <i class="bi bi-play-fill fs-4" id="playIcon"></i>
-                            </button>
-                            <small id="timeDisplay">0:00 / 0:00</small>
-
-                            <div class="d-flex align-items-center gap-2 ms-3">
-                                <i class="bi bi-volume-up-fill" id="volumeIcon"></i>
-                                <input type="range" class="form-range" id="volumeBar" min="0" max="100" value="100"
-                                    style="width: 80px;">
-                            </div>
-                        </div>
-                        <button class="btn btn-link text-white p-0" id="fullscreenBtn">
-                            <i class="bi bi-fullscreen fs-5"></i>
-                        </button>
-                    </div>
+                    <button id="fullscreenBtn" class="btn btn-link text-white p-0">
+                      <i class="bi bi-fullscreen fs-5"></i>
+                    </button>
+                  </div>
                 </div>
-                {{/if}}
+              {{/if}}
+            {{else}}
+              <div class="d-flex align-items-center justify-content-center text-white" style="height: 500px;">
+                <div class="text-center">
+                  <i class="bi bi-camera-video display-1 mb-3"></i>
+                  <h4>No video available</h4>
+                </div>
+              </div>
+            {{/if}}
+          </div>
 
+          <!-- Lesson Info below video -->
+          <div class="p-4 bg-white rounded-bottom-4">
+            <div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-3">
+              <div class="flex-grow-1">
+                <h4 class="mb-2">{{currentLesson.title}}</h4>
+                <p class="text-muted mb-0">
+                  <i class="bi bi-book me-1"></i> {{course.title}}
+                  {{#if currentLesson.duration}}
+                  <span class="ms-3"><i class="bi bi-clock me-1"></i> {{currentLesson.duration}}</span>
+                  {{/if}}
+                </p>
+              </div>
+
+              <div class="d-flex gap-2" style="min-width: 280px;">
+                <a href="{{#if prevLesson}}/learn/{{course.course_id}}/lesson/{{prevLesson.lesson_id}}{{else}}#{{/if}}"
+                  class="btn btn-outline-success w-50 {{#unless prevLesson}}disabled{{/unless}}">
+                  <i class="bi bi-skip-backward"></i> Previous
+                </a>
+
+                <a id="nextLessonBtn" 
+                  href="{{#if nextLesson}}/learn/{{course.course_id}}/lesson/{{nextLesson.lesson_id}}{{else}}#{{/if}}"
+                  class="btn btn-success w-50 {{#unless nextLesson}}disabled{{/unless}}">
+                  Next <i class="bi bi-skip-forward"></i>
+                </a>
+              </div>
+            </div>
+
+            <hr>
+
+            <!-- Description -->
+            {{#if currentLesson.description}}
+            <div class="mb-4">
+              <h5 class="mb-3"><i class="bi bi-info-circle me-2"></i>Description</h5>
+              <p class="text-muted">{{currentLesson.description}}</p>
+            </div>
+            {{/if}}
+
+            <!-- Lesson Materials -->
+            {{#if currentLesson.content}}
+            <div class="mb-4">
+              <h5 class="mb-3"><i class="bi bi-file-text me-2"></i>Lesson Materials</h5>
+              <div class="border rounded-3 p-3 bg-light">
+                {{{currentLesson.content}}}
+              </div>
+            </div>
+            {{/if}}
+
+            <!-- Mark Complete Button -->
+            <div class="mt-4">
+              <button class="btn btn-success w-100 py-2" id="markCompleteBtn"
+                data-lesson-id="{{currentLesson.lesson_id}}"
+                data-course-id="{{course.course_id}}"
+                {{#if currentLesson.is_completed}}disabled{{/if}}>
+                {{#if currentLesson.is_completed}}
+                  <i class="bi bi-check-circle-fill me-2"></i> Completed
                 {{else}}
-                <div class="d-flex align-items-center justify-content-center text-white" style="height: 500px;">
-                    <div class="text-center">
-                        <i class="bi bi-camera-video display-1 mb-3"></i>
-                        <h4>No video available</h4>
-                    </div>
-                </div>
+                  <i class="bi bi-check-circle me-2"></i> Mark as Complete
                 {{/if}}
+              </button>
             </div>
 
-            <!-- Lesson Info -->
-            <div class="p-4 bg-white">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <div>
-                        <h5 class="mb-1">{{currentLesson.title}}</h5>
-                        <small class="text-muted">{{course.title}}</small>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center gap-3">
-                        <a href="{{#if prevLesson}}/learn/{{course.course_id}}/lesson/{{prevLesson.lesson_id}}{{else}}#{{/if}}"
-                            class="btn btn-outline-primary btn-nav w-50 {{#unless prevLesson}}disabled{{/unless}}">
-                            <i class="bi bi-skip-backward"></i> Previous
-                        </a>
-
-                        <a href="{{#if nextLesson}}/learn/{{course.course_id}}/lesson/{{nextLesson.lesson_id}}{{else}}#{{/if}}"
-                            class="btn btn-primary btn-nav w-50 {{#unless nextLesson}}disabled{{/unless}}"
-                            id="nextLessonBtn">
-                            Next <i class="bi bi-skip-forward"></i>
-                        </a>
-                    </div>
-                </div>
-
-                <hr>
-
-                <div>
-                    <p class="text-muted">{{currentLesson.description}}</p>
-
-                    {{#if currentLesson.content}}
-                    <div class="mt-4">
-                        <h5>Lesson Materials</h5>
-                        <div class="border rounded p-3 bg-light">
-                            {{{currentLesson.content}}}
-                        </div>
-                    </div>
-                    {{/if}}
-
-                    <div class="mt-4">
-                        <button class="btn btn-success btn-sm w-100" id="markCompleteBtn" {{#if currentLesson.is_completed}}disabled{{/if}}>
-                            {{#if currentLesson.is_completed}}
-                            <i class="bi bi-check-circle"></i> Completed
-                            {{else}}
-                            <i class="bi bi-check"></i> Mark as Complete
-                            {{/if}}
-                        </button>
-                    </div>
-                </div>
+            <!-- Success Alert (hidden initially) -->
+            <div id="successAlert" class="alert alert-success mt-3" style="display: none;">
+              <i class="bi bi-check-circle-fill me-2"></i>
+              <span>Lesson completed successfully!</span>
             </div>
+          </div>
         </div>
-    </div>
+      </div>
+    </section>
+
+    <!-- Sidebar: Course Content - BÊN PHẢI -->
+    <aside class="col-lg-3 col-md-4 mb-4">
+      <div class="card shadow-sm sticky-top" style="top: 20px; overflow: hidden">
+        <!-- Header -->
+        <div class="card-header bg-success text-white border-0">
+          <h5 class="mb-0"><i class="bi bi-list-ul me-2"></i>Course Content</h5>
+        </div>
+
+        <!-- Body: scrollable lessons list -->
+        <div class="card-body p-0" style="overflow-y: auto; max-height: calc(100vh - 150px);">
+          <div class="list-group list-group-flush" id="chaptersList">
+            {{#each chapters}}
+            <div class="chapter-group">
+              <!-- Chapter Header -->
+              <div class="list-group-item bg-light border-0 py-3 px-3">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div class="fw-bold text-dark">
+                    <i class="bi bi-folder2-open me-2"></i>{{this.title}}
+                  </div>
+                  {{#if this.lessons.length}}
+                  <button class="btn btn-sm btn-link p-0 text-dark" 
+                    data-bs-toggle="collapse"
+                    data-bs-target="#ch{{this.chapter_id}}" 
+                    aria-expanded="true">
+                    <i class="bi bi-chevron-down"></i>
+                  </button>
+                  {{/if}}
+                </div>
+              </div>
+
+              <!-- Lessons List -->
+              {{#if this.lessons.length}}
+              <div class="collapse show" id="ch{{this.chapter_id}}">
+                {{#each this.lessons}}
+                <a href="/learn/{{../course.course_id}}/lesson/{{this.lesson_id}}"
+                  class="list-group-item list-group-item-action border-0 py-3 px-4 lesson-item {{#if this.is_completed}}lesson-completed{{/if}}"
+                  data-lesson-id="{{this.lesson_id}}">
+                  
+                  <div class="d-flex align-items-start">
+                    <!-- Icon -->
+                    <span class="me-3 mt-1">
+                      {{#if this.is_completed}}
+                        <i class="bi bi-check-circle-fill text-success fs-5"></i>
+                      {{else}}
+                        <i class="bi bi-play-circle text-success fs-5"></i>
+                      {{/if}}
+                    </span>
+                    
+                    <!-- Content -->
+                    <div class="flex-grow-1">
+                      <div class="fw-semibold mb-1">{{this.title}}</div>
+                      {{#if this.duration}}
+                      <small class="text-muted">
+                        <i class="bi bi-clock me-1"></i>{{this.duration}}
+                      </small>
+                      {{/if}}
+                    </div>
+                  </div>
+                </a>
+                {{/each}}
+              </div>
+              {{/if}}
+            </div>
+            {{/each}}
+          </div>
+        </div>
+      </div>
+    </aside>
+
+  </div>
 </div>
 
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const video = document.getElementById('mainVideo');
-        const youtubePlayer = document.getElementById('youtubePlayer');
-        const markCompleteBtn = document.getElementById('markCompleteBtn');
-
-        if (youtubePlayer) {
-            console.log('YouTube video detected');
-
-            if (markCompleteBtn) {
-                markCompleteBtn.addEventListener('click', async function () {
-                    try {
-                        const response = await fetch('/learn/mark-complete', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                courseId: "{{ course.course_id }}",
-                                lessonId: "{{ currentLesson.lesson_id }}"
-                            })
-                        });
-
-                        const result = await response.json();
-                        if (result.success) {
-                            this.innerHTML = '<i class="bi bi-check-circle"></i> Completed';
-                            this.disabled = true;
-
-                            // Hiển thị thông báo thành công
-                            const alert = document.createElement('div');
-                            alert.className = 'alert alert-success alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3';
-                            alert.style.zIndex = '9999';
-                            alert.innerHTML = `
-                                <i class="bi bi-check-circle"></i> Lesson completed!
-                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                            `;
-                            document.body.appendChild(alert);
-                            setTimeout(() => alert.remove(), 3000);
-
-                            {{#if nextLesson}}
-                            const nextBtn = document.getElementById('nextLessonBtn');
-                            if (nextBtn) {
-                                nextBtn.classList.add('btn-success');
-                                nextBtn.classList.remove('btn-primary');
-                                
-                            }
-                            {{/if}}
-                        }
-                    } catch (error) {
-                        console.error('Error marking lesson complete:', error);
-                    }
-                });
-            }
-
-            return;
-        }
-        if (!video) return;
-
-        const playPauseBtn = document.getElementById('playPauseBtn');
-        const playIcon = document.getElementById('playIcon');
-        const progressBar = document.getElementById('progressBar');
-        const volumeBar = document.getElementById('volumeBar');
-        const volumeIcon = document.getElementById('volumeIcon');
-        const timeDisplay = document.getElementById('timeDisplay');
-        const fullscreenBtn = document.getElementById('fullscreenBtn');
-        const videoControls = document.getElementById('videoControls');
-
-        // Format time helper
-        function formatTime(seconds) {
-            const mins = Math.floor(seconds / 60);
-            const secs = Math.floor(seconds % 60);
-            return `${mins}:${secs.toString().padStart(2, '0')}`;
-        }
-
-        // Play/Pause
-        playPauseBtn.addEventListener('click', () => {
-            if (video.paused) {
-                video.play();
-                playIcon.className = 'bi bi-pause-fill fs-4';
-            } else {
-                video.pause();
-                playIcon.className = 'bi bi-play-fill fs-4';
-            }
-        });
-
-        video.addEventListener('click', () => playPauseBtn.click());
-
-        video.addEventListener('timeupdate', () => {
-            const progress = (video.currentTime / video.duration) * 100;
-            progressBar.value = progress;
-            timeDisplay.textContent = `${formatTime(video.currentTime)} / ${formatTime(video.duration)}`;
-
-            if (progress > 80 && !markCompleteBtn.disabled) {
-                markCompleteBtn.classList.add('btn-success');
-                markCompleteBtn.classList.remove('btn-outline-success');
-            }
-        });
-
-        progressBar.addEventListener('input', (e) => {
-            const time = (e.target.value / 100) * video.duration;
-            video.currentTime = time;
-        });
-
-        volumeBar.addEventListener('input', (e) => {
-            video.volume = e.target.value / 100;
-            if (e.target.value == 0) {
-                volumeIcon.className = 'bi bi-volume-mute-fill';
-            } else if (e.target.value < 50) {
-                volumeIcon.className = 'bi bi-volume-down-fill';
-            } else {
-                volumeIcon.className = 'bi bi-volume-up-fill';
-            }
-        });
-
-        fullscreenBtn.addEventListener('click', () => {
-            if (video.requestFullscreen) {
-                video.requestFullscreen();
-            } else if (video.webkitRequestFullscreen) {
-                video.webkitRequestFullscreen();
-            }
-        });
-
-        let controlsTimeout;
-        const videoContainer = document.querySelector('.video-container');
-
-        videoContainer.addEventListener('mousemove', () => {
-            videoControls.style.opacity = '1';
-            clearTimeout(controlsTimeout);
-            controlsTimeout = setTimeout(() => {
-                if (!video.paused) {
-                    videoControls.style.opacity = '0.3';
-                }
-            }, 3000);
-        });
-
-        // Nút mark complete cho regular video
-        if (markCompleteBtn) {
-            markCompleteBtn.addEventListener('click', async function () {
-                try {
-                    const response = await fetch('/learn/mark-complete', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            courseId: "{{ course.course_id }}",
-                            lessonId: "{{ currentLesson.lesson_id }}"
-                        })
-                    });
-
-                    const result = await response.json();
-                    if (result.success) {
-                        this.innerHTML = '<i class="bi bi-check-circle"></i> Completed';
-                        this.disabled = true;
-
-                        const alert = document.createElement('div');
-                        alert.className = 'alert alert-success alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3';
-                        alert.style.zIndex = '9999';
-                        alert.innerHTML = `
-                            <i class="bi bi-check-circle"></i> Lesson completed!
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                        `;
-                        document.body.appendChild(alert);
-                        setTimeout(() => alert.remove(), 3000);
-
-                        {{#if nextLesson}}
-                        const nextBtn = document.getElementById('nextLessonBtn');
-                        if (nextBtn) {
-                            nextBtn.classList.add('btn-success');
-                            nextBtn.classList.remove('btn-primary');
-                            nextBtn.innerHTML = 'Continue to Next <i class="bi bi-arrow-right"></i>';
-                        }
-                        {{/if}}
-                    }
-                } catch (error) {
-                    console.error('Error marking lesson complete:', error);
-                }
-            });
-        }
-
-        // Gửi progress định kỳ mỗi 30s
-        setInterval(() => {
-            if (!video.paused) {
-                fetch('/learn/progress', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        courseId: "{{ course.course_id }}",
-                        lessonId: "{{ currentLesson.lesson_id }}",
-                        watchTime: Math.floor(video.currentTime)
-                    })
-                }).catch(err => console.error('Error saving progress:', err));
-            }
-        }, 30000);
-
-        // Keyboard shortcuts
-        document.addEventListener('keydown', (e) => {
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-
-            switch (e.key) {
-                case ' ':
-                    e.preventDefault();
-                    playPauseBtn.click();
-                    break;
-                case 'ArrowLeft':
-                    video.currentTime -= 5;
-                    break;
-                case 'ArrowRight':
-                    video.currentTime += 5;
-                    break;
-                case 'ArrowUp':
-                    e.preventDefault();
-                    video.volume = Math.min(1, video.volume + 0.1);
-                    volumeBar.value = video.volume * 100;
-                    break;
-                case 'ArrowDown':
-                    e.preventDefault();
-                    video.volume = Math.max(0, video.volume - 0.1);
-                    volumeBar.value = video.volume * 100;
-                    break;
-                case 'f':
-                    fullscreenBtn.click();
-                    break;
-            }
-        });
-    });
-</script>
-
-
 <style>
-    .video-container {
-        position: relative;
-        background: #000;
-    }
+/* Lesson Item Styles */
+.lesson-item {
+  transition: all 0.2s ease;
+  cursor: pointer;
+  border-left: 3px solid transparent !important;
+}
 
-    #videoControls {
-        transition: opacity 0.3s;
-    }
+.lesson-item:hover {
+  background-color: #f8f9fa !important;
+  border-left-color: #0d6efd !important;
+}
 
-    .form-range::-webkit-slider-thumb,
-    .form-range::-moz-range-thumb {
-        background: #fff;
-    }
+/* Completed Lesson */
+.lesson-completed .fw-semibold {
+  color: #198754;
+}
 
-    .btn-nav {
-        height: 38px;
-        font-weight: 500;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
+/* Chapter styling */
+.chapter-group:not(:last-child) {
+  border-bottom: 2px solid #e9ecef;
+}
 
-    .btn-nav i {
-        margin: 0 5px;
-    }
+/* Scrollbar styling */
+.card-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.card-body::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.card-body::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 3px;
+}
+
+.card-body::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Animation for success alert */
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* Pulse animation for next button */
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(25, 135, 84, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(25, 135, 84, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(25, 135, 84, 0);
+  }
+}
+
+.btn-pulse {
+  animation: pulse 2s infinite;
+}
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const video = document.getElementById('mainVideo');
+  const markCompleteBtn = document.getElementById('markCompleteBtn');
+  
+  // Video controls (nếu không phải YouTube)
+  if (video) {
+    const playPauseBtn = document.getElementById('playPauseBtn');
+    const playIcon = document.getElementById('playIcon');
+    const progressBar = document.getElementById('progressBar');
+    const timeDisplay = document.getElementById('timeDisplay');
+    const volumeBar = document.getElementById('volumeBar');
+    const volumeIcon = document.getElementById('volumeIcon');
+    const fullscreenBtn = document.getElementById('fullscreenBtn');
+
+    // Play/Pause
+    playPauseBtn?.addEventListener('click', () => {
+      if (video.paused) {
+        video.play();
+        playIcon.classList.replace('bi-play-fill', 'bi-pause-fill');
+      } else {
+        video.pause();
+        playIcon.classList.replace('bi-pause-fill', 'bi-play-fill');
+      }
+    });
+
+    // Progress bar
+    video.addEventListener('timeupdate', () => {
+      const progress = (video.currentTime / video.duration) * 100;
+      progressBar.value = progress;
+      
+      const current = formatTime(video.currentTime);
+      const total = formatTime(video.duration);
+      timeDisplay.textContent = `${current} / ${total}`;
+    });
+
+    progressBar?.addEventListener('input', (e) => {
+      const time = (e.target.value / 100) * video.duration;
+      video.currentTime = time;
+    });
+
+    // Volume
+    volumeBar?.addEventListener('input', (e) => {
+      video.volume = e.target.value / 100;
+      updateVolumeIcon(e.target.value);
+    });
+
+    function updateVolumeIcon(value) {
+      if (value == 0) {
+        volumeIcon.className = 'bi bi-volume-mute-fill';
+      } else if (value < 50) {
+        volumeIcon.className = 'bi bi-volume-down-fill';
+      } else {
+        volumeIcon.className = 'bi bi-volume-up-fill';
+      }
+    }
+
+    // Fullscreen
+    fullscreenBtn?.addEventListener('click', () => {
+      if (video.requestFullscreen) {
+        video.requestFullscreen();
+      }
+    });
+
+    function formatTime(seconds) {
+      const mins = Math.floor(seconds / 60);
+      const secs = Math.floor(seconds % 60);
+      return `${mins}:${secs.toString().padStart(2, '0')}`;
+    }
+  }
+
+  // Mark Complete
+  markCompleteBtn?.addEventListener('click', async function() {
+    const lessonId = this.dataset.lessonId;
+    const courseId = this.dataset.courseId;
+
+    try {
+      const response = await fetch('/learn/mark-complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lessonId, courseId })
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        this.disabled = true;
+        this.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i> Completed';
+        
+        // Show success alert with animation
+        const successAlert = document.getElementById('successAlert');
+        if (successAlert) {
+          successAlert.style.display = 'block';
+          successAlert.style.animation = 'slideInDown 0.5s ease-out';
+          
+          setTimeout(() => {
+            successAlert.style.animation = 'fadeOut 0.5s ease-out';
+            setTimeout(() => {
+              successAlert.style.display = 'none';
+            }, 500);
+          }, 2000);
+        }
+        
+        // Update sidebar
+        const lessonItem = document.querySelector(`[data-lesson-id="${lessonId}"]`);
+        if (lessonItem) {
+          lessonItem.classList.add('lesson-completed');
+          const icon = lessonItem.querySelector('i');
+          if (icon) {
+            icon.className = 'bi bi-check-circle-fill text-success fs-5';
+          }
+        }
+
+        // Update next button style
+        const nextBtn = document.getElementById('nextLessonBtn');
+        if (nextBtn && !nextBtn.classList.contains('disabled')) {
+          nextBtn.classList.add('btn-pulse');
+        }
+
+        // Auto navigate to next lesson after 2.5s
+        if (data.nextLesson) {
+          setTimeout(() => {
+            window.location.href = data.nextLesson;
+          }, 2500);
+        }
+      }
+    } catch (error) {
+      console.error('Error marking complete:', error);
+      alert('Failed to mark lesson as complete');
+    }
+  });
+});
+</script>
