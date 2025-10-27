@@ -5,12 +5,21 @@
             <!-- User Info Card -->
             <div class="card mb-4">
                 <div class="card-body text-center">
-                    <div class="avatar-placeholder mb-3">
+
+                    <div class="avatar-placeholder mb-3 text-center">
+                    {{#if user.avatar_url}}
+                        <img src="{{user.avatar_url}}" 
+                            alt="User Avatar" 
+                            class="rounded-circle border shadow-sm"
+                            style="width: 5rem; height: 5rem; object-fit: cover;">
+                    {{else}}
                         <i class="bi bi-person-circle" style="font-size: 5rem; color: #6c757d;"></i>
+                    {{/if}}
                     </div>
+
                     <h5 class="card-title">{{user.full_name}}</h5>
                     <p class="small text-muted">{{user.email}}</p>
-                    <a href="/student/edit-profile" class="btn btn-outline-primary btn-sm">
+                    <a href="/account/profile" class="btn btn-outline-primary btn-sm">
                         <i class="bi bi-pencil"></i> Edit Profile
                     </a>
                 </div>
