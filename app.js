@@ -69,6 +69,7 @@ import testChatRouter from './routes/test-chat.route.js';
 import passport from './utils/passport.js';
 import authRouter from './routes/auth.route.js';
 import rateLimit from 'express-rate-limit';
+import paymentRouter from './routes/payment.route.js';
 
 app.engine('handlebars', engine({
   defaultLayout: 'main',
@@ -219,6 +220,33 @@ app.engine('handlebars', engine({
     },
     encodeURIComponent(str) {
     return encodeURIComponent(str);
+    },
+    isYouTube(url) {
+        if (!url) return false;
+        return url.includes('youtube.com') || url.includes('youtu.be');
+    },
+    // Convert YouTube URL to embed URL
+    getYouTubeEmbedUrl(url) {
+        if (!url) return '';
+        
+        // https://www.youtube.com/watch?v=VIDEO_ID
+        // https://youtu.be/VIDEO_ID
+        let videoId = '';
+        
+        if (url.includes('youtube.com/watch')) {
+            const urlParams = new URL(url).searchParams;
+            videoId = urlParams.get('v');
+        } else if (url.includes('youtu.be/')) {
+            videoId = url.split('youtu.be/')[1].split('?')[0];
+        } else if (url.includes('youtube.com/embed/')) {
+            return url; // Already embed URL
+        }
+        
+        if (videoId) {
+            return `https://www.youtube.com/embed/${videoId}?enablejsapi=1`;
+        }
+        
+        return url;
     }
 
   }
@@ -304,6 +332,7 @@ app.get('/', (req, res) => {
 app.use('/account', accountRouter);
 app.use('/courses', courseRouter);
 app.use('/auth', authRouter);
+app.use('/payment', paymentRouter); 
 
 // -- Routes của học viên (cần đăng nhập) --
 app.use('/student', restrict, studentRouter);

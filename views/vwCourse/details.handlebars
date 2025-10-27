@@ -47,9 +47,11 @@
         <div class="mb-3 small text-muted">
           <span class="text-warning me-2">{{{render_stars course.rating_avg}}}</span>
           ({{course.rating_count}} ratings) •
-          <i class="bi bi-people ms-1 me-1"></i>{{course.enrollment_count}} students •
+          <i class="bi bi-people ms-1 me-1"></i>
+          <span id="enrollmentCount">{{course.enrollment_count}}</span> students •
           <i class="bi bi-eye ms-1 me-1"></i>{{course.view_count}}
         </div>
+
 
         <p class="lead text-muted">{{course.short_description}}</p>
 
@@ -109,9 +111,34 @@
   {{else}}
     <!-- Hàng 1: Add to Cart + Buy Now -->
     <div class="d-flex justify-content-center align-items-center mb-3 flex-wrap">
-      <button class="btn btn-outline-success rounded-pill py-2 fw-semibold me-2" id="buyNowBtn">
-        <i class="bi bi-lightning-charge-fill me-2"></i>Buy Now
-      </button>
+
+      {{!-- Replace existing Buy Now button with this block --}}
+      {{#if isEnrolled}}
+        <!-- User đã ghi danh: hiển thị nút Learn -->
+        <a href="/learn/{{course.course_id}}"
+          class="btn btn-success rounded-pill py-2 fw-semibold me-2">
+          <i class="bi bi-play-circle-fill me-2"></i>Learn
+        </a>
+      {{else}}
+        {{#if @root.session.authUser}}
+          <!-- User đã login nhưng chưa enroll: bật modal thanh toán -->
+          <button type="button"
+                  class="btn btn-outline-success rounded-pill py-2 fw-semibold me-2"
+                  data-bs-toggle="modal"
+                  data-bs-target="#paymentQrModal">
+            <i class="bi bi-lightning-charge-fill me-2"></i>Buy Now
+          </button>
+        {{else}}
+          <!-- User chưa login: redirect giống wishlist (kèm retUrl) -->
+          <a href="/account/signin?ret={{retUrl}}"
+            class="btn btn-outline-success rounded-pill py-2 fw-semibold me-2">
+            <i class="bi bi-lightning-charge-fill me-2"></i>Buy Now
+          </a>
+        {{/if}}
+      {{/if}}
+
+
+
       {{#if @root.session.authUser}}
         {{#if isInWishlist}}
           <button type="button" class="btn btn-danger rounded-pill py-2" id="wishlistBtn" data-course-id="{{course.id}}">
@@ -226,23 +253,27 @@
           <form id="reviewForm">
             <div class="mb-3">
               <label class="form-label">Rating:</label>
-              <div class="star-rating" style="font-size: 1.5rem;">
-                <span class="star" data-rating="1" style="cursor: pointer;">⭐</span>
-                <span class="star" data-rating="2" style="cursor: pointer;">⭐</span>
-                <span class="star" data-rating="3" style="cursor: pointer;">⭐</span>
-                <span class="star" data-rating="4" style="cursor: pointer;">⭐</span>
-                <span class="star" data-rating="5" style="cursor: pointer;">⭐</span>
+
+              <div class="star-rating d-flex gap-1" style="font-size: 1.5rem; cursor: pointer;">
+                <span class="star" data-rating="1"><i class="bi bi-star"></i></span>
+                <span class="star" data-rating="2"><i class="bi bi-star"></i></span>
+                <span class="star" data-rating="3"><i class="bi bi-star"></i></span>
+                <span class="star" data-rating="4"><i class="bi bi-star"></i></span>
+                <span class="star" data-rating="5"><i class="bi bi-star"></i></span>
               </div>
               <input type="hidden" id="rating" name="rating" value="0" required>
+
+
+
             </div>
             <div class="mb-3">
-              <label for="comment" class="form-label">Nhận xét:</label>
+              <label for="comment" class="form-label">Comment:</label>
               <textarea class="form-control" id="comment" name="comment" rows="4"
                         placeholder="Chia sẻ trải nghiệm của bạn...">{{#if userReview}}{{userReview.comment}}{{/if}}</textarea>
             </div>
             <div class="d-flex gap-2">
               <button type="submit" class="btn btn-primary">
-                {{#if userReview}}Cập nhật đánh giá{{else}}Gửi đánh giá{{/if}}
+              {{#if userReview}}Cập nhật đánh giá{{else}}Send{{/if}}
               </button>
               {{#if userReview}}
               <button type="button" class="btn btn-outline-danger" id="deleteReview">Xóa đánh giá</button>
@@ -355,179 +386,243 @@
 </div>
 
 <!-- Note: global preview video modal is expected to exist on page (id="videoModal" and iframe id="previewVideo") -->
-
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    /* ---------- Preview video buttons (preview-btn) ---------- */
+  /* ---------- Helpers ---------- */
+  function showAlert(message, type = 'success') {
+    const existing = document.querySelector('.alert');
+    if (existing) existing.remove();
+    const title = type === 'success' ? 'Thành công!' : (type === 'warning' ? 'Cảnh báo!' : 'Lỗi!');
+    const html = `
+      <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+        <strong>${title}</strong> ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>`;
+    const reviewForm = document.getElementById('reviewForm');
+    if (reviewForm) reviewForm.insertAdjacentHTML('beforebegin', html);
+    else document.body.insertAdjacentHTML('afterbegin', html);
+    setTimeout(() => document.querySelector('.alert')?.remove(), 5000);
+  }
+
+  /* ---------- Video preview ---------- */
+  (function initVideoPreview() {
     const previewBtns = document.querySelectorAll('.preview-btn');
     const videoModalEl = document.getElementById('videoModal');
     const videoIframe = document.getElementById('previewVideo');
-    if (previewBtns && videoModalEl && videoIframe) {
-      previewBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-          const url = btn.dataset.video;
-          if (url) {
-            videoIframe.src = url.includes('?') ? url + '&autoplay=1' : url + '?autoplay=1';
-            const myModal = new bootstrap.Modal(videoModalEl);
-            myModal.show();
-          }
-        });
-      });
-      videoModalEl.addEventListener('hidden.bs.modal', () => {
-        videoIframe.src = ''; // stop video when modal closed
-      });
-    }
+    if (!previewBtns.length || !videoModalEl || !videoIframe) return;
 
-    /* ---------- Wishlist toggle ---------- */
+    previewBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const url = btn.dataset.video;
+        if (!url) return;
+        videoIframe.src = url.includes('?') ? url + '&autoplay=1' : url + '?autoplay=1';
+        const myModal = new bootstrap.Modal(videoModalEl);
+        myModal.show();
+      });
+    });
+
+    videoModalEl.addEventListener('hidden.bs.modal', () => {
+      // stop video playback
+      videoIframe.src = '';
+    });
+  })();
+
+  /* ---------- Wishlist toggle ---------- */
+  (function initWishlist() {
     const wishlistBtn = document.getElementById('wishlistBtn');
-    if (wishlistBtn) {
-      wishlistBtn.addEventListener('click', async function() {
-        const courseId = this.dataset.courseId;
-        const originalClass = this.className;
-        const originalContent = this.innerHTML;
+    if (!wishlistBtn) return;
 
-        this.disabled = true;
-        this.innerHTML = '<i class="bi bi-arrow-repeat spin"></i> Processing...';
+    wishlistBtn.addEventListener('click', async function () {
+      const courseId = this.dataset.courseId;
+      const originalClass = this.className;
+      const originalContent = this.innerHTML;
+      this.disabled = true;
+      this.innerHTML = '<i class="bi bi-arrow-repeat spin"></i> Processing...';
 
-        try {
-          const res = await fetch('/courses/wishlist/toggle', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ courseId: parseInt(courseId) })
-          });
-          const result = await res.json();
-          console.log(result);
+      try {
+        const res = await fetch('/courses/wishlist/toggle', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ courseId: Number(courseId) || 0 })
+        });
+        const result = await res.json();
 
-          if (result.success) {
-            if (result.action === 'added') {
-              this.className = 'btn btn-danger rounded-pill py-2';
-              this.innerHTML = '<i class="bi bi-heart-fill"></i> <span id="wishlistText">Remove</span>';
-            } else {
-              this.className = 'btn btn-outline-danger rounded-pill py-2';
-              this.innerHTML = '<i class="bi bi-heart"></i> <span id="wishlistText">Add to Wishlist</span>';
-            }
+        if (result && result.success) {
+          if (result.action === 'added') {
+            this.className = 'btn btn-danger rounded-pill py-2';
+            this.innerHTML = '<i class="bi bi-heart-fill"></i> <span id="wishlistText">Remove</span>';
           } else {
-            this.className = originalClass;
-            this.innerHTML = originalContent;
-            showAlert('Có lỗi: ' + (result.message || 'Không thể thao tác wishlist.'), 'danger');
+            this.className = 'btn btn-outline-danger rounded-pill py-2';
+            this.innerHTML = '<i class="bi bi-heart"></i> <span id="wishlistText">Add to Wishlist</span>';
           }
-        } catch (err) {
+        } else {
           this.className = originalClass;
           this.innerHTML = originalContent;
-          showAlert('Có lỗi xảy ra khi thao tác wishlist', 'danger');
-          console.error(err);
-        } finally {
-          this.disabled = false;
+          showAlert('Có lỗi: ' + (result?.message || 'Không thể thao tác wishlist.'), 'danger');
         }
-      });
-    }
+      } catch (err) {
+        this.className = originalClass;
+        this.innerHTML = originalContent;
+        showAlert('Có lỗi xảy ra khi thao tác wishlist', 'danger');
+        console.error(err);
+      } finally {
+        this.disabled = false;
+      }
+    });
+  })();
 
-    /* ---------- Review form & star interaction (only if review form exists) ---------- */
-    const stars = document.querySelectorAll('.star');
+  /* ---------- Stars + Review submit & delete ---------- */
+  (function initStarsAndReview() {
+    const stars = Array.from(document.querySelectorAll('.star'));
     const ratingInput = document.getElementById('rating');
     const reviewForm = document.getElementById('reviewForm');
     const deleteBtn = document.getElementById('deleteReview');
+    const starContainer = document.querySelector('.star-rating');
 
-    function showAlert(message, type = 'success') {
-      const existingAlert = document.querySelector('.alert');
-      if (existingAlert) existingAlert.remove();
-      const html = `
-        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
-            <strong>${type === 'success' ? 'Thành công!' : (type === 'warning' ? 'Cảnh báo!' : 'Lỗi!')}</strong> ${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>`;
-      if (reviewForm) reviewForm.insertAdjacentHTML('beforebegin', html);
-      else document.body.insertAdjacentHTML('afterbegin', html);
-      setTimeout(() => document.querySelector('.alert')?.remove(), 5000);
+    // Server-side template should replace {{course.id}} with actual id
+    const courseId = '{{course.id}}';
+    const reviewEndpoint = reviewForm?.getAttribute('action') || `/review/course/${courseId}`;
+
+    function updateStarDisplay(rating) {
+      stars.forEach((s, idx) => {
+        const icon = s.querySelector("i");
+        if (!icon) return;
+        if (idx < rating) {
+          icon.classList.add("bi-star-fill","text-warning");
+          icon.classList.remove("bi-star","text-secondary");
+        } else {
+          icon.classList.add("bi-star","text-secondary");
+          icon.classList.remove("bi-star-fill","text-warning");
+        }
+      });
     }
 
-    if (ratingInput && stars.length) {
-      function updateStarDisplay(rating) {
-        stars.forEach((s, idx) => s.style.color = (idx < rating ? 'gold' : 'lightgray'));
-      }
+    // Initialize visual state
+    if (ratingInput) {
+      ratingInput.value = Number(ratingInput.value) || 0;
+      updateStarDisplay(Number(ratingInput.value) || 0);
+    }
 
-      {{#if userReview}}
-      const currentRating = {{userReview.rating}};
-      ratingInput.value = currentRating;
-      updateStarDisplay(currentRating);
-      {{else}}
-      updateStarDisplay(0);
-      ratingInput.value = 0;
-      {{/if}}
-
+    if (stars.length) {
       stars.forEach(star => {
+        const starRating = Number(star.dataset.rating) || 0;
         star.addEventListener('mouseenter', function () {
-          updateStarDisplay(this.dataset.rating);
+          updateStarDisplay(starRating);
         });
         star.addEventListener('click', function () {
-          ratingInput.value = this.dataset.rating;
-          updateStarDisplay(this.dataset.rating);
+          if (ratingInput) ratingInput.value = starRating;
+          updateStarDisplay(starRating);
         });
       });
 
-      const starContainer = document.querySelector('.star-rating');
       if (starContainer) {
-        starContainer.addEventListener('mouseleave', function () {
-          updateStarDisplay(ratingInput.value);
+        starContainer.addEventListener('mouseleave', () => {
+          updateStarDisplay(Number(ratingInput?.value) || 0);
         });
-      }
-
-      if (reviewForm) {
-        reviewForm.addEventListener('submit', async function (e) {
-          e.preventDefault();
-          if (ratingInput.value === "0") {
-            showAlert('Vui lòng chọn số sao đánh giá!', 'warning');
-            return;
-          }
-          const data = {
-            rating: ratingInput.value,
-            comment: document.getElementById('comment')?.value || ''
-          };
-          try {
-            const resp = await fetch(`/review/course/{{course.course_id}}`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(data)
-            });
-            const result = await resp.json();
-            if (result.success) {
-              showAlert(result.message, 'success');
-              setTimeout(() => location.reload(), 1500);
-            } else showAlert(result.message || 'Có lỗi khi gửi đánh giá', 'danger');
-          } catch (err) {
-            console.error(err);
-            showAlert('Có lỗi xảy ra khi gửi đánh giá', 'danger');
-          }
-        });
-      }
-
-      if (deleteBtn) {
-        deleteBtn.addEventListener('click', function () {
-          const modal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
-          modal.show();
-        });
-        const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
-        if (confirmDeleteBtn) {
-          confirmDeleteBtn.addEventListener('click', async function () {
-            const modal = bootstrap.Modal.getInstance(document.getElementById('deleteConfirmModal'));
-            modal.hide();
-            try {
-              const resp = await fetch(`/review/course/{{course.course_id}}`, { method: 'DELETE' });
-              const result = await resp.json();
-              if (result.success) {
-                showAlert(result.message, 'success');
-                setTimeout(() => location.reload(), 1500);
-              } else showAlert(result.message || 'Không thể xóa đánh giá', 'danger');
-            } catch (err) {
-              console.error(err);
-              showAlert('Có lỗi xảy ra khi xóa đánh giá', 'danger');
-            }
-          });
-        }
       }
     }
-});
+
+    // Submit review
+    function wireFormSubmit() {
+      if (!reviewForm) return;
+      reviewForm.addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        if (!ratingInput || Number(ratingInput.value) === 0) {
+          showAlert('Vui lòng chọn số sao đánh giá!', 'warning');
+          return;
+        }
+
+        const data = {
+          rating: Number(ratingInput.value),
+          comment: document.getElementById('comment')?.value || ''
+        };
+
+        const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
+
+        try {
+          const resp = await fetch(reviewEndpoint, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(csrf ? { 'X-CSRF-Token': csrf } : {})
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify(data)
+          });
+
+          if (!resp.ok) {
+            const text = await resp.text().catch(()=>null);
+            throw new Error(`HTTP ${resp.status} ${resp.statusText} ${text ? '- '+text : ''}`);
+          }
+
+          const result = await resp.json().catch(()=>({ success: false, message: 'Invalid JSON response' }));
+          if (result && result.success) {
+            showAlert(result.message || 'Gửi đánh giá thành công', 'success');
+            setTimeout(() => location.reload(), 1200);
+          } else {
+            showAlert(result?.message || 'Có lỗi khi gửi đánh giá', 'danger');
+          }
+        } catch (err) {
+          console.error(err);
+          showAlert('Có lỗi xảy ra khi gửi đánh giá', 'danger');
+        }
+      });
+    }
+
+    // Delete review
+    function wireDelete() {
+      if (!deleteBtn) return;
+      deleteBtn.addEventListener('click', function () {
+        const modalEl = document.getElementById('deleteConfirmModal');
+        if (!modalEl) return;
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+
+        const confirmBtn = document.getElementById('confirmDeleteBtn');
+        if (!confirmBtn) return;
+
+        confirmBtn.addEventListener('click', async function handler() {
+          modal.hide();
+          const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
+
+          try {
+            const resp = await fetch(reviewEndpoint, {
+              method: 'DELETE',
+              headers: {
+                ...(csrf ? { 'X-CSRF-Token': csrf } : {})
+              },
+              credentials: 'same-origin'
+            });
+
+            if (!resp.ok) {
+              const text = await resp.text().catch(()=>null);
+              throw new Error(`HTTP ${resp.status} ${resp.statusText} ${text ? '- '+text : ''}`);
+            }
+
+            const result = await resp.json().catch(()=>({ success: false, message: 'Invalid JSON response' }));
+            if (result && result.success) {
+              showAlert(result.message || 'Xóa đánh giá thành công', 'success');
+              setTimeout(() => location.reload(), 1200);
+            } else {
+              showAlert(result?.message || 'Không thể xóa đánh giá', 'danger');
+            }
+          } catch (err) {
+            console.error(err);
+            showAlert('Có lỗi xảy ra khi xóa đánh giá', 'danger');
+          }
+        }, { once: true });
+      });
+    }
+
+    wireFormSubmit();
+    wireDelete();
+  })();
+
+}); // DOMContentLoaded
 </script>
+
 
 <style>
 .spin {
@@ -537,4 +632,49 @@ document.addEventListener('DOMContentLoaded', function () {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
+
+
+.star i {
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+.star:hover i {
+  transform: scale(1.2);
+}
+
+
 </style>
+
+
+<!-- ===== Payment Modal (bg-light) ===== -->
+<div class="modal fade" id="paymentQrModal" tabindex="-1" aria-labelledby="paymentQrModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 rounded-4 shadow bg-light text-dark">
+      <form id="paymentForm" method="POST" action="/payment/confirm">
+        <!-- nếu dùng CSRF, chèn token ở đây -->
+        <div class="modal-body text-center p-4">
+          <h5 id="paymentQrModalLabel" class="mb-1 text-success">Thanh toán đơn hàng</h5>
+          <p class="small text-muted mb-3">Quét mã QR bằng app ngân hàng/ ví điện tử để thanh toán.</p>
+
+          <input type="hidden" name="course_id" value="{{course.id}}">
+          <input type="hidden" name="price" value="{{#if course.sale_price}}{{course.sale_price}}{{else}}{{course.price}}{{/if}}">
+
+          <div class="my-3">
+            <img src="/static/qr.jpg" alt="QR Payment" class="img-fluid" style="max-width:320px; width:100%; height:auto;" />
+          </div>
+
+          <p class="small text-muted mb-3">Sau khi quét và thanh toán, nhấn nút bên dưới để xác nhận.</p>
+
+          <div class="d-flex justify-content-center gap-2">
+            <button type="submit" class="btn btn-success rounded-pill px-4 py-2 fw-semibold">
+              Đã thanh toán
+            </button>
+            <button type="button" class="btn btn-outline-secondary rounded-pill px-3 py-2" data-bs-dismiss="modal">
+              Hủy
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
