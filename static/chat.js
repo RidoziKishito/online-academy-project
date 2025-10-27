@@ -5,6 +5,10 @@ class ChatSystem {
         this.currentUserId = null;
         this.isOpen = false;
         this.subscription = null;
+        this.currentPage = 1;
+        this.messagesPerPage = 20;
+        this.hasMoreMessages = false;
+        this.isLoadingMessages = false;
         
         this.init();
     }
@@ -66,18 +70,16 @@ class ChatSystem {
                     </div>
                     <div id="chatMessages" class="chat-messages" style="display: none;">
                         <div class="messages-container"></div>
-                        <div class="message-input-container">
-                            <div class="input-group">
-                                <input type="text" id="messageInput" class="form-control" placeholder="Type a message...">
-                                <button id="emojiButton" class="btn btn-outline-secondary" type="button">
-                                    <i class="bi bi-emoji-smile"></i>
-                                </button>
-                                <button id="sendButton" class="btn btn-primary" type="button">
-                                    <i class="bi bi-send"></i>
-                                </button>
-                            </div>
-                        </div>
                     </div>
+                </div>
+                <div class="message-input-container" style="display: none;">
+                    <div class="input-group">
+                        <input type="text" id="messageInput" class="form-control" placeholder="Type a message...">
+                        <button id="sendButton" class="btn btn-primary" type="button">
+                            <i class="bi bi-send"></i>
+                        </button>
+                    </div>
+                </div>
                 </div>
             </div>
         `;
@@ -176,6 +178,9 @@ class ChatSystem {
 
     async openConversation(conversationId, otherUserId, otherUserName = null) {
         this.currentConversationId = conversationId;
+        this.currentPage = 1;
+        this.hasMoreMessages = false;
+        this.isLoadingMessages = false;
         
         // Stop any existing polling
         if (this.messagePollingInterval) {
@@ -186,6 +191,7 @@ class ChatSystem {
         // Show messages container
         document.getElementById('conversationsList').style.display = 'none';
         document.getElementById('chatMessages').style.display = 'block';
+        document.querySelector('.message-input-container').style.display = 'block';
 
         // Clear previous messages and show loading
         const messagesContainer = document.querySelector('.messages-container');
@@ -206,6 +212,27 @@ class ChatSystem {
 
         // Subscribe to real-time updates
         this.subscribeToMessages(conversationId);
+
+        // Add scroll listener for scroll-to-bottom button
+        this.setupScrollListener();
+        
+        // Focus the messages container for keyboard scrolling
+        setTimeout(() => {
+            const messagesContainer = document.querySelector('.messages-container');
+            if (messagesContainer) {
+                messagesContainer.focus();
+                
+                // Test scroll functionality
+                if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                    console.log('Messages container scroll info:', {
+                        scrollHeight: messagesContainer.scrollHeight,
+                        clientHeight: messagesContainer.clientHeight,
+                        scrollTop: messagesContainer.scrollTop,
+                        canScroll: messagesContainer.scrollHeight > messagesContainer.clientHeight
+                    });
+                }
+            }
+        }, 100);
     }
 
     updateChatHeaderFast(otherUserName) {
@@ -267,6 +294,7 @@ class ChatSystem {
         // Hide messages container and show conversations list
         document.getElementById('chatMessages').style.display = 'none';
         document.getElementById('conversationsList').style.display = 'block';
+        document.querySelector('.message-input-container').style.display = 'none';
         
         // Reset header to generic "Chat"
         const chatHeader = document.querySelector('.chat-header h6');
@@ -278,28 +306,61 @@ class ChatSystem {
             this.messagePollingInterval = null;
         }
         
+        // Remove scroll listeners
+        const messagesContainer = document.querySelector('.messages-container');
+        if (messagesContainer) {
+            messagesContainer.removeEventListener('scroll', this.handleScroll.bind(this));
+            messagesContainer.removeEventListener('wheel', this.handleWheel.bind(this));
+            messagesContainer.removeEventListener('keydown', this.handleKeydown.bind(this));
+        }
+        
+        // Hide scroll-to-bottom button
+        this.hideScrollToBottomButton();
+        
         this.currentConversationId = null;
     }
 
-    async loadMessages(conversationId) {
+    async loadMessages(conversationId, loadMore = false) {
+        if (this.isLoadingMessages) return;
+        
+        this.isLoadingMessages = true;
+        
         try {
-            const response = await fetch(`/api/chat/conversations/${conversationId}/messages`);
+            const page = loadMore ? this.currentPage + 1 : 1;
+            const response = await fetch(`/api/chat/conversations/${conversationId}/messages?page=${page}&limit=${this.messagesPerPage}`);
             const data = await response.json();
 
             if (data.success) {
                 if (data.data.messages && data.data.messages.length > 0) {
-                    this.renderMessages(data.data.messages);
-                } else {
-                    // Show empty state when no messages
+                    if (loadMore) {
+                        // Prepend older messages to the top
+                        this.prependMessages(data.data.messages);
+                        this.currentPage = page;
+                    } else {
+                        // Replace all messages (first load)
+                        this.renderMessages(data.data.messages);
+                        this.currentPage = 1;
+                    }
+                    
+                    // Update pagination info
+                    this.hasMoreMessages = data.data.pagination.page < data.data.pagination.totalPages;
+                    this.updateLoadMoreButton();
+                } else if (!loadMore) {
+                    // Show empty state when no messages (only on first load)
                     this.renderEmptyMessages();
                 }
             } else {
-                // Show error state
-                this.renderErrorMessages('Failed to load messages');
+                if (!loadMore) {
+                    this.renderErrorMessages('Failed to load messages');
+                }
             }
         } catch (error) {
             console.error('Error loading messages:', error);
-            this.renderErrorMessages('Error loading messages');
+            if (!loadMore) {
+                this.renderErrorMessages('Error loading messages');
+            }
+        } finally {
+            this.isLoadingMessages = false;
         }
     }
 
@@ -339,6 +400,9 @@ class ChatSystem {
             </div>
         `).join('');
 
+        // Add load more button if there are more messages
+        this.updateLoadMoreButton();
+
         // Scroll to bottom to show newest messages
         const scrollDelay = window.CHAT_CONFIG?.SCROLL_DELAY || 100;
         setTimeout(() => {
@@ -349,14 +413,197 @@ class ChatSystem {
         }, scrollDelay);
     }
 
+    prependMessages(messages) {
+        const container = document.querySelector('.messages-container');
+        const loadMoreButton = container.querySelector('.load-more-button');
+        
+        // Remove load more button temporarily
+        if (loadMoreButton) {
+            loadMoreButton.remove();
+        }
+        
+        // Store current scroll position
+        const oldScrollHeight = container.scrollHeight;
+        const oldScrollTop = container.scrollTop;
+        
+        // Prepend new messages
+        const newMessagesHTML = messages.map(message => `
+            <div class="message ${message.sender_id == this.currentUserId ? 'message-sent' : 'message-received'}" data-message-id="${message.id}">
+                <div class="message-content">
+                    ${this.formatMessageContent(message.content)}
+                </div>
+                <div class="message-time">
+                    ${new Date(message.timestamp).toLocaleTimeString()}
+                </div>
+            </div>
+        `).join('');
+        
+        container.insertAdjacentHTML('afterbegin', newMessagesHTML);
+        
+        // Restore scroll position
+        const newScrollHeight = container.scrollHeight;
+        container.scrollTop = oldScrollTop + (newScrollHeight - oldScrollHeight);
+        
+        // Add load more button back
+        this.updateLoadMoreButton();
+    }
+
+    updateLoadMoreButton() {
+        const container = document.querySelector('.messages-container');
+        const existingButton = container.querySelector('.load-more-button');
+        
+        // Remove existing button
+        if (existingButton) {
+            existingButton.remove();
+        }
+        
+        // Add load more button if there are more messages
+        if (this.hasMoreMessages) {
+            const loadMoreHTML = `
+                <div class="load-more-button text-center py-2">
+                    <button class="btn btn-outline-secondary btn-sm" id="loadMoreMessages">
+                        <i class="bi bi-arrow-up"></i> Load older messages
+                    </button>
+                </div>
+            `;
+            container.insertAdjacentHTML('afterbegin', loadMoreHTML);
+            
+            // Add event listener
+            document.getElementById('loadMoreMessages').addEventListener('click', () => {
+                this.loadMoreMessages();
+            });
+        }
+    }
+
+    async loadMoreMessages() {
+        if (this.currentConversationId && this.hasMoreMessages && !this.isLoadingMessages) {
+            await this.loadMessages(this.currentConversationId, true);
+        }
+    }
+
+    setupScrollListener() {
+        const messagesContainer = document.querySelector('.messages-container');
+        if (!messagesContainer) return;
+
+        // Remove existing listener
+        messagesContainer.removeEventListener('scroll', this.handleScroll.bind(this));
+        
+        // Add new listener
+        messagesContainer.addEventListener('scroll', this.handleScroll.bind(this));
+        
+        // Prevent scroll events from bubbling to the page
+        messagesContainer.addEventListener('wheel', this.handleWheel.bind(this), { passive: false });
+        
+        // Ensure the container can receive focus for keyboard scrolling
+        messagesContainer.setAttribute('tabindex', '0');
+        
+        // Focus container when clicked
+        messagesContainer.addEventListener('click', () => {
+            messagesContainer.focus();
+        });
+        
+        // Handle keyboard scrolling
+        messagesContainer.addEventListener('keydown', this.handleKeydown.bind(this));
+    }
+
+    handleWheel(event) {
+        const messagesContainer = document.querySelector('.messages-container');
+        if (!messagesContainer) return;
+
+        // Check if the scroll is happening within the messages container
+        const rect = messagesContainer.getBoundingClientRect();
+        const isInsideContainer = (
+            event.clientX >= rect.left &&
+            event.clientX <= rect.right &&
+            event.clientY >= rect.top &&
+            event.clientY <= rect.bottom
+        );
+
+        if (isInsideContainer) {
+            // Just prevent the scroll from bubbling to the page
+            // Let the browser handle the natural scrolling of the container
+            event.stopPropagation();
+        }
+    }
+
+    handleScroll() {
+        const messagesContainer = document.querySelector('.messages-container');
+        if (!messagesContainer) return;
+
+        const scrollTop = messagesContainer.scrollTop;
+        const scrollHeight = messagesContainer.scrollHeight;
+        const clientHeight = messagesContainer.clientHeight;
+        
+        // Show scroll-to-bottom button if user has scrolled up
+        const isNearBottom = scrollTop + clientHeight >= scrollHeight - 100;
+        
+        if (!isNearBottom) {
+            this.showScrollToBottomButton();
+        } else {
+            this.hideScrollToBottomButton();
+        }
+    }
+
+    showScrollToBottomButton() {
+        const messagesContainer = document.querySelector('.messages-container');
+        if (!messagesContainer || messagesContainer.querySelector('.scroll-to-bottom-btn')) return;
+
+        const scrollButton = document.createElement('button');
+        scrollButton.className = 'scroll-to-bottom-btn';
+        scrollButton.innerHTML = '<i class="bi bi-arrow-down"></i>';
+        scrollButton.title = 'Scroll to bottom';
+        
+        messagesContainer.appendChild(scrollButton);
+        
+        scrollButton.addEventListener('click', () => {
+            this.scrollToBottom();
+            this.hideScrollToBottomButton();
+        });
+    }
+
+    hideScrollToBottomButton() {
+        const scrollButton = document.querySelector('.scroll-to-bottom-btn');
+        if (scrollButton) {
+            scrollButton.remove();
+        }
+    }
+
+    handleKeydown(event) {
+        const messagesContainer = document.querySelector('.messages-container');
+        if (!messagesContainer) return;
+
+        // Handle arrow keys and page up/down for scrolling
+        switch(event.key) {
+            case 'ArrowUp':
+                event.preventDefault();
+                messagesContainer.scrollTop -= 50;
+                break;
+            case 'ArrowDown':
+                event.preventDefault();
+                messagesContainer.scrollTop += 50;
+                break;
+            case 'PageUp':
+                event.preventDefault();
+                messagesContainer.scrollTop -= messagesContainer.clientHeight * 0.8;
+                break;
+            case 'PageDown':
+                event.preventDefault();
+                messagesContainer.scrollTop += messagesContainer.clientHeight * 0.8;
+                break;
+            case 'Home':
+                event.preventDefault();
+                messagesContainer.scrollTop = 0;
+                break;
+            case 'End':
+                event.preventDefault();
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                break;
+        }
+    }
+
     formatMessageContent(content) {
-        // Simple emoji support and basic formatting
-        return content
-            .replace(/\n/g, '<br>')
-            .replace(/:\)/g, '😊')
-            .replace(/:\(/g, '😢')
-            .replace(/:D/g, '😄')
-            .replace(/:P/g, '😛');
+        // Basic formatting - convert line breaks to HTML
+        return content.replace(/\n/g, '<br>');
     }
 
     async sendMessage() {
@@ -426,17 +673,20 @@ class ChatSystem {
 
     async checkForNewMessages(conversationId) {
         try {
-            const response = await fetch(`/api/chat/conversations/${conversationId}/messages`);
+            // Get only the latest messages (page 1) to check for new ones
+            const response = await fetch(`/api/chat/conversations/${conversationId}/messages?page=1&limit=${this.messagesPerPage}`);
             const data = await response.json();
             
             if (data.success && data.data.messages.length > 0) {
-                // Get the last message (newest) since messages are now in chronological order
+                // Get the last message (newest) since page 1 now contains the newest messages in chronological order
                 const latestMessage = data.data.messages[data.data.messages.length - 1];
                 const lastMessageId = this.getLastMessageId();
                 
                 // If we have a new message, reload all messages
                 if (!lastMessageId || latestMessage.id !== lastMessageId) {
-                    this.loadMessages(conversationId);
+                    // Reset to first page and reload all messages
+                    this.currentPage = 1;
+                    await this.loadMessages(conversationId, false);
                     // Scroll to bottom after loading new messages
                     setTimeout(() => {
                         this.scrollToBottom();
@@ -489,6 +739,12 @@ class ChatSystem {
     closeChatBox() {
         document.getElementById('chatBox').style.display = 'none';
         this.isOpen = false;
+        
+        // Hide input container when chat is closed
+        const inputContainer = document.querySelector('.message-input-container');
+        if (inputContainer) {
+            inputContainer.style.display = 'none';
+        }
         
         // Show floating button when chat is closed
         const floatingButton = document.getElementById('chatFloatingButton');
