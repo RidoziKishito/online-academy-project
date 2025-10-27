@@ -47,9 +47,11 @@
         <div class="mb-3 small text-muted">
           <span class="text-warning me-2">{{{render_stars course.rating_avg}}}</span>
           ({{course.rating_count}} ratings) •
-          <i class="bi bi-people ms-1 me-1"></i>{{course.enrollment_count}} students •
+          <i class="bi bi-people ms-1 me-1"></i>
+          <span id="enrollmentCount">{{course.enrollment_count}}</span> students •
           <i class="bi bi-eye ms-1 me-1"></i>{{course.view_count}}
         </div>
+
 
         <p class="lead text-muted">{{course.short_description}}</p>
 
@@ -109,9 +111,34 @@
   {{else}}
     <!-- Hàng 1: Add to Cart + Buy Now -->
     <div class="d-flex justify-content-center align-items-center mb-3 flex-wrap">
-      <button class="btn btn-outline-success rounded-pill py-2 fw-semibold me-2" id="buyNowBtn">
-        <i class="bi bi-lightning-charge-fill me-2"></i>Buy Now
-      </button>
+
+      {{!-- Replace existing Buy Now button with this block --}}
+      {{#if isEnrolled}}
+        <!-- User đã ghi danh: hiển thị nút Learn -->
+        <a href="/learn/{{course.course_id}}"
+          class="btn btn-success rounded-pill py-2 fw-semibold me-2">
+          <i class="bi bi-play-circle-fill me-2"></i>Learn
+        </a>
+      {{else}}
+        {{#if @root.session.authUser}}
+          <!-- User đã login nhưng chưa enroll: bật modal thanh toán -->
+          <button type="button"
+                  class="btn btn-outline-success rounded-pill py-2 fw-semibold me-2"
+                  data-bs-toggle="modal"
+                  data-bs-target="#paymentQrModal">
+            <i class="bi bi-lightning-charge-fill me-2"></i>Buy Now
+          </button>
+        {{else}}
+          <!-- User chưa login: redirect giống wishlist (kèm retUrl) -->
+          <a href="/account/signin?ret={{retUrl}}"
+            class="btn btn-outline-success rounded-pill py-2 fw-semibold me-2">
+            <i class="bi bi-lightning-charge-fill me-2"></i>Buy Now
+          </a>
+        {{/if}}
+      {{/if}}
+
+
+
       {{#if @root.session.authUser}}
         {{#if isInWishlist}}
           <button type="button" class="btn btn-danger rounded-pill py-2" id="wishlistBtn" data-course-id="{{course.id}}">
@@ -538,3 +565,38 @@ document.addEventListener('DOMContentLoaded', function () {
   to { transform: rotate(360deg); }
 }
 </style>
+
+
+<!-- ===== Payment Modal (bg-light) ===== -->
+<div class="modal fade" id="paymentQrModal" tabindex="-1" aria-labelledby="paymentQrModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 rounded-4 shadow bg-light text-dark">
+      <form id="paymentForm" method="POST" action="/payment/confirm">
+        <!-- nếu dùng CSRF, chèn token ở đây -->
+        <div class="modal-body text-center p-4">
+          <h5 id="paymentQrModalLabel" class="mb-1 text-success">Thanh toán đơn hàng</h5>
+          <p class="small text-muted mb-3">Quét mã QR bằng app ngân hàng/ ví điện tử để thanh toán.</p>
+
+          <input type="hidden" name="course_id" value="{{course.id}}">
+          <input type="hidden" name="price" value="{{#if course.sale_price}}{{course.sale_price}}{{else}}{{course.price}}{{/if}}">
+
+          <div class="my-3">
+            <img src="/static/qr.jpg" alt="QR Payment" class="img-fluid" style="max-width:320px; width:100%; height:auto;" />
+          </div>
+
+          <p class="small text-muted mb-3">Sau khi quét và thanh toán, nhấn nút bên dưới để xác nhận.</p>
+
+          <div class="d-flex justify-content-center gap-2">
+            <button type="submit" class="btn btn-success rounded-pill px-4 py-2 fw-semibold">
+              Đã thanh toán
+            </button>
+            <button type="button" class="btn btn-outline-secondary rounded-pill px-3 py-2" data-bs-dismiss="modal">
+              Hủy
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+

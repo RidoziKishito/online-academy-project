@@ -1,30 +1,105 @@
 <div class="container mt-4">
-    <h2>Khóa học của tôi</h2>
+    <h2 class="mb-4"><i class="bi bi-book"></i> My Courses</h2>
     
     {{#if courses}}
         <div class="row">
             {{#each courses}}
             <div class="col-md-4 mb-4">
-                <div class="card">
-                    <img src="{{image_url}}" class="card-img-top" alt="{{title}}">
-                    <div class="card-body">
-                        <h5 class="card-title">{{title}}</h5>
-                        <p class="card-text">{{brief_description}}</p>
-                        <div class="progress mb-2">
-                            <div class="progress-bar" style="width: {{progress_percentage}}%"></div>
-                        </div>
-                        <small class="text-muted">Tiến độ: {{progress_percentage}}%</small>
-                        <br>
-                        <a href="/learn/{{course_id}}" class="btn btn-primary mt-2">Continue Learning</a>
+                <div class="card h-100 shadow-sm">
+                    {{#if image_url}}
+                    <img src="{{image_url}}" class="card-img-top" alt="{{title}}" style="height: 200px; object-fit: cover;">
+                    {{else}}
+                    <div class="card-img-top bg-secondary d-flex align-items-center justify-content-center" style="height: 200px;">
+                        <i class="bi bi-camera-video text-white" style="font-size: 3rem;"></i>
                     </div>
+                    {{/if}}
+                    
+                    <div class="card-body d-flex flex-column">
+                        <h5 class="card-title">{{title}}</h5>
+                        <p class="text-muted small flex-grow-1">{{short_description}}</p>
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <small class="text-muted">Progress</small>
+                                <small class="fw-bold {{#if (eq progress 100)}}text-success{{else}}text-primary{{/if}}">
+                                    {{progress}}%
+                                </small>
+                            </div>
+                            <div class="progress" style="height: 8px;">
+                                <div class="progress-bar {{#if (eq progress 100)}}bg-success{{else}}bg-primary{{/if}}" 
+                                     role="progressbar" 
+                                     style="width: {{progress}}%" 
+                                     aria-valuenow="{{progress}}" 
+                                     aria-valuemin="0" 
+                                     aria-valuemax="100">
+                                </div>
+                            </div>
+                            <small class="text-muted">
+                                {{completedLessons}}/{{totalLessons}} lessons completed
+                            </small>
+                        </div>
+                        
+                        <!-- Action Buttons -->
+                        <div class="d-grid gap-2">
+                            <a href="/learn/{{course_id}}" class="btn {{#if (eq progress 100)}}btn-success{{else}}btn-primary{{/if}}">
+                                {{#if (eq progress 100)}}
+                                <i class="bi bi-trophy"></i> Review Course
+                                {{else}}
+                                <i class="bi bi-play-circle"></i> Continue Learning
+                                {{/if}}
+                            </a>
+                            <a href="/courses/detail/{{course_id}}" class="btn btn-outline-secondary btn-sm">
+                                <i class="bi bi-info-circle"></i> Course Details
+                            </a>
+                        </div>
+                        
+                        <!-- Enrolled Date -->
+                        <small class="text-muted mt-2">
+                            <i class="bi bi-calendar"></i> Enrolled: {{formatDate enrolled_at}}
+                        </small>
+                    </div>
+                    
+                    {{#if (eq progress 100)}}
+                    <!-- Certificate Badge -->
+                    <div class="position-absolute top-0 end-0 m-2">
+                        <span class="badge bg-success">
+                            <i class="bi bi-check-circle-fill"></i> Completed
+                        </span>
+                    </div>
+                    {{/if}}
                 </div>
             </div>
             {{/each}}
         </div>
     {{else}}
-        <div class="alert alert-info">
-            <p>Bạn chưa đăng ký khóa học nào.</p>
-            <a href="/courses" class="btn btn-primary">Khám phá khóa học</a>
+        <div class="text-center py-5">
+            <i class="bi bi-book" style="font-size: 5rem; color: #dee2e6;"></i>
+            <h3 class="mt-3 text-muted">No courses yet</h3>
+            <p class="text-muted">Start your learning journey today!</p>
+            <a href="/courses" class="btn btn-primary btn-lg">
+                <i class="bi bi-search"></i> Explore Courses
+            </a>
         </div>
     {{/if}}
 </div>
+
+<style>
+.card {
+    transition: transform 0.2s, box-shadow 0.2s;
+    position: relative;
+    overflow: hidden;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1) !important;
+}
+
+.progress {
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    transition: width 0.6s ease;
+}
+</style>

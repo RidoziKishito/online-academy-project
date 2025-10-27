@@ -1,6 +1,4 @@
-<div class="container mt-4">
-    <h2>Danh sách yêu thích</h2>
-    
+<div class="container">
     {{#if courses}}
         <div class="row">
             {{#each courses}}
@@ -11,10 +9,13 @@
                         <h5 class="card-title">{{title}}</h5>
                         <p class="card-text">{{brief_description}}</p>
                         <p class="text-primary fw-bold">{{price_formatted}}</p>
-                        <div class="d-flex justify-content-between">
-                            <a href="/courses/detail/{{course_id}}" class="btn btn-outline-primary">Xem chi tiết</a>
+                        <div class="d-flex justify-content-start gap-3">
+                            <a href="/courses/detail/{{course_id}}" class="btn btn-outline-primary">
+                            <i class="bi bi-check"></i>
+                            Detail
+                            </a>
                             <button class="btn btn-outline-danger remove-wishlist" data-course-id="{{course_id}}">
-                                <i class="fas fa-heart"></i>
+                                <i class="bi bi-heart-fill"></i>  Remove
                             </button>
                         </div>
                     </div>
