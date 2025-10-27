@@ -322,9 +322,24 @@
           <div>
             <h5 class="fw-bold mb-1">{{course.instructor_name}}</h5>
             <p class="text-muted small mb-2">{{course.instructor_bio}}</p>
-            <a href="/instructors/{{course.instructor_id}}" class="btn btn-outline-success rounded-pill btn-sm">
-              View More Courses
-            </a>
+            <div class="d-flex gap-2">
+              <a href="/instructors/{{course.instructor_id}}" class="btn btn-outline-success rounded-pill btn-sm">
+                View More Courses
+              </a>
+              {{#if @root.session.authUser}}
+                {{#if (ne @root.session.authUser.user_id course.instructor_id)}}
+                  <button type="button" 
+                          class="btn btn-primary rounded-pill btn-sm" 
+                          onclick="openChatWithInstructor('{{course.instructor_id}}', '{{course.instructor_name}}')">
+                    <i class="bi bi-chat-dots me-1"></i>Chat with Instructor
+                  </button>
+                {{/if}}
+              {{else}}
+                <a href="/account/signin?ret={{retUrl}}" class="btn btn-outline-primary rounded-pill btn-sm">
+                  <i class="bi bi-chat-dots me-1"></i>Chat with Instructor
+                </a>
+              {{/if}}
+            </div>
           </div>
         </div>
       </div>
@@ -620,6 +635,23 @@ document.addEventListener('DOMContentLoaded', function () {
     wireFormSubmit();
     wireDelete();
   })();
+
+  /* ---------- Chat with Instructor ---------- */
+  window.openChatWithInstructor = function(instructorId, instructorName) {
+    // Check if chat system is available
+    if (typeof window.chatSystem !== 'undefined') {
+      window.chatSystem.openChatWithUser(instructorId, instructorName);
+    } else {
+      // Fallback: show alert and try to initialize chat system
+      console.log('Chat system not initialized, attempting to initialize...');
+      if (typeof ChatSystem !== 'undefined') {
+        window.chatSystem = new ChatSystem();
+        window.chatSystem.openChatWithUser(instructorId, instructorName);
+      } else {
+        alert('Chat system is not available. Please refresh the page and try again.');
+      }
+    }
+  };
 
 }); // DOMContentLoaded
 </script>
