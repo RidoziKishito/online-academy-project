@@ -211,3 +211,12 @@ export async function findByCategories(categoryIds) {
   
   return rows;
 }
+
+export async function updateCourseRating(courseId, avg_rating, total_reviews) {
+  await db(TABLE_NAME)
+    .where('course_id', courseId)
+    .update({
+      rating_avg: avg_rating,
+      rating_count: total_reviews
+    });
+}

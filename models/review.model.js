@@ -73,3 +73,4 @@ export async function deleteReview(userId, courseId) {
         .where({ user_id: userId, course_id: courseId })
         .del();
 }
+

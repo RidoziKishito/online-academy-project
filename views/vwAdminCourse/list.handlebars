@@ -1,9 +1,6 @@
 <div class="card">
     <h5 class="card-header d-flex justify-content-between">
         <span>Courses</span>
-        <a href="/admin/courses/create" class="btn btn-primary">
-            <i class="bi bi-plus-circle"></i> Create Course
-        </a>
     </h5>
     <div class="card-body">
         <form method="get" action="/admin/courses" class="row g-3 mb-3">
@@ -62,7 +59,7 @@
     <table class="table table-hover">
         <thead>
             <tr>
-                <th scope="col" class="text-center">#</th>
+                <th scope="col" class="text-center">ID</th>
                 <th scope="col">Course</th>
                 <th scope="col">Instructor</th>
                 <th scope="col">Category</th>
@@ -126,9 +123,6 @@
                         </button>
                     </form>
                     {{/if}}
-                    <a class="btn btn-outline-primary btn-sm" href="/admin/courses/edit?id={{course_id}}" title="Edit">
-                        <i class="bi bi-pencil-square"></i>
-                    </a>
                     <button type="button" class="btn btn-danger btn-sm delete-btn" data-course-id="{{course_id}}" data-course-title="{{title}}" title="Delete">
                         <i class="bi bi-trash"></i>
                     </button>
@@ -219,7 +213,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         buttons += `
-            <a class="btn btn-outline-primary btn-sm" href="/admin/courses/edit?id=${course.course_id}" title="Edit">
+            <a class="btn btn-outline-primary btn-sm" href="/admin/courses/edit/${course.course_id}" title="Edit">
                 <i class="bi bi-pencil-square"></i>
             </a>
             <button type="button" class="btn btn-danger btn-sm delete-btn" data-course-id="${course.course_id}" data-course-title="${course.title}" title="Delete">
@@ -423,14 +417,14 @@ document.addEventListener('DOMContentLoaded', function() {
             timer: 2000,
             showConfirmButton: false
         });
-        } else if (action === 'created') {
-            Swal.fire({
-                icon: 'success',
-                title: 'Course Created',
-                text: 'The new course has been created successfully.',
-                timer: 2000,
-                showConfirmButton: false
-            });
+    } else if (action === 'created') {
+        Swal.fire({
+            icon: 'success',
+            title: 'Course Created',
+            text: 'The new course has been created successfully.',
+            timer: 2000,
+            showConfirmButton: false
+        });
     } else if (action === 'hidden') {
         Swal.fire({
             icon: 'info',
@@ -488,9 +482,6 @@ document.addEventListener('DOMContentLoaded', function() {
             text: 'This course has enrollments and cannot be deleted.'
         });
     }
-
-    // Handle delete button clicks - already handled by attachDeleteListeners()
-});
 });
 </script>
 {{/fillContent}}

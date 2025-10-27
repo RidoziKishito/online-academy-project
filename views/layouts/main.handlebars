@@ -235,7 +235,8 @@
                           <i class="bi bi-people gap-2"></i> User
                         </a>
                     </div>
-                  {{else}}
+                  {{/if}}
+                  {{#if (isStudent)}}
                     <div class="d-grid gap-2 mb-3">
                       <a href="/student/my-courses" class="btn btn-outline-primary btn-sm">
                         <i class="bi bi-book"></i> My Courses
