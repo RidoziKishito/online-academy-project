@@ -79,6 +79,9 @@
                 <input type="password" class="form-control {{#if errorMessages.confirm_password}}is-invalid{{/if}}" id="txtConfirm" name="confirm_password">
                 {{#if errorMessages.confirm_password}}<div class="invalid-feedback">{{errorMessages.confirm_password.[0]}}</div>{{/if}}
             </div>
+            <div class="mb-3">
+                {{{recaptcha}}}
+            </div>
             <button type="submit" class="btn btn-primary"><i class="bi bi-file-person"></i> Sign Up</button>
             <button type="reset" class="btn btn-info"><i class="bi bi-file-earmark-x"></i> Reset</button>
         </form>
