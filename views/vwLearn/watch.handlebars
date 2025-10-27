@@ -161,7 +161,7 @@
               {{#if this.lessons.length}}
               <div class="collapse show" id="ch{{this.chapter_id}}">
                 {{#each this.lessons}}
-                <a href="/learn/{{../course.course_id}}/lesson/{{this.lesson_id}}"
+                <a href="/learn/{{../../course.course_id}}/lesson/{{this.lesson_id}}"
                   class="list-group-item list-group-item-action border-0 py-3 px-4 lesson-item {{#if this.is_completed}}lesson-completed{{/if}}"
                   data-lesson-id="{{this.lesson_id}}">
                   

@@ -13,7 +13,7 @@ const db = knex({
     },
     pool: { 
         min: 2,  // Minimum connections to maintain
-        max: 10  // Maximum connections allowed
+        max: 15  // Maximum connections allowed
     },
 });
 

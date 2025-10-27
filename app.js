@@ -13,7 +13,7 @@ dotenv.config();
 import { testEmailConfig } from './utils/mailer.js';
 testEmailConfig();
 // Import Middlewares
-import { restrict, isAdmin, isInstructor } from './middlewares/auth.mdw.js';
+import { restrict, isAdmin, isInstructor, isStudent } from './middlewares/auth.mdw.js';
 // Import Models (chỉ cần cho middleware)
 import * as categoryModel from './models/category.model.js';
 import * as viewModel from './models/views.model.js';
@@ -247,7 +247,13 @@ app.engine('handlebars', engine({
         }
         
         return url;
+    },
+    isStudent(options) {
+      const user = options.data.root.authUser; // lấy từ res.locals.authUser
+      if (!user) return false;
+      return user.role === 'student';
     }
+
 
   }
 }));
@@ -318,17 +324,30 @@ app.use(function (req, res, next) {
 // ================= ROUTERS =================
 // -- Routes công khai (ai cũng xem được) --
 app.get('/', (req, res) => {
-  if (!req.session.isAuthenticated) {
-    res.render('home', {
-      layout: 'home-main'
-    });
+  const user = req.session.authUser;
+
+  if (!req.session.isAuthenticated || !user) {
+    // chưa đăng nhập
+    return res.render('home', { layout: 'home-main' });
   }
-  else {
-    res.render('home-authen', {
-      layout: 'main'
-    });
+
+  // đã đăng nhập
+  if (user.role === 'student') {
+    return res.render('home-authen', { layout: 'main' });
   }
+
+  if (user.role === 'instructor') {
+    return res.redirect('/instructor');
+  }
+
+  if (user.role === 'admin') {
+    return res.redirect('/admin/dashboard');
+  }
+
+  // fallback
+  res.render('home', { layout: 'home-main' });
 });
+
 app.use('/account', accountRouter);
 app.use('/courses', courseRouter);
 app.use('/auth', authRouter);

@@ -146,6 +146,7 @@ router.post('/signin', async (req, res) => {
 router.post('/signout', (req, res) => {
   req.session.isAuthenticated = false;
   req.session.authUser = null;
+  req.session.retUrl = '/';
   res.redirect(req.headers.referer || '/');
 });
 

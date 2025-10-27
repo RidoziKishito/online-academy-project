@@ -69,57 +69,56 @@
   <!-- Navbar -->
   <nav class="navbar navbar-expand-lg bg-body-tertiary shadow">
     <div class="container-fluid px-4">
+
+      <!-- ===== Brand ===== -->
       <a class="navbar-brand text-primary fw-bold d-flex align-items-center" href="/">
         <i class="bi bi-mortarboard-fill text-success me-2 fs-4"></i>
         <b>VietEdu Academy</b>
       </a>
 
+      <!-- ===== Toggle Button (Mobile) ===== -->
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent"
         aria-controls="navbarContent" aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>
       </button>
 
+      <!-- ===== Navbar Content ===== -->
       <div class="collapse navbar-collapse" id="navbarContent">
+
+        {{#if (isStudent)}}
+        <!-- ===== Left: Student Menus ===== -->
         <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-
-          <li class="nav-item">
-            <a class="nav-link" href="/courses"><b>Courses</b></a>
-          </li>
-
-          <li class="nav-item">
-            <a class="nav-link" href="/courses/allCat"><b>Category</b></a>
-          </li>
-
-          <li class="nav-item">
-            <a class="nav-link" href="/instructors"><b>Instructor</b></a>
-          </li>
-
-
+          <li class="nav-item"><a class="nav-link" href="/courses"><b>Courses</b></a></li>
+          <li class="nav-item"><a class="nav-link" href="/courses/allCat"><b>Category</b></a></li>
+          <li class="nav-item"><a class="nav-link" href="/instructors"><b>Instructor</b></a></li>
         </ul>
+        {{/if}}
 
-        
-        <form class="d-flex me-4" role="search" method="get" action="/courses/search">
-          <input class="form-control me-2" type="search" placeholder="Search" aria-label="Search" name="q" />
+        <!-- ===== Center/Right: Search ===== -->
+        <form class="d-flex ms-auto me-3" role="search" method="get" action="/courses/search">
+          <input class="form-control me-2" type="search" name="q" placeholder="Search" aria-label="Search" />
           <button class="btn btn-sm btn-outline-success" type="submit">
             <i class="bi bi-search"></i>
           </button>
         </form>
 
+        <!-- ===== Right: Auth Menu ===== -->
         <ul class="navbar-nav mb-2 mb-lg-0">
+
           {{#if isAuthenticated}}
+
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle fw-semibold" href="#" role="button" data-bs-toggle="dropdown"
               aria-expanded="false">
               Welcome,
               {{#if authUser.full_name}}{{authUser.full_name}}{{else}}{{authUser.email}}{{/if}}
             </a>
+
             <ul class="dropdown-menu dropdown-menu-end">
               <li><a class="dropdown-item" href="/account/profile"><i class="bi bi-person me-2"></i>Profile</a></li>
-              <li><a class="dropdown-item" href="/account/change-pwd"><i class="bi bi-lock me-2"></i>Change Password</a>
-              </li>
+              <li><a class="dropdown-item" href="/account/change-pwd"><i class="bi bi-lock me-2"></i>Change Password</a></li>
               {{#if isAdmin}}
-              <li><a class="dropdown-item" href="/admin/dashboard"><i class="bi bi-speedometer2 me-2"></i>Admin
-                  Dashboard</a></li>
+              <li><a class="dropdown-item" href="/admin/dashboard"><i class="bi bi-speedometer2 me-2"></i>Admin Dashboard</a></li>
               {{/if}}
               <li><hr class="dropdown-divider" /></li>
               <li>
@@ -129,8 +128,11 @@
               </li>
             </ul>
           </li>
+
           <form id="frmSignout" action="/account/signout" method="post"></form>
+
           {{else}}
+
           <li class="nav-item">
             <a class="nav-link" href="/account/signup">
               <i class="bi bi-person-plus me-1"></i>Sign Up
@@ -141,11 +143,13 @@
               <i class="bi bi-box-arrow-in-right me-1"></i>Sign In
             </a>
           </li>
+
           {{/if}}
         </ul>
       </div>
     </div>
   </nav>
+
 
   <!-- Page Layout -->
   <div class="site-wrapper">
@@ -154,6 +158,7 @@
         <div class="row">
           <!-- Sidebar -->
           <aside class="col-lg-3 col-md-4 col-sm-6 mb-4 sidebar-categories">
+            {{#if (isStudent)}}
             <!-- Categories Card -->
             <div class="card mb-3" style="overflow: hidden;">
               <h5 class="card-header">Categories</h5>
@@ -188,12 +193,13 @@
                 {{/each}}
               </div>
             </div>
+            {{/if}}
 
             <!-- Featured / Tools Card -->
             <div class="card mb-3">
               <h5 class="card-header">
                 {{#if isAuthenticated}}
-                  {{#if (eq authUser.role 'instructor')}}Instructor Tools{{else}}My Learning{{/if}}
+                  {{#if (eq authUser.role 'instructor')}}Instructor Tools{{/if}}{{#if isAdmin}}Admin Navigation{{else}}My Learning{{/if}}
                 {{else}}
                   Hi there!
                 {{/if}}
@@ -214,6 +220,20 @@
                       <a href="/instructors/{{authUser.user_id}}" class="btn btn-outline-secondary btn-sm">
                         <i class="bi bi-eye"></i> View Public Profile
                       </a>
+                    </div>
+                  {{/if}}
+                  {{#if isAdmin}}
+                    <div class="d-grid gap-2 mb-3">
+                        <a href="/admin/categories" class="btn btn-outline-primary btn-sm">
+                          <i class="bi bi-tags gap-2"></i> Category
+                        </a>
+                        <a href="/admin/courses" class="btn btn-outline-danger btn-sm">
+                          <i class="bi bi-journal-text gap-2"></i> Courses
+                          <span class="badge bg-secondary">{{wishlistCount}}</span>
+                        </a>
+                        <a href="/admin/accounts" class="btn btn-outline-primary btn-sm">
+                          <i class="bi bi-people gap-2"></i> User
+                        </a>
                     </div>
                   {{else}}
                     <div class="d-grid gap-2 mb-3">
