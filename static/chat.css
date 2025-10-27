@@ -1,4 +1,51 @@
 /* Chat System Styles */
+
+/* Floating Chat Button */
+.chat-floating-button {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1060;
+}
+
+.chat-floating-button .btn {
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    transition: all 0.3s ease;
+    border: none;
+}
+
+.chat-floating-button .btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 8px 25px rgba(0, 123, 255, 0.3);
+}
+
+.chat-floating-button .btn:active {
+    transform: scale(0.95);
+}
+
+/* Pulse animation for new messages */
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(0, 123, 255, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(0, 123, 255, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(0, 123, 255, 0);
+    }
+}
+
+.chat-floating-button .btn.pulse {
+    animation: pulse 2s infinite;
+}
+
+/* Chat Box */
 .chat-box {
     position: fixed;
     top: 0;
@@ -163,6 +210,17 @@
     .chat-box {
         width: 100%;
         height: 100vh;
+    }
+    
+    .chat-floating-button {
+        bottom: 15px;
+        right: 15px;
+    }
+    
+    .chat-floating-button .btn {
+        width: 50px;
+        height: 50px;
+        font-size: 1.2rem;
     }
 }
 

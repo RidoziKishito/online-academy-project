@@ -29,19 +29,21 @@ class ChatSystem {
     }
 
     setupChatButton() {
-        // Add chat button to navbar
-        const navbar = document.querySelector('.navbar-nav');
-        if (navbar && !document.querySelector('#chatButton')) {
-            const chatButton = document.createElement('li');
-            chatButton.className = 'nav-item';
-            chatButton.innerHTML = `
-                <button id="chatButton" class="btn btn-outline-primary btn-sm ms-2" type="button">
-                    <i class="bi bi-chat-dots"></i> Chat
-                </button>
+        // Create floating chat button in bottom right corner
+        if (!document.querySelector('#chatFloatingButton')) {
+            const chatButtonHTML = `
+                <div id="chatFloatingButton" class="chat-floating-button">
+                    <button id="chatButton" class="btn btn-primary btn-lg rounded-circle shadow" type="button">
+                        <i class="bi bi-chat-dots"></i>
+                    </button>
+                </div>
             `;
-            navbar.appendChild(chatButton);
+            
+            // Add floating button to body
+            document.body.insertAdjacentHTML('beforeend', chatButtonHTML);
 
-            chatButton.addEventListener('click', () => {
+            // Add click event listener
+            document.getElementById('chatButton').addEventListener('click', () => {
                 this.toggleChatBox();
             });
         }
@@ -153,7 +155,7 @@ class ChatSystem {
         }
 
         container.innerHTML = conversations.map(conv => `
-            <div class="conversation-item" data-conversation-id="${conv.id}" data-other-user-id="${conv.other_user.id}">
+            <div class="conversation-item" data-conversation-id="${conv.id}" data-other-user-id="${conv.other_user.id}" data-other-user-name="${conv.other_user.name}">
                 <div class="d-flex align-items-center">
                     <div class="avatar me-2">
                         <i class="bi bi-person-circle"></i>
@@ -173,26 +175,62 @@ class ChatSystem {
             item.addEventListener('click', () => {
                 const conversationId = item.dataset.conversationId;
                 const otherUserId = item.dataset.otherUserId;
-                this.openConversation(conversationId, otherUserId);
+                const otherUserName = item.dataset.otherUserName;
+                
+                this.openConversation(conversationId, otherUserId, otherUserName);
             });
         });
     }
 
-    async openConversation(conversationId, otherUserId) {
+    async openConversation(conversationId, otherUserId, otherUserName = null) {
         this.currentConversationId = conversationId;
+        
+        // Stop any existing polling
+        if (this.messagePollingInterval) {
+            clearInterval(this.messagePollingInterval);
+            this.messagePollingInterval = null;
+        }
         
         // Show messages container
         document.getElementById('conversationsList').style.display = 'none';
         document.getElementById('chatMessages').style.display = 'block';
 
-        // Update chat header with user name
-        await this.updateChatHeader(conversationId);
+        // Clear previous messages and show loading
+        const messagesContainer = document.querySelector('.messages-container');
+        messagesContainer.innerHTML = `
+            <div class="text-center text-muted py-3">
+                <div class="spinner-border spinner-border-sm me-2" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                Loading messages...
+            </div>
+        `;
+
+        // Update chat header with user name (fast - no API call needed)
+        this.updateChatHeaderFast(otherUserName);
 
         // Load messages
         await this.loadMessages(conversationId);
 
         // Subscribe to real-time updates
         this.subscribeToMessages(conversationId);
+    }
+
+    updateChatHeaderFast(otherUserName) {
+        const chatHeader = document.querySelector('.chat-header h6');
+        
+        // Update header with user name and add back button (instant - no API call)
+        chatHeader.innerHTML = `
+            <button id="backToConversations" class="btn btn-sm btn-outline-secondary me-2" style="padding: 0.25rem 0.5rem;">
+                <i class="bi bi-arrow-left"></i>
+            </button>
+            <span class="text-success">${otherUserName || 'User'}</span>
+        `;
+
+        // Add back button event listener
+        document.getElementById('backToConversations').addEventListener('click', () => {
+            this.showConversationsList();
+        });
     }
 
     async updateChatHeader(conversationId) {
@@ -209,7 +247,7 @@ class ChatSystem {
                     <button id="backToConversations" class="btn btn-sm btn-outline-secondary me-2" style="padding: 0.25rem 0.5rem;">
                         <i class="bi bi-arrow-left"></i>
                     </button>
-                    <span>Chat with ${otherUser.full_name}</span>
+                    <span class="text-success">${otherUser.full_name}</span>
                 `;
 
                 // Add back button event listener
@@ -225,7 +263,7 @@ class ChatSystem {
                 <button id="backToConversations" class="btn btn-sm btn-outline-secondary me-2" style="padding: 0.25rem 0.5rem;">
                     <i class="bi bi-arrow-left"></i>
                 </button>
-                <span>Chat</span>
+                <span class="text-success">User</span>
             `;
             document.getElementById('backToConversations').addEventListener('click', () => {
                 this.showConversationsList();
@@ -257,11 +295,42 @@ class ChatSystem {
             const data = await response.json();
 
             if (data.success) {
-                this.renderMessages(data.data.messages);
+                if (data.data.messages && data.data.messages.length > 0) {
+                    this.renderMessages(data.data.messages);
+                } else {
+                    // Show empty state when no messages
+                    this.renderEmptyMessages();
+                }
+            } else {
+                // Show error state
+                this.renderErrorMessages('Failed to load messages');
             }
         } catch (error) {
             console.error('Error loading messages:', error);
+            this.renderErrorMessages('Error loading messages');
         }
+    }
+
+    renderEmptyMessages() {
+        const container = document.querySelector('.messages-container');
+        container.innerHTML = `
+            <div class="text-center text-muted py-4">
+                <i class="bi bi-chat-dots" style="font-size: 3rem; opacity: 0.5;"></i>
+                <p class="mt-2 mb-0">No messages yet</p>
+                <small>Start the conversation by sending a message!</small>
+            </div>
+        `;
+    }
+
+    renderErrorMessages(errorMessage) {
+        const container = document.querySelector('.messages-container');
+        container.innerHTML = `
+            <div class="text-center text-danger py-4">
+                <i class="bi bi-exclamation-triangle" style="font-size: 3rem;"></i>
+                <p class="mt-2 mb-0">${errorMessage}</p>
+                <small>Please try again later</small>
+            </div>
+        `;
     }
 
     renderMessages(messages) {
@@ -417,11 +486,23 @@ class ChatSystem {
     openChatBox() {
         document.getElementById('chatBox').style.display = 'block';
         this.isOpen = true;
+        
+        // Hide floating button when chat is open
+        const floatingButton = document.getElementById('chatFloatingButton');
+        if (floatingButton) {
+            floatingButton.style.display = 'none';
+        }
     }
 
     closeChatBox() {
         document.getElementById('chatBox').style.display = 'none';
         this.isOpen = false;
+        
+        // Show floating button when chat is closed
+        const floatingButton = document.getElementById('chatFloatingButton');
+        if (floatingButton) {
+            floatingButton.style.display = 'block';
+        }
         
         // Stop polling for messages
         if (this.messagePollingInterval) {
@@ -431,7 +512,7 @@ class ChatSystem {
     }
 
     // Public method to open chat with specific user
-    async openChatWithUser(otherUserId) {
+    async openChatWithUser(otherUserId, otherUserName = null) {
         try {
             if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
                 console.log('Opening chat with user:', otherUserId);
@@ -454,7 +535,7 @@ class ChatSystem {
 
             if (data.success) {
                 this.openChatBox();
-                this.openConversation(data.data.id, otherUserId);
+                this.openConversation(data.data.id, otherUserId, otherUserName);
             } else {
                 this.showError('Failed to create conversation: ' + data.message);
             }
