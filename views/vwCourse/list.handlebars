@@ -1,17 +1,57 @@
 <div class="card bg-gray-50 p-3 rounded">
   <div class="container-fluid px-2 py-4">
-    <!-- Header with Create Button -->
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <div>
-        <h1 class="h3 mb-1">
-          <div class="d-flex align-items-center">
-            <i class="bi bi-mortarboard-fill me-2" style="color: #347571; font-size: 1.8rem;"></i>
-            <h2 class="mb-0">All Courses</h2>
-          </div>
-        </h1>
-        <p class="text-muted mb-0">Browse and explore our collection of courses</p>
+<!-- Header with Create Button -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h1 class="h3 mb-1">
+      <div class="d-flex align-items-center">
+        <i class="bi bi-mortarboard-fill me-2" style="color: #347571; font-size: 1.8rem;"></i>
+        <h2 class="mb-0">All Courses</h2>
       </div>
+    </h1>
+    <p class="text-muted mb-0">Browse and explore our collection of courses</p>
+  </div>
+
+  <!-- Sort controls -->
+  <form id="sortForm" class="d-flex align-items-center flex-wrap gap-3" method="get">
+  {{!-- Giữ các query params khác (server sẽ xử lý) --}}
+  <input type="hidden" name="page" value="{{pagination.currentPage}}">
+
+  <!-- Sort by -->
+  <div class="me-2">
+    <label class="form-label small mb-1 text-muted">Sort by</label>
+    <select name="sortBy" id="sortBy" class="form-select form-select-sm border-success-subtle">
+      <option value="created_at" {{#ifEq query.sortBy 'created_at'}}selected{{/ifEq}}>Newest</option>
+      <option value="rating_avg" {{#ifEq query.sortBy 'rating_avg'}}selected{{/ifEq}}>Rating</option>
+      <option value="view_count" {{#ifEq query.sortBy 'view_count'}}selected{{/ifEq}}>Views</option>
+      <option value="enrollment_count" {{#ifEq query.sortBy 'enrollment_count'}}selected{{/ifEq}}>Enrollment</option>
+    </select>
+  </div>
+
+  <!-- Order buttons -->
+  <div>
+    <label class="form-label small mb-1 text-muted d-block">Order</label>
+    <div class="btn-group btn-group-sm" role="group" aria-label="Order">
+      <button type="button" class="btn btn-outline-success" id="orderAsc" title="Ascending">
+        <i class="bi bi-arrow-up"></i>
+      </button>
+      <button type="button" class="btn btn-success" id="orderDesc" title="Descending">
+        <i class="bi bi-arrow-down"></i>
+      </button>
     </div>
+    <input type="hidden" name="order" id="orderInput" value="{{#if query.order}}{{query.order}}{{else}}desc{{/if}}">
+  </div>
+
+  <!-- Apply -->
+  <div>
+    <label class="form-label small mb-1 d-block">&nbsp;</label>
+    <button type="submit" class="btn btn-success btn-sm px-3">
+      <i class="bi bi-check2-circle me-1"></i>Apply
+    </button>
+  </div>
+</form>
+</div>
+
 
     <!-- Courses list -->
     <div class="row">
@@ -21,7 +61,7 @@
           {{#each courses}}
             <div class="card mb-3">
               <div class="row g-0">
-                <div class="col-md-4"
+                <div class="col-md-4">
                   <a href="/courses/detail/{{course_id}}">
                     <img src="{{#if image_url}}{{image_url}}{{else}}https://via.placeholder.com/400x300?text=No+Image{{/if}}" class="img-fluid rounded-start" alt="{{title}}">
                   </a>
@@ -59,3 +99,141 @@
     </div>
   </div>
 </div>
+
+<!-- Pagination -->
+{{#if pagination}}
+  <nav aria-label="Course pagination" class="mt-4">
+    <ul class="pagination justify-content-center">
+
+      <!-- Previous button -->
+      <li class="page-item {{#if pagination.isFirst}}disabled{{/if}}">
+        <a class="page-link"
+           href="?page={{pagination.prevPage}}"
+           tabindex="-1"
+           aria-disabled="{{pagination.isFirst}}">
+          <i class="bi bi-chevron-left"></i> Prev
+        </a>
+      </li>
+
+      <!-- Page numbers -->
+      {{#each pagination.pages}}
+        <li class="page-item {{#if this.active}}active{{/if}}">
+          <a class="page-link" href="?page={{this.number}}">{{this.number}}</a>
+        </li>
+      {{/each}}
+
+      <!-- Next button -->
+      <li class="page-item {{#if pagination.isLast}}disabled{{/if}}">
+        <a class="page-link"
+           href="?page={{pagination.nextPage}}">
+          Next <i class="bi bi-chevron-right"></i>
+        </a>
+      </li>
+
+    </ul>
+  </nav>
+{{/if}}
+
+
+{{!-- Pagination style --}}
+<style>
+  .pagination .page-item .page-link {
+    color: var(--bs-success);
+    border: 1px solid var(--bs-success);
+    transition: all 0.2s ease-in-out;
+  }
+
+  .pagination .page-item:not(.disabled) .page-link:hover {
+    background-color: var(--bs-success);
+    color: #fff;
+  }
+
+  .pagination .page-item.active .page-link {
+    background-color: var(--bs-success);
+    border-color: var(--bs-success);
+    color: #fff;
+  }
+
+  .pagination .page-item.disabled .page-link {
+    color: #6c757d;
+    border-color: #dee2e6;
+    background-color: #f8f9fa;
+  }
+</style>
+
+<style>
+  /* Pagination (giữ của bạn) + sort control tweaks */
+  .form-select.form-select-sm {
+    min-width: 160px;
+    border-color: rgba(52, 117, 113, 0.15);
+  }
+
+  .btn-group .btn {
+    min-width: 42px;
+    font-weight: 600;
+  }
+
+  /* Active order style */
+  .btn-group .btn-success {
+    background-color: var(--bs-success);
+    border-color: var(--bs-success);
+    color: #fff;
+  }
+
+  .btn-group .btn-outline-success {
+    color: var(--bs-success);
+    border-color: var(--bs-success);
+    background: transparent;
+  }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentOrder = urlParams.get('order') || 'desc';
+    const orderInput = document.getElementById('orderInput');
+    const ascBtn = document.getElementById('orderAsc');
+    const descBtn = document.getElementById('orderDesc');
+    const sortBySelect = document.getElementById('sortBy');
+    const sortForm = document.getElementById('sortForm');
+
+    // Set UI from query
+    orderInput.value = currentOrder;
+    if (currentOrder === 'asc') {
+      ascBtn.classList.replace('btn-outline-success', 'btn-success');
+      descBtn.classList.replace('btn-success', 'btn-outline-success');
+    } else {
+      descBtn.classList.replace('btn-outline-success', 'btn-success');
+      ascBtn.classList.replace('btn-success', 'btn-outline-success');
+    }
+
+    // Toggle order buttons
+    ascBtn.addEventListener('click', () => {
+      orderInput.value = 'asc';
+      ascBtn.classList.replace('btn-outline-success', 'btn-success');
+      descBtn.classList.replace('btn-success', 'btn-outline-success');
+    });
+
+    descBtn.addEventListener('click', () => {
+      orderInput.value = 'desc';
+      descBtn.classList.replace('btn-outline-success', 'btn-success');
+      ascBtn.classList.replace('btn-success', 'btn-outline-success');
+    });
+
+    // preserve other query params on submit (except page => reset to 1)
+    sortForm.addEventListener('submit', (e) => {
+      // build new URL
+      e.preventDefault();
+      const params = new URLSearchParams(window.location.search);
+
+      // remove page when applying new sort so users start from page 1
+      params.delete('page');
+
+      params.set('sortBy', sortBySelect.value);
+      params.set('order', orderInput.value || 'desc');
+
+      const newUrl = window.location.pathname + '?' + params.toString();
+      window.location.href = newUrl;
+    });
+  });
+</script>

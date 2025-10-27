@@ -13,71 +13,130 @@ import session from 'express-session';
 
 const router = express.Router();
 
-// All courses
-router.get('/', async (req, res) => {
-  // 1️⃣ Lấy tất cả khóa học
-  const courses = await courseModel.findAll();
-  const courseIds = courses.map(c => c.course_id);
-  // 2️⃣ Lấy tất cả chapters theo course_ids
-  const allChapters = (await Promise.all(
-    courseIds.map(id => chapterModel.findByCourseId(id))
-  )).flat();
+// All courses (pagination + sort + keep query params)
+router.get('/', async (req, res, next) => {
+  try {
+    // ----- paging -----
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = 6;
+    const offset = (page - 1) * limit;
 
-  // 3️⃣ Lấy tất cả lessons theo chapter_ids
-  const chapterIds = allChapters.map(ch => ch.chapter_id);
-  const allLessons = (await Promise.all(
-    chapterIds.map(id => lessonModel.findByChapterIds([id]))
-  )).flat();
+    // ----- sorting (sanitize) -----
+    const allowedSort = ['created_at', 'rating_avg', 'view_count', 'enrollment_count', 'course_id'];
+    const sortBy = allowedSort.includes(req.query.sortBy) ? req.query.sortBy : 'created_at';
+    const order = req.query.order === 'asc' ? 'asc' : 'desc';
 
-  // 4️⃣ Gom bài học theo course_id thông qua chapter_id
-  const lessonsByCourse = {};
-  for (const lesson of allLessons) {
-    const chapter = allChapters.find(ch => ch.chapter_id === lesson.chapter_id);
-    if (!chapter) continue;
-    const courseId = chapter.course_id;
-    if (!lessonsByCourse[courseId]) lessonsByCourse[courseId] = [];
-    lessonsByCourse[courseId].push(lesson);
-  }
-
-  // 5️⃣ Lấy instructors (nếu có)
-  const instructorIds = [...new Set(courses.map(c => c.instructor_id).filter(Boolean))];
-  let instructorsMap = {};
-  if (instructorIds.length)
-  {
-    const instructors = await Promise.all(instructorIds.map(id => instructorModel.findById(id)));
-    instructors.forEach(i => {
-      if (!i) return;
-      const key = i.instructor_id || i.user_id || i.id;
-      instructorsMap[key] = i.full_name || 'Unknown';
-    });
-  }
-
-  // 6️⃣ Tổng hợp dữ liệu course (thống kê giờ học, bài học)
-  const courseList = courses.map(c => {
-    const lessons = lessonsByCourse[c.course_id] || [];
-    const totalSeconds = lessons.reduce((sum, l) => sum + (l.duration_seconds || 0), 0);
-    const totalLectures = lessons.length;
-    const totalHours = +(totalSeconds / 3600).toFixed(1);
-
-    return {
-      ...c,
-      description: c.full_description || c.short_description || '',
-      image_url: c.image_url || c.large_image_url || null,
-      current_price: (c.sale_price != null && c.sale_price > 0) ? c.sale_price : c.price,
-      original_price: (c.sale_price != null && c.sale_price > 0) ? c.price : null,
-      instructor_name: instructorsMap[c.instructor_id] || 'Unknown',
-      rating_avg: (c.rating_avg != null ? +parseFloat(c.rating_avg).toFixed(1)
-                  : (c.rating != null ? +parseFloat(c.rating).toFixed(1) : 0)),
-      rating_count: c.rating_count || c.total_reviews || 0,
-      total_hours: totalHours,
-      total_lectures: totalLectures,
+    // ----- filters from query (extend if needed) -----
+    const filters = {
+      categoryId: req.query.categoryId || null,
+      status: req.query.status || null,
+      instructorId: req.query.instructorId || null,
+      sortBy,
+      order,
+      limit,
+      offset,
     };
-  });
 
-  res.render('vwCourse/list', { courses: courseList, layout: 'main' });
+    // ----- count total with filters -----
+    const totalCourses = await courseModel.countAllWithCategoryFiltered(filters);
+    const totalPagesRaw = Math.ceil((totalCourses || 0) / limit);
+    const totalPages = Math.max(0, totalPagesRaw);
+
+    // ----- build baseUrl (keep other query params except page) -----
+    const qs = new URLSearchParams(req.query);
+    qs.delete('page');
+    const baseQuery = qs.toString();
+    const baseUrl = baseQuery ? `?${baseQuery}&` : '?';
+
+    // ----- fetch paged & sorted courses (model handles sort & pagination) -----
+    const courses = await courseModel.findAllWithCategoryFiltered(filters);
+    const courseIds = courses.map(c => c.course_id);
+
+    // ----- get chapters & lessons for these courses (current approach) -----
+    const allChapters = (await Promise.all(
+      courseIds.map(id => chapterModel.findByCourseId(id))
+    )).flat();
+
+    const chapterIds = allChapters.map(ch => ch.chapter_id);
+    const allLessons = (await Promise.all(
+      chapterIds.map(id => lessonModel.findByChapterIds([id]))
+    )).flat();
+
+    // ----- group lessons by course_id -----
+    const lessonsByCourse = {};
+    for (const lesson of allLessons) {
+      const chapter = allChapters.find(ch => ch.chapter_id === lesson.chapter_id);
+      if (!chapter) continue;
+      const courseId = chapter.course_id;
+      if (!lessonsByCourse[courseId]) lessonsByCourse[courseId] = [];
+      lessonsByCourse[courseId].push(lesson);
+    }
+
+    // ----- get instructors (only for the current page courses) -----
+    const instructorIds = [...new Set(courses.map(c => c.instructor_id).filter(Boolean))];
+    let instructorsMap = {};
+    if (instructorIds.length) {
+      const instructors = await Promise.all(instructorIds.map(id => instructorModel.findById(id)));
+      instructors.forEach(i => {
+        if (!i) return;
+        const key = i.instructor_id || i.user_id || i.id;
+        instructorsMap[key] = i.full_name || 'Unknown';
+      });
+    }
+
+    // ----- assemble courseList for view -----
+    const courseList = courses.map(c => {
+      const lessons = lessonsByCourse[c.course_id] || [];
+      const totalSeconds = lessons.reduce((sum, l) => sum + (l.duration_seconds || 0), 0);
+      const totalLectures = lessons.length;
+      const totalHours = +(totalSeconds / 3600).toFixed(1);
+
+      return {
+        ...c,
+        // prefer instructor_name from joined query if available, else from instructorsMap
+        instructor_name: c.instructor_name || instructorsMap[c.instructor_id] || 'Unknown',
+        description: c.full_description || c.short_description || '',
+        image_url: c.image_url || c.large_image_url || null,
+        current_price: (c.sale_price != null && c.sale_price > 0) ? c.sale_price : c.price,
+        original_price: (c.sale_price != null && c.sale_price > 0) ? c.price : null,
+        rating_avg: (c.rating_avg != null ? +parseFloat(c.rating_avg).toFixed(1)
+          : (c.rating != null ? +parseFloat(c.rating).toFixed(1) : 0)),
+        rating_count: c.rating_count || c.total_reviews || 0,
+        total_hours: totalHours,
+        total_lectures: totalLectures,
+      };
+    });
+
+    // ----- pagination object (include baseUrl so template can reuse) -----
+    let pagination = null;
+    if (totalPages > 1) {
+      const currentPage = Math.max(1, Math.min(page, totalPages));
+      pagination = {
+        currentPage,
+        totalPages,
+        prevPage: currentPage > 1 ? currentPage - 1 : 1,
+        nextPage: currentPage < totalPages ? currentPage + 1 : totalPages,
+        isFirst: currentPage === 1,
+        isLast: currentPage === totalPages,
+        pages: Array.from({ length: totalPages }, (_, i) => ({
+          number: i + 1,
+          active: i + 1 === currentPage,
+        })),
+        baseUrl, // dùng trong view để giữ các query params khi chuyển trang
+      };
+    }
+
+    // ----- render view (truyền query để template show selected sort/order) -----
+    res.render('vwCourse/list', {
+      courses: courseList,
+      pagination,
+      query: { sortBy, order },
+      layout: 'main',
+    });
+  } catch (err) {
+    next(err);
+  }
 });
-
-
 
 
 // Route search: GET /courses/search?q=...
@@ -295,39 +354,73 @@ router.post('/wishlist/toggle', restrict, async (req, res) => {
 
 
 // Route xem các khóa học theo lĩnh vực (category)
-router.get('/by-category/:id', async (req, res) =>
-{
-  const categoryId = req.params.id;
-  const [category, coursesRawByCat] = await Promise.all([
-    categoryModel.findById(categoryId),
-    courseModel.findByCategory(categoryId)
-  ]);
+router.get('/by-category/:id', async (req, res) => {
+  const categoryId = parseInt(req.params.id);
 
-  if (!category)
-  {
-    return res.redirect('/');
+  try {
+    // Lấy tất cả danh mục
+    const allCategories = await categoryModel.findAll();
+
+    // Hàm đệ quy tìm toàn bộ ID con của category hiện tại
+    const findSubCategoryIds = (id) => {
+      const children = allCategories.filter(c => c.parent_category_id === id);
+      let ids = children.map(c => c.category_id);
+      for (const child of children) {
+        ids = ids.concat(findSubCategoryIds(child.category_id));
+      }
+      return ids;
+    };
+
+    // Lấy tất cả ID cần tìm (bao gồm chính nó)
+    const allIds = [categoryId, ...findSubCategoryIds(categoryId)];
+
+    // Lấy category chính
+    const category = await categoryModel.findById(categoryId);
+    if (!category) return res.redirect('/');
+
+    // Lấy tất cả khóa học thuộc các category con (và chính nó)
+    const coursesRawByCat = await courseModel.findByCategories(allIds);
+
+    const courses = coursesRawByCat.map(c => ({
+      ...c,
+      course_id: c.course_id,
+      title: c.title,
+      description: c.full_description || c.short_description || '',
+      image_url: c.image_url || c.large_image_url || null,
+      current_price: (c.sale_price != null && c.sale_price > 0) ? c.sale_price : c.price,
+      original_price: (c.sale_price != null && c.sale_price > 0) ? c.price : null,
+      rating_avg: (c.rating_avg != null ? Number(parseFloat(c.rating_avg).toFixed(1)) : (c.rating != null ? Number(parseFloat(c.rating).toFixed(1)) : 0)),
+      rating_count: c.rating_count || c.total_reviews || 0,
+      total_hours: c.total_hours || 0,
+      total_lectures: c.total_lectures || 0,
+    }));
+
+    res.render('vwCourse/byCat', {
+      category,
+      courses,
+      empty: courses.length === 0,
+      layout: 'main'
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Internal server error');
   }
-
-  const courses = coursesRawByCat.map(c => ({
-    ...c,
-    course_id: c.course_id,
-    title: c.title,
-    description: c.full_description || c.short_description || '',
-    image_url: c.image_url || c.large_image_url || null,
-    current_price: (c.sale_price != null && c.sale_price > 0) ? c.sale_price : c.price,
-    original_price: (c.sale_price != null && c.sale_price > 0) ? c.price : null,
-    rating_avg: (c.rating_avg != null ? Number(parseFloat(c.rating_avg).toFixed(1)) : (c.rating != null ? Number(parseFloat(c.rating).toFixed(1)) : 0)),
-    rating_count: c.rating_count || c.total_reviews || 0,
-    total_hours: c.total_hours || 0,
-    total_lectures: c.total_lectures || 0,
-  }));
-
-  res.render('vwCourse/byCat', {
-    category,
-    courses,
-    empty: courses.length === 0,
-    layout: 'main'
-  });
 });
+  
+router.get('/allCat', async (req, res) => {
+  try {
+    const categories = await categoryModel.getAllWithChildren();
+
+    res.render('vwCourse/allCat', {
+      layout: 'main',
+      categories,
+      session: req.session,
+    });
+  } catch (err) {
+    console.error('❌ Error loading categories:', err);
+    res.status(500).render('vwError/500', { layout: 'main' });
+  }
+});
+
 
 export default router;

@@ -68,7 +68,6 @@ export function findAllWithCategory() {
     )
     .orderBy('courses.course_id', 'asc');
 }
-
 export function findAllWithCategoryFiltered(filters = {}) {
   let query = db(TABLE_NAME)
     .leftJoin('categories', 'courses.category_id', 'categories.category_id')
@@ -79,41 +78,23 @@ export function findAllWithCategoryFiltered(filters = {}) {
       'users.full_name as instructor_name'
     );
 
-  // Filter by category if provided
-  if (filters.categoryId) {
-    query = query.where('courses.category_id', filters.categoryId);
-  }
+  if (filters.categoryId) query = query.where('courses.category_id', filters.categoryId);
+  if (filters.status) query = query.where('courses.status', filters.status);
+  if (filters.instructorId) query = query.where('courses.instructor_id', filters.instructorId);
 
-  // Filter by status if provided
-  if (filters.status) {
-    query = query.where('courses.status', filters.status);
-  }
+  // Sorting: support created_at, rating_avg, view_count, enrollment_count
+  const allowedSort = ['created_at', 'rating_avg', 'view_count', 'enrollment_count', 'course_id'];
+  const sortBy = allowedSort.includes(filters.sortBy) ? filters.sortBy : 'created_at';
+  const direction = filters.order === 'asc' ? 'asc' : 'desc';
 
-  // Filter by instructor if provided
-  if (filters.instructorId) {
-    query = query.where('courses.instructor_id', filters.instructorId);
-  }
+  query = query.orderBy(`courses.${sortBy}`, direction);
 
-  // Sort by specified field or default to ID
-  const direction = filters.order === 'desc' ? 'desc' : 'asc';
-  
-  if (filters.sortBy === 'enrollment') {
-    query = query.orderBy('courses.enrollment_count', direction);
-  } else {
-    // Default: sort by ID with the selected order
-    query = query.orderBy('courses.course_id', direction);
-  }
-
-  // Pagination
-  if (filters.limit) {
-    query = query.limit(filters.limit);
-  }
-  if (filters.offset) {
-    query = query.offset(filters.offset);
-  }
+  if (filters.limit) query = query.limit(filters.limit);
+  if (filters.offset) query = query.offset(filters.offset);
 
   return query;
 }
+
 
 export async function countAllWithCategoryFiltered(filters = {}) {
   let query = db(TABLE_NAME)
@@ -203,4 +184,30 @@ export function findRelated(catId, courseId, numCourses = 4) {
     .orderBy('rating_avg', 'desc')
     .orderBy('enrollment_count', 'desc')
     .limit(numCourses);
+}
+
+// Đếm tổng số khóa học
+export async function countAll() {
+  const result = await db(TABLE_NAME).count('course_id as total').first();
+  return parseInt(result.total || 0);
+}
+
+// Lấy khóa học theo phân trang (Knex thuần)
+export function findPage(limit, offset) {
+  return db(TABLE_NAME)
+    .select('*')
+    .orderBy('course_id', 'desc')
+    .limit(limit)
+    .offset(offset);
+}
+
+
+export async function findByCategories(categoryIds) {
+  if (!Array.isArray(categoryIds) || categoryIds.length === 0) return [];
+
+  const rows = await db(TABLE_NAME)
+    .whereIn('category_id', categoryIds)
+    .select('*');
+  
+  return rows;
 }

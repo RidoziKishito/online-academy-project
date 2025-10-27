@@ -1,7 +1,7 @@
 <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
 
   <!-- 🧭 Breadcrumb -->
-  <div class="card-header border-0 py-3 bg-dark text-light">
+  <div class="card-header border-0 py-3 text-light">
     <nav aria-label="breadcrumb">
       <ol class="breadcrumb mb-0 small" style="--bs-breadcrumb-divider-color: white;">
         <li class="breadcrumb-item">
@@ -73,50 +73,14 @@
               <i class="bi bi-clock me-1"></i>Updated {{format_date course.updated_at}}
             </small>
           </div>
-            <div class="mb-3">
-                <label for="comment" class="form-label">Nhận xét:</label>
-                <textarea class="form-control" id="comment" name="comment" rows="4"
-                    placeholder="Chia sẻ trải nghiệm của bạn...">{{#if userReview}}{{userReview.comment}}{{/if}}</textarea>
-            </div>
-            <button type="submit" class="btn btn-primary">
-                {{#if userReview}}Cập nhật đánh giá{{else}}Gửi đánh giá{{/if}}
-            </button>
-            {{#if userReview}}
-            <button type="button" class="btn btn-outline-danger" id="deleteReview">Xóa đánh giá</button>
-            {{/if}}
-        </form>
-    </div>
-</div>
-{{/if}}
-
-<!-- Reviews Display -->
-{{#if reviews}}
-<div class="card mt-4">
-    <div class="card-header">
-        <h5>Đánh giá từ học viên ({{ratingStats.total_reviews}})</h5>
-    </div>
-    <div class="card-body">
-        {{#each reviews}}
-        <div class="review-item border-bottom pb-3 mb-3">
-            <div class="d-flex justify-content-between align-items-start">
-                <div>
-                    <strong>{{user_name}}{{#if username}} (@{{username}}){{/if}}</strong>
-                    <div class="stars mb-2">
-                        {{#repeat rating}}⭐{{/repeat}}
-                    </div>
-                </div>
-                <small class="text-muted">{{formatDate created_at}}</small>
-            </div>
-            {{#if comment}}
-            <p class="mb-0">{{comment}}</p>
-            {{/if}}
         </div>
       </div>
 
       <!-- Right Card -->
       <div class="col-lg-8 d-flex align-items-stretch">
         <div class="card border-0 shadow-lg rounded-4 overflow-hidden flex-fill">
-          <div class="card-body p-4 d-flex flex-wrap align-items-center">
+<div class="card-body p-4 d-flex flex-nowrap align-items-center justify-content-between">
+
             <!-- Ảnh bên trái -->
             <div class="flex-shrink-0 me-4 mb-3">
               <img src="{{#if course.image_url}}{{course.image_url}}{{else}}https://via.placeholder.com/400x250?text=No+Image{{/if}}"
@@ -137,39 +101,45 @@
               </div>
 
               <!-- Nút hành động -->
-              <div class="d-grid gap-2 d-md-flex justify-content-center align-items-center">
-                {{#if isEnrolled}}
-                  <a class="btn btn-primary rounded-pill py-2 px-4 shadow-sm fw-semibold" href="/learn/{{course.course_id}}">
-                    <i class="bi bi-play-circle me-2"></i>Continue learning
-                  </a>
-                {{else}}
-                  <button class="btn btn-success rounded-pill py-2 shadow-sm fw-semibold me-2" id="addToCartBtn">
-                    <i class="bi bi-cart3 me-2"></i>Add to Cart
-                  </button>
-                  <button class="btn btn-outline-success rounded-pill py-2 fw-semibold me-2" id="buyNowBtn">
-                    <i class="bi bi-lightning-charge-fill me-2"></i>Buy Now
-                  </button>
-                {{/if}}
+<div class="text-center">
+  {{#if isEnrolled}}
+    <a class="btn btn-primary rounded-pill py-2 px-4 shadow-sm fw-semibold" href="/learn/{{course.course_id}}">
+      <i class="bi bi-play-circle me-2"></i>Continue learning
+    </a>
+  {{else}}
+    <!-- Hàng 1: Add to Cart + Buy Now -->
+    <div class="d-flex justify-content-center align-items-center mb-3 flex-wrap">
+      <button class="btn btn-success rounded-pill py-2 shadow-sm fw-semibold me-2" id="addToCartBtn">
+        <i class="bi bi-cart3 me-2"></i>Add to Cart
+      </button>
+      <button class="btn btn-outline-success rounded-pill py-2 fw-semibold me-2" id="buyNowBtn">
+        <i class="bi bi-lightning-charge-fill me-2"></i>Buy Now
+      </button>
+    </div>
 
-                {{!-- Wishlist (show only when user logged in) --}}
-                {{#if @root.session.authUser}}
-                  {{#if isInWishlist}}
-                    <button type="button" class="btn btn-danger rounded-pill py-2" id="wishlistBtn" data-course-id="{{course.course_id}}">
-                      <i class="bi bi-heart-fill"></i>
-                      <span id="wishlistText">Remove from Wishlist</span>
-                    </button>
-                  {{else}}
-                    <button type="button" class="btn btn-outline-danger rounded-pill py-2" id="wishlistBtn" data-course-id="{{course.course_id}}">
-                      <i class="bi bi-heart"></i>
-                      <span id="wishlistText">Add to Wishlist</span>
-                    </button>
-                  {{/if}}
-                {{else}}
-                  <a href="/auth/login" class="btn btn-outline-danger rounded-pill py-2">
-                    <i class="bi bi-heart"></i> Add to Wishlist
-                  </a>
-                {{/if}}
-              </div>
+    <!-- Hàng 2: Wishlist -->
+    <div class="d-flex justify-content-center">
+      {{#if @root.session.authUser}}
+        {{#if isInWishlist}}
+          <button type="button" class="btn btn-danger rounded-pill py-2" id="wishlistBtn" data-course-id="{{course.course_id}}">
+            <i class="bi bi-heart-fill"></i>
+            <span id="wishlistText">Remove from Wishlist</span>
+          </button>
+        {{else}}
+          <button type="button" class="btn btn-outline-danger rounded-pill py-2" id="wishlistBtn" data-course-id="{{course.course_id}}">
+            <i class="bi bi-heart"></i>
+            <span id="wishlistText">Add to Wishlist</span>
+          </button>
+        {{/if}}
+      {{else}}
+        <a href="/auth/login" class="btn btn-outline-danger rounded-pill py-2">
+          <i class="bi bi-heart"></i> Add to Wishlist
+        </a>
+      {{/if}}
+    </div>
+  {{/if}}
+</div>
+
 
               {{!-- Enroll form for free course (optional) --}}
               {{#if course.is_free}}
@@ -264,11 +234,11 @@
             <div class="mb-3">
               <label class="form-label">Rating:</label>
               <div class="star-rating" style="font-size: 1.5rem;">
-                <span class="star" data-rating="1" style="cursor: pointer; ">⭐</span>
-                <span class="star" data-rating="2" style="cursor: pointer; ">⭐</span>
-                <span class="star" data-rating="3" style="cursor: pointer; ">⭐</span>
-                <span class="star" data-rating="4" style="cursor: pointer; ">⭐</span>
-                <span class="star" data-rating="5" style="cursor: pointer; ">⭐</span>
+                <span class="star" data-rating="1" style="cursor: pointer;">⭐</span>
+                <span class="star" data-rating="2" style="cursor: pointer;">⭐</span>
+                <span class="star" data-rating="3" style="cursor: pointer;">⭐</span>
+                <span class="star" data-rating="4" style="cursor: pointer;">⭐</span>
+                <span class="star" data-rating="5" style="cursor: pointer;">⭐</span>
               </div>
               <input type="hidden" id="rating" name="rating" value="0" required>
             </div>
@@ -293,6 +263,7 @@
 
     <!-- 💬 Feedback Display -->
     <section class="mt-4">
+      <h4 class="fw-bold mb-3"><i class="bi bi-chat-square-text text-success me-2"></i>Reviews from Students</h4>
       <div class="row row-cols-1 row-cols-md-3 g-4">
         {{#each course.reviews}}
           <div class="col">
@@ -340,7 +311,7 @@
       <h4 class="fw-bold mb-3"><i class="bi bi-book text-success me-2"></i>Related Courses</h4>
       <div class="row row-cols-1 row-cols-md-4 g-4">
         {{#each related_courses}}
-          <div class="col">
+          <a class="col text-decoration-none" href="/courses/detail/{{this.course_id}}">
             <div class="card border-0 shadow-sm rounded-4 h-100">
               <img src="{{this.image_url}}" class="card-img-top" height="180" alt="{{this.title}}">
               <div class="card-body">
@@ -352,7 +323,7 @@
                 </div>
               </div>
             </div>
-          </div>
+          </a>
         {{/each}}
       </div>
     </section>
@@ -561,9 +532,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
       }
     }
-
-    /* ---------- small spinner animation class already used by wishlist ---------- */
-    // (CSS for .spin is below; keep it in page or global stylesheet)
 });
 </script>
 

@@ -115,3 +115,19 @@ export async function existsByNameExceptId(name, excludeId) {
     .first('category_id');
   return !!row;
 }
+
+export async function getAllWithChildren() {
+  // Lấy tất cả categories
+  const categories = await db('categories').select('*').orderBy('category_id', 'asc');
+
+  // Gom nhóm theo parent
+  const parents = categories.filter(c => c.parent_category_id === null);
+  const children = categories.filter(c => c.parent_category_id !== null);
+
+  // Gắn con vào cha
+  parents.forEach(parent => {
+    parent.children = children.filter(ch => ch.parent_category_id === parent.category_id);
+  });
+
+  return parents;
+}

@@ -2,7 +2,7 @@
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center bg-white border-bottom-0 pt-3">
         <div>
-            <h5 class="mb-1">Course Content</h5>
+            <h5 class="mb-1 text-success">Course Content</h5>
             <p class="text-muted small mb-0">
                 {{#if totalDuration}}
                 Total Duration: {{format_duration totalDuration}} •
@@ -26,7 +26,7 @@
                 <div class="card-header bg-light">
                     <div class="d-flex align-items-center justify-content-between">
                         <div class="d-flex align-items-center gap-2">
-                            <strong class="chapter-label">Chapter {{order_index}}</strong>
+                            <strong class="chapter-label text-success">Chapter&nbsp;{{order_index}}</strong>
                             <input type="text" class="form-control form-control-sm chapter-title"
                                 style="min-width:300px" value="{{title}}" placeholder="Enter chapter title">
                         </div>
@@ -46,7 +46,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="card-body p-0">
+                <div class="card-body p-2">
                     <div class="lessons-list px-3">
                         {{#each lessons}}
                         <div class="lesson-row p-3 mb-2 rounded border" data-lesson-id="{{lesson_id}}">
@@ -162,54 +162,56 @@
 </template>
 
 <template id="lesson-template">
-    <div class="lesson-row p-3 border-bottom" data-lesson-id="__LESSON_ID__">
-        <div class="d-flex justify-content-between align-items-start mb-3">
-            <div class="d-flex align-items-center gap-2">
-                <span class="lesson-label text-muted">Lesson __NUMBER__</span>
-                <input type="text" class="form-control form-control-sm lesson-title" style="width:360px"
-                    value="New Lesson" placeholder="Enter lesson title">
-            </div>
-            <div class="btn-group">
-                <button class="btn btn-sm btn-outline-secondary move-lesson-up" title="Move up">
-                    <i class="bi bi-arrow-up-short"></i>
-                </button>
-                <button class="btn btn-sm btn-outline-secondary move-lesson-down" title="Move down">
-                    <i class="bi bi-arrow-down-short"></i>
-                </button>
-                <button class="btn btn-sm btn-outline-danger remove-lesson" title="Delete lesson">
-                    <i class="bi bi-trash"></i>
-                </button>
-            </div>
+  <div class="card lesson-card mb-3" data-lesson-id="__LESSON_ID__">
+    <div class="card-body p-3">
+      <div class="d-flex justify-content-between align-items-start mb-3">
+        <div class="d-flex align-items-center gap-2">
+          <span class="lesson-label text-muted">Lesson __NUMBER__</span>
+          <input type="text" class="form-control form-control-sm lesson-title" style="width:360px"
+              value="New Lesson" placeholder="Enter lesson title">
         </div>
+        <div class="btn-group">
+          <button class="btn btn-sm btn-outline-secondary move-lesson-up" title="Move up">
+            <i class="bi bi-arrow-up-short"></i>
+          </button>
+          <button class="btn btn-sm btn-outline-secondary move-lesson-down" title="Move down">
+            <i class="bi bi-arrow-down-short"></i>
+          </button>
+          <button class="btn btn-sm btn-outline-danger remove-lesson" title="Delete lesson">
+            <i class="bi bi-trash"></i>
+          </button>
+        </div>
+      </div>
 
-        <div class="row g-3">
-            <div class="col-md-6">
-                <label class="form-label small mb-1">Video URL</label>
-                <div class="input-group input-group-sm mb-2">
-                    <input type="text" class="form-control lesson-video"
-                        placeholder="https://www.youtube.com/watch?v=...">
-                    <button class="btn btn-outline-secondary preview-video">Preview</button>
-                </div>
-                <div class="d-flex gap-2 mb-2">
-                    <div class="input-group input-group-sm" style="width:150px">
-                        <input type="number" min="0" class="form-control lesson-duration" placeholder="Duration (s)">
-                        <span class="input-group-text">sec</span>
-                    </div>
-                    <div class="form-check form-check-inline">
-                        <input class="form-check-input lesson-previewable" type="checkbox">
-                        <label class="form-check-label small">Preview enabled</label>
-                    </div>
-                </div>
-                <div class="video-preview-box">
-                    <div class="video-preview rounded d-flex align-items-center justify-content-center bg-light">
-                        <span class="text-muted">No preview available</span>
-                    </div>
-                </div>
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label small mb-1">Video URL</label>
+          <div class="input-group input-group-sm mb-2">
+            <input type="text" class="form-control lesson-video"
+                placeholder="https://www.youtube.com/watch?v=...">
+            <button class="btn btn-outline-secondary preview-video">Preview</button>
+          </div>
+          <div class="d-flex gap-2 mb-2">
+            <div class="input-group input-group-sm" style="width:150px">
+              <input type="number" min="0" class="form-control lesson-duration" placeholder="Duration (s)">
+              <span class="input-group-text">sec</span>
             </div>
-            <div class="col-md-6">
-                <label class="form-label small mb-1">Lesson Content</label>
-                <div id="quill-__LESSON_ID__" class="quill-editor"></div>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input lesson-previewable" type="checkbox">
+              <label class="form-check-label small">Preview enabled</label>
             </div>
+          </div>
+          <div class="video-preview-box">
+            <div class="video-preview rounded d-flex align-items-center justify-content-center bg-light">
+              <span class="text-muted">No preview available</span>
+            </div>
+          </div>
         </div>
+        <div class="col-md-6">
+          <label class="form-label small mb-1">Lesson Content</label>
+          <div id="quill-__LESSON_ID__" class="quill-editor"></div>
+        </div>
+      </div>
     </div>
+  </div>
 </template>
