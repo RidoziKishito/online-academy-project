@@ -354,6 +354,14 @@
     {{else}}
     console.log('Supabase not configured. Real-time features disabled.');
     {{/if}}
+    
+    // Initialize Chat System
+    document.addEventListener('DOMContentLoaded', function() {
+      if (typeof ChatSystem !== 'undefined' && window.authUser) {
+        window.chatSystem = new ChatSystem();
+        console.log('Chat system initialized for user:', window.authUser.full_name);
+      }
+    });
   </script>
 </body>
 

@@ -108,6 +108,9 @@ app.engine('handlebars', engine({
     eq(a, b) {
       return a === b;
     },
+    ne(a, b) {
+      return a !== b;
+    },
     ifEq(a, b, options) {
       if (a === b) {
         return options.fn(this);
