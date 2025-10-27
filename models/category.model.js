@@ -20,11 +20,9 @@ export async function findParentCategories() {
 
 export async function findSubcategories(parentId) {
   try {
-    console.log('Finding subcategories for parent:', parentId);
     const results = await db(TABLE_NAME)
       .where('parent_category_id', parentId)
       .orderBy('name', 'asc');
-    console.log('Found subcategories:', results);
     return results;
   } catch (err) {
     console.error('Error in findSubcategories:', err);
@@ -62,7 +60,6 @@ export function patch(id, category) {
 
 export async function findParentSon(id) {
   // 🔹 Lấy thông tin category con
-  console.log(id)
   const child = await db(TABLE_NAME)
     .select('category_id', 'name', 'parent_category_id')
     .where('category_id', id)
