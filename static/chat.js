@@ -4,7 +4,6 @@ class ChatSystem {
         this.currentConversationId = null;
         this.currentUserId = null;
         this.isOpen = false;
-        this.supabase = null;
         this.subscription = null;
         
         this.init();
@@ -25,7 +24,6 @@ class ChatSystem {
         this.currentUserId = window.authUser.user_id;
         this.setupChatButton();
         this.setupChatBox();
-        this.initSupabase();
     }
 
     setupChatButton() {
@@ -106,12 +104,6 @@ class ChatSystem {
         this.loadConversations();
     }
 
-    initSupabase() {
-        // Initialize Supabase if available
-        if (typeof window.supabase !== 'undefined') {
-            this.supabase = window.supabase;
-        }
-    }
 
     async loadConversations() {
         try {
