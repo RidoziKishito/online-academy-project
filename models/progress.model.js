@@ -3,36 +3,41 @@ import db from '../utils/db.js';
 const TABLE_NAME = 'user_lesson_progress'; // Sử dụng thống nhất 1 tên bảng
 
 // Đánh dấu bài học đã hoàn thành
+// progress.model.js
+// Giả sử `db` là instance Knex và TABLE_NAME là tên bảng (ví dụ 'user_lesson_progress')
 export async function markAsCompleted(userId, lessonId) {
+  // Dùng timestamp của DB để tránh vấn đề timezone giữa server và DB
+  const now = db.fn.now();
+
   try {
-    await db(TABLE_NAME)
-      .insert({ 
-        user_id: userId, 
-        lesson_id: lessonId,
-        completed_at: new Date()
-      })
-      .onDuplicateUpdate({
-        completed_at: new Date()
-      });
-    
-    return true;
-  } catch (error) {
-    console.error('markAsCompleted error:', error);
-    
-    // Fallback: dùng cách check-then-insert
-    const exists = await db(TABLE_NAME)
-      .where({ user_id: userId, lesson_id: lessonId })
-      .first();
-    
-    if (!exists) {
-      await db(TABLE_NAME).insert({
+    // Thực hiện INSERT; nếu có conflict trên (user_id, lesson_id) thì MERGE (update) thay vì tạo row mới.
+    // Điều này chạy nguyên tử ở phía DB — tránh race condition so với check-then-insert.
+    const rows = await db(TABLE_NAME)
+      .insert({
         user_id: userId,
         lesson_id: lessonId,
-        completed_at: new Date()
-      });
-    }
-    
-    return true;
+        // Đánh dấu hoàn thành
+        is_completed: true,
+        // completed_at lấy từ DB
+        completed_at: now
+      })
+      // onConflict yêu cầu tồn tại unique constraint trên (user_id, lesson_id)
+      .onConflict(['user_id', 'lesson_id'])
+      // merge: cập nhật các cột nếu đã tồn tại row
+      .merge({
+        is_completed: true,
+        completed_at: now
+      })
+      // .returning(...) chỉ dùng trên Postgres để trả về row vừa insert/update (tùy cần)
+      .returning(['progress_id', 'user_id', 'lesson_id', 'is_completed', 'completed_at']);
+
+    // rows thường là mảng; trả về row đầu (inserted/updated) hoặc true tuỳ luồng app của bạn
+    return rows && rows[0] ? rows[0] : true;
+  } catch (error) {
+    // Log lỗi để debug
+    console.error('markAsCompleted error:', error);
+    // Tùy workflow: ném lỗi lên caller hoặc trả false/true; ở đây mình rethrow để caller biết có vấn đề
+    throw error;
   }
 }
 

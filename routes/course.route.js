@@ -111,6 +111,7 @@ router.get('/', async (req, res, next) => {
         total_lectures: totalLectures,
         is_new: !!c.is_new,
         is_bestseller: !!c.is_bestseller,
+        is_complete: !!c.is_complete
       };
     });
 

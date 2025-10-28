@@ -473,10 +473,35 @@ export async function updateAverageRating(courseId) {
     .update({ rating_avg: avg_rating, rating_count: rating_count });
 }
 
-/* Related courses */
-export function findRelated(catId, courseId, numCourses = 4) {
+
+/**
+ * Lấy danh sách khóa học liên quan (cùng lĩnh vực hoặc cùng nhóm lĩnh vực cha)
+ */
+export async function findRelated(catId, courseId, numCourses = 4) {
+  // B1: Tìm parent của category hiện tại
+  const cat = await db('categories').where('category_id', catId).first();
+
+  let relatedCatIds = [];
+
+  if (!cat) return [];
+
+  if (cat.parent_category_id === null) {
+    // Lĩnh vực cha → lấy chính nó + tất cả con của nó
+    const subcats = await db('categories')
+      .where('parent_category_id', cat.category_id)
+      .select('category_id');
+    relatedCatIds = [cat.category_id, ...subcats.map(c => c.category_id)];
+  } else {
+    // Lĩnh vực con → lấy tất cả cùng nhóm cha + cha
+    const siblings = await db('categories')
+      .where('parent_category_id', cat.parent_category_id)
+      .select('category_id');
+    relatedCatIds = [cat.parent_category_id, ...siblings.map(c => c.category_id)];
+  }
+
+  // B2: Query course liên quan
   return db('courses')
-    .where('category_id', catId)
+    .whereIn('category_id', relatedCatIds)
     .whereNot('course_id', courseId)
     .orderBy('rating_avg', 'desc')
     .orderBy('enrollment_count', 'desc')
