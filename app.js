@@ -118,6 +118,12 @@ app.engine('handlebars', engine({
       }
       return options.inverse(this);
     },
+    or(a, b) {
+      return a || b;
+    },
+    not(a) {
+      return !a;
+    },
 
     render_stars(rating) {
       const fullStars = Math.floor(rating || 0);

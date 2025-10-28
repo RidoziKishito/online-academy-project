@@ -27,18 +27,27 @@ router.get('/', async (req, res, next) => {
     const order = req.query.order === 'asc' ? 'asc' : 'desc';
 
     // ----- filters from query (extend if needed) -----
-    const filters = {
-      categoryId: req.query.categoryId || null,
-      status: req.query.status || null,
-      instructorId: req.query.instructorId || null,
-      sortBy,
-      order,
-      limit,
-      offset,
-    };
+    const categoryId = req.query.categoryId || null;
+    const status = req.query.status || null;
+    const instructorId = req.query.instructorId || null;
 
-    // ----- count total with filters -----
-    const totalCourses = await courseModel.countAllWithCategoryFiltered(filters);
+    // ----- decide whether to use badge-mode (no filters) -----
+    const noFilters = !categoryId && !status && !instructorId;
+
+    let totalCourses = 0;
+    let courses = [];
+
+    if (noFilters) {
+      // Use badge-mode: bestseller first + is_new flag
+      totalCourses = await courseModel.countAll();
+      courses = await courseModel.getAllWithBadge({ limit, offset, sortBy, order, newDays: 7 });
+    } else {
+      // Filter-aware
+      const filters = { categoryId, status, instructorId, sortBy, order, limit, offset };
+      totalCourses = await courseModel.countAllWithCategoryFiltered(filters);
+      courses = await courseModel.findAllWithCategoryFiltered(filters);
+    }
+
     const totalPagesRaw = Math.ceil((totalCourses || 0) / limit);
     const totalPages = Math.max(0, totalPagesRaw);
 
@@ -48,19 +57,16 @@ router.get('/', async (req, res, next) => {
     const baseQuery = qs.toString();
     const baseUrl = baseQuery ? `?${baseQuery}&` : '?';
 
-    // ----- fetch paged & sorted courses (model handles sort & pagination) -----
-    const courses = await courseModel.findAllWithCategoryFiltered(filters);
+    // ----- get chapters & lessons for these courses -----
     const courseIds = courses.map(c => c.course_id);
-
-    // ----- get chapters & lessons for these courses (current approach) -----
     const allChapters = (await Promise.all(
       courseIds.map(id => chapterModel.findByCourseId(id))
     )).flat();
 
     const chapterIds = allChapters.map(ch => ch.chapter_id);
-    const allLessons = (await Promise.all(
+    const allLessons = (chapterIds.length ? (await Promise.all(
       chapterIds.map(id => lessonModel.findByChapterIds([id]))
-    )).flat();
+    )).flat() : []);
 
     // ----- group lessons by course_id -----
     const lessonsByCourse = {};
@@ -93,7 +99,6 @@ router.get('/', async (req, res, next) => {
 
       return {
         ...c,
-        // prefer instructor_name from joined query if available, else from instructorsMap
         instructor_name: c.instructor_name || instructorsMap[c.instructor_id] || 'Unknown',
         description: c.full_description || c.short_description || '',
         image_url: c.image_url || c.large_image_url || null,
@@ -104,6 +109,8 @@ router.get('/', async (req, res, next) => {
         rating_count: c.rating_count || c.total_reviews || 0,
         total_hours: totalHours,
         total_lectures: totalLectures,
+        is_new: !!c.is_new,
+        is_bestseller: !!c.is_bestseller,
       };
     });
 
@@ -130,13 +137,14 @@ router.get('/', async (req, res, next) => {
     res.render('vwCourse/list', {
       courses: courseList,
       pagination,
-      query: { sortBy, order },
+      query: { sortBy, order, categoryId: categoryId || '', status: status || '', instructorId: instructorId || '' },
       layout: 'main',
     });
   } catch (err) {
     next(err);
   }
 });
+
 
 
 // Route search: GET /courses/search?q=...

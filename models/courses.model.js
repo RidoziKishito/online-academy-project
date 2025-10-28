@@ -1,7 +1,12 @@
+// models/courses.model.js
 import db from '../utils/db.js';
 
 const TABLE_NAME = 'courses';
+const allowedSortCols = ['created_at', 'rating_avg', 'view_count', 'enrollment_count', 'course_id'];
 
+/* ---------------------------
+   Basic getters / CRUD
+   --------------------------- */
 export function findById(id) {
   return db(TABLE_NAME).where('course_id', id).first();
 }
@@ -113,6 +118,10 @@ export function findDetail(courseId, instructorId) {
     .first();
 }
 
+/* ---------------------------
+   Search related (kept as-is)
+   --------------------------- */
+
 /**
  * Full-text search with optional filters, sorting and pagination.
  * options: { categoryId, sortBy, order, page, limit }
@@ -120,9 +129,7 @@ export function findDetail(courseId, instructorId) {
 export async function search(keyword, options = {}) {
   const { categoryId, sortBy, order = 'desc', page = 1, limit = 10 } = options;
 
-  // Keep rawKeyword for bindings (use plainto_tsquery for safer parsing)
   const rawKeyword = String(keyword || '').trim();
-  // Build tsquery string (used earlier for legacy to_tsquery if needed)
   const keywords = rawKeyword.split(/\s+/).filter(Boolean).join(' & ');
 
   let query = db(TABLE_NAME)
@@ -135,32 +142,26 @@ export async function search(keyword, options = {}) {
     );
 
   if (rawKeyword) {
-    // Use unaccent + plainto_tsquery for safer user input handling
-    // We optionally include trigram-based fuzzy matching (pg_trgm) when enabled via env var
     const useTrigram = String(process.env.PG_TRGM || '').toLowerCase() === 'true';
 
     if (useTrigram) {
-      // Combine FTS with trigram similarity and ILIKE fallback
       query = query.where(function () {
         this.whereRaw(`fts_document @@ plainto_tsquery('simple', unaccent(?))`, [rawKeyword])
           .orWhereRaw(`similarity(unaccent(lower(courses.title)), unaccent(lower(?))) > 0.28`, [rawKeyword])
           .orWhereRaw(`unaccent(lower(courses.title)) ILIKE unaccent(lower(?))`, [`%${rawKeyword}%`]);
       });
     } else {
-      // Fallback: only use FTS and ILIKE fallback to avoid DB errors when pg_trgm not installed
       query = query.where(function () {
         this.whereRaw(`fts_document @@ plainto_tsquery('simple', unaccent(?))`, [rawKeyword])
           .orWhereRaw(`unaccent(lower(courses.title)) ILIKE unaccent(lower(?))`, [`%${rawKeyword}%`]);
       });
     }
 
-    // Select relevance rank and a snippet to show in search results (if FTS available)
     query = query.select(db.raw("ts_rank(fts_document, plainto_tsquery('simple', unaccent(?))) as rank", [rawKeyword]));
     query = query.select(db.raw("ts_headline('simple', COALESCE(courses.short_description, courses.full_description, ''), plainto_tsquery('simple', unaccent(?)), 'MaxFragments=2, MinWords=5, MaxWords=20') as snippet", [rawKeyword]));
   }
 
   if (categoryId) {
-    // support passing either a single id or an array of ids (for parent + subcategories)
     if (Array.isArray(categoryId)) {
       query = query.whereIn('courses.category_id', categoryId);
     } else {
@@ -168,9 +169,7 @@ export async function search(keyword, options = {}) {
     }
   }
 
-  // Sorting
   const direction = order && String(order).toLowerCase() === 'asc' ? 'asc' : 'desc';
-  // If user didn't specify a sort and there is a keyword, default to relevance
   let effectiveSort = sortBy;
   if (!effectiveSort && rawKeyword) effectiveSort = 'relevance';
 
@@ -179,28 +178,22 @@ export async function search(keyword, options = {}) {
       query = query.orderBy('courses.rating_avg', direction);
       break;
     case 'price':
-      // order by effective price (sale_price if present, otherwise price)
       query = query.orderBy(db.raw('COALESCE(courses.sale_price, courses.price)'), direction === 'asc' ? 'asc' : 'desc');
       break;
     case 'newest':
       query = query.orderBy('courses.created_at', direction);
       break;
     case 'bestseller':
-      // bestseller flag first, then enrollment_count
       query = query.orderBy('courses.is_bestseller', 'desc').orderBy('courses.enrollment_count', 'desc');
       break;
     case 'relevance':
-      // order by computed rank (selected above)
       query = query.orderByRaw('rank DESC NULLS LAST');
-      // fallback ordering
       query = query.orderBy('courses.is_bestseller', 'desc').orderBy('courses.rating_avg', 'desc');
       break;
     default:
-      // default relevance: order by is_bestseller then rating then created_at
       query = query.orderBy('courses.is_bestseller', 'desc').orderBy('courses.rating_avg', 'desc').orderBy('courses.created_at', 'desc');
   }
 
-  // Pagination
   const lim = parseInt(limit) || 10;
   const pg = Math.max(1, parseInt(page) || 1);
   const offset = (pg - 1) * lim;
@@ -224,8 +217,12 @@ export async function countSearch(keyword, categoryId) {
     }
   }
   const row = await query.first();
-  return parseInt(row?.total || 0);
+  return parseInt(row?.total || 0, 10);
 }
+
+/* ---------------------------
+   Keep many existing utilities
+   --------------------------- */
 
 export function findAll() {
   return db(TABLE_NAME);
@@ -240,7 +237,22 @@ export function findAllWithCategory() {
     )
     .orderBy('courses.course_id', 'asc');
 }
-export function findAllWithCategoryFiltered(filters = {}) {
+
+/* ---------------------------
+   REWRITTEN: Filtered list + count
+   (Safer & consistent with Knex + allowed sort)
+   --------------------------- */
+
+/**
+ * Find courses with optional filters, sorting and pagination.
+ * opts: { categoryId, status, instructorId, sortBy, order, limit, offset }
+ */
+export function findAllWithCategoryFiltered(opts = {}) {
+  const sortBy = allowedSortCols.includes(opts.sortBy) ? opts.sortBy : 'created_at';
+  const direction = opts.order === 'asc' ? 'asc' : 'desc';
+  const limit = opts.limit ? parseInt(opts.limit, 10) : null;
+  const offset = opts.offset ? parseInt(opts.offset, 10) : null;
+
   let query = db(TABLE_NAME)
     .leftJoin('categories', 'courses.category_id', 'categories.category_id')
     .leftJoin('users', 'courses.instructor_id', 'users.user_id')
@@ -250,163 +262,80 @@ export function findAllWithCategoryFiltered(filters = {}) {
       'users.full_name as instructor_name'
     );
 
-  if (filters.categoryId) query = query.where('courses.category_id', filters.categoryId);
-  if (filters.status) query = query.where('courses.status', filters.status);
-  if (filters.instructorId) query = query.where('courses.instructor_id', filters.instructorId);
-
-  // Sorting: support created_at, rating_avg, view_count, enrollment_count
-  const allowedSort = ['created_at', 'rating_avg', 'view_count', 'enrollment_count', 'course_id'];
-  const sortBy = allowedSort.includes(filters.sortBy) ? filters.sortBy : 'created_at';
-  const direction = filters.order === 'asc' ? 'asc' : 'desc';
+  if (opts.categoryId) query = query.where('courses.category_id', opts.categoryId);
+  if (opts.status) query = query.where('courses.status', opts.status);
+  if (opts.instructorId) query = query.where('courses.instructor_id', opts.instructorId);
 
   query = query.orderBy(`courses.${sortBy}`, direction);
 
-  if (filters.limit) query = query.limit(filters.limit);
-  if (filters.offset) query = query.offset(filters.offset);
+  if (limit !== null) query = query.limit(limit);
+  if (offset !== null) query = query.offset(offset);
 
   return query;
 }
 
-
-export async function countAllWithCategoryFiltered(filters = {}) {
+/**
+ * Count courses matching filters
+ * opts: { categoryId, status, instructorId }
+ */
+export async function countAllWithCategoryFiltered(opts = {}) {
   let query = db(TABLE_NAME)
     .leftJoin('categories', 'courses.category_id', 'categories.category_id')
     .leftJoin('users', 'courses.instructor_id', 'users.user_id');
 
-  // Filter by category if provided
-  if (filters.categoryId) {
-    query = query.where('courses.category_id', filters.categoryId);
-  }
-
-  // Filter by status if provided
-  if (filters.status) {
-    query = query.where('courses.status', filters.status);
-  }
-
-  // Filter by instructor if provided
-  if (filters.instructorId) {
-    query = query.where('courses.instructor_id', filters.instructorId);
-  }
+  if (opts.categoryId) query = query.where('courses.category_id', opts.categoryId);
+  if (opts.status) query = query.where('courses.status', opts.status);
+  if (opts.instructorId) query = query.where('courses.instructor_id', opts.instructorId);
 
   const result = await query.count('courses.course_id as total').first();
-  return parseInt(result.total || 0);
+  return parseInt(result.total || 0, 10);
 }
 
-export function add(course) {
-  return db(TABLE_NAME).insert(course).returning('course_id');
+/* ---------------------------
+   NEW: getAllWithBadge
+   - returns courses with is_new flag (created within newDays)
+   - orders by is_bestseller DESC first, then by sortBy/order
+   opts: { limit, offset, sortBy, order, newDays }
+   --------------------------- */
+export async function getAllWithBadge(opts = {}) {
+  const limit = opts.limit ? parseInt(opts.limit, 10) : 6;
+  const offset = opts.offset ? parseInt(opts.offset, 10) : 0;
+  const sortBy = allowedSortCols.includes(opts.sortBy) ? opts.sortBy : 'created_at';
+  const order = opts.order === 'asc' ? 'asc' : 'desc';
+  const newDays = Math.max(1, parseInt(opts.newDays || 7, 10));
+
+  // tính threshold date ở JS
+  const ms = newDays * 24 * 60 * 60 * 1000;
+  const thresholdDate = new Date(Date.now() - ms);
+
+  const rows = await db
+    .select(
+      'courses.*',
+      db.raw('(courses.created_at >= ?) as is_new', [thresholdDate])
+    )
+    .from(TABLE_NAME)
+    .orderBy([{ column: 'is_bestseller', order: 'desc' }, { column: sortBy, order }])
+    .limit(limit)
+    .offset(offset);
+
+  return rows.map(r => ({
+    ...r,
+    is_new: !!r.is_new,
+    is_bestseller: !!r.is_bestseller,
+  }));
 }
 
-export function patch(id, course) {
-  return db(TABLE_NAME).where('course_id', id).update(course);
-}
 
-export function del(id) {
-  return db(TABLE_NAME).where('course_id', id).del();
-}
 
-export function approveCourse(courseId) {
-  return db(TABLE_NAME)
-    .where('course_id', courseId)
-    .update({ status: 'approved' });
-}
+/* ---------------------------
+   Remaining helpers (kept mostly unchanged)
+   --------------------------- */
 
-export function hideCourse(courseId) {
-  return db(TABLE_NAME)
-    .where('course_id', courseId)
-    .update({ status: 'hidden' });
-}
-
-export function showCourse(courseId) {
-  return db(TABLE_NAME)
-    .where('course_id', courseId)
-    .update({ status: 'approved' });
-}
-
-export function countEnrollmentsByCourse(courseId) {
-  return db('enrollments')
-    .where('course_id', courseId)
-    .count('enrollment_id as count')
-    .first()
-    .then(result => parseInt(result.count || 0));
-}
-
-export function incrementViewCount(courseId) {
-  return db(TABLE_NAME)
-    .where('course_id', courseId)
-    .increment('view_count', 1);
-}
-
-export function incrementEnrollment(courseId) {
-  return db(TABLE_NAME)
-    .where('course_id', courseId)
-    .increment('enrollment_count', 1);
-}
-
-// Cập nhật trạng thái của khóa học
-export function updateStatus(courseId, status) {
-  return db(TABLE_NAME)
-    .where('course_id', courseId)
-    .update({
-      status,
-      updated_at: new Date()
-    });
-}
-
-// Kiểm tra xem khóa học đã hoàn thành chưa
-export async function checkCourseCompletion(courseId) {
-  // Đếm tổng số chapter và lesson
-  const stats = await db('chapters as ch')
-    .leftJoin('lessons as l', 'ch.chapter_id', 'l.chapter_id')
-    .where('ch.course_id', courseId)
-    .count('ch.chapter_id as chapter_count')
-    .count('l.lesson_id as lesson_count')
-    .first();
-
-  // Nếu có ít nhất 1 chapter và 1 lesson, coi như đã hoàn thành
-  const isComplete = parseInt(stats.chapter_count) > 0 && parseInt(stats.lesson_count) > 0;
-
-  // Cập nhật trạng thái hoàn thành
-  await db(TABLE_NAME)
-    .where('course_id', courseId)
-    .update({
-      is_complete: isComplete,
-      updated_at: new Date()
-    });
-
-  return isComplete;
-}
-
-export async function updateAverageRating(courseId) {
-  const stats = await db('reviews')
-    .where('course_id', courseId)
-    .avg('rating as avg_rating')
-    .count('review_id as rating_count')
-    .first();
-
-  const avg_rating = parseFloat(stats.avg_rating || 0).toFixed(1);
-  const rating_count = parseInt(stats.rating_count || 0);
-
-  return db(TABLE_NAME)
-    .where('course_id', courseId)
-    .update({ rating_avg: avg_rating, rating_count: rating_count });
-};
-
-export function findRelated(catId, courseId, numCourses = 4) {
-  return db('courses')
-    .where('category_id', catId)
-    .whereNot('course_id', courseId)
-    .orderBy('rating_avg', 'desc')
-    .orderBy('enrollment_count', 'desc')
-    .limit(numCourses);
-}
-
-// Đếm tổng số khóa học
 export async function countAll() {
   const result = await db(TABLE_NAME).count('course_id as total').first();
-  return parseInt(result.total || 0);
+  return parseInt(result.total || 0, 10);
 }
 
-// Lấy khóa học theo phân trang (Knex thuần)
 export function findPage(limit, offset) {
   return db(TABLE_NAME)
     .select('*')
@@ -414,7 +343,6 @@ export function findPage(limit, offset) {
     .limit(limit)
     .offset(offset);
 }
-
 
 export async function findByCategories(categoryIds) {
   if (!Array.isArray(categoryIds) || categoryIds.length === 0) return [];
@@ -433,4 +361,114 @@ export async function updateCourseRating(courseId, avg_rating, total_reviews) {
       rating_avg: avg_rating,
       rating_count: total_reviews
     });
+}
+
+/* CRUD helpers */
+export function add(course) {
+  return db(TABLE_NAME).insert(course).returning('course_id');
+}
+
+export function patch(id, course) {
+  return db(TABLE_NAME).where('course_id', id).update(course);
+}
+
+export function del(id) {
+  return db(TABLE_NAME).where('course_id', id).del();
+}
+
+/* Status operations */
+export function approveCourse(courseId) {
+  return db(TABLE_NAME)
+    .where('course_id', courseId)
+    .update({ status: 'approved' });
+}
+
+export function hideCourse(courseId) {
+  return db(TABLE_NAME)
+    .where('course_id', courseId)
+    .update({ status: 'hidden' });
+}
+
+export function showCourse(courseId) {
+  return db(TABLE_NAME)
+    .where('course_id', courseId)
+    .update({ status: 'approved' });
+}
+
+/* Enrollment & view counters */
+export function countEnrollmentsByCourse(courseId) {
+  return db('enrollments')
+    .where('course_id', courseId)
+    .count('enrollment_id as count')
+    .first()
+    .then(result => parseInt(result.count || 0, 10));
+}
+
+export function incrementViewCount(courseId) {
+  return db(TABLE_NAME)
+    .where('course_id', courseId)
+    .increment('view_count', 1);
+}
+
+export function incrementEnrollment(courseId) {
+  return db(TABLE_NAME)
+    .where('course_id', courseId)
+    .increment('enrollment_count', 1);
+}
+
+/* Course status utilities */
+export function updateStatus(courseId, status) {
+  return db(TABLE_NAME)
+    .where('course_id', courseId)
+    .update({
+      status,
+      updated_at: new Date()
+    });
+}
+
+/* Course completeness check */
+export async function checkCourseCompletion(courseId) {
+  const stats = await db('chapters as ch')
+    .leftJoin('lessons as l', 'ch.chapter_id', 'l.chapter_id')
+    .where('ch.course_id', courseId)
+    .count('ch.chapter_id as chapter_count')
+    .count('l.lesson_id as lesson_count')
+    .first();
+
+  const isComplete = parseInt(stats.chapter_count, 10) > 0 && parseInt(stats.lesson_count, 10) > 0;
+
+  await db(TABLE_NAME)
+    .where('course_id', courseId)
+    .update({
+      is_complete: isComplete,
+      updated_at: new Date()
+    });
+
+  return isComplete;
+}
+
+/* Update average rating from reviews */
+export async function updateAverageRating(courseId) {
+  const stats = await db('reviews')
+    .where('course_id', courseId)
+    .avg('rating as avg_rating')
+    .count('review_id as rating_count')
+    .first();
+
+  const avg_rating = parseFloat(stats.avg_rating || 0).toFixed(1);
+  const rating_count = parseInt(stats.rating_count || 0, 10);
+
+  return db(TABLE_NAME)
+    .where('course_id', courseId)
+    .update({ rating_avg: avg_rating, rating_count: rating_count });
+}
+
+/* Related courses */
+export function findRelated(catId, courseId, numCourses = 4) {
+  return db('courses')
+    .where('category_id', catId)
+    .whereNot('course_id', courseId)
+    .orderBy('rating_avg', 'desc')
+    .orderBy('enrollment_count', 'desc')
+    .limit(numCourses);
 }

@@ -85,7 +85,7 @@
       <!-- ===== Navbar Content ===== -->
       <div class="collapse navbar-collapse" id="navbarContent">
 
-        {{#if (isStudent)}}
+        {{#if (or (isStudent) (not isAuthenticated))}}
         <!-- ===== Left: Student Menus ===== -->
         <ul class="navbar-nav me-auto mb-2 mb-lg-0">
           <li class="nav-item"><a class="nav-link" href="/courses"><b>Courses</b></a></li>
@@ -164,7 +164,7 @@
         <div class="row">
           <!-- Sidebar -->
           <aside class="col-lg-3 col-md-4 col-sm-6 mb-4 sidebar-categories">
-            {{#if (isStudent)}}
+            {{#if (or (isStudent) (not isAuthenticated))}}
             <!-- Categories Card -->
             <div class="card mb-3" style="overflow: hidden;">
               <h5 class="card-header">Categories</h5>

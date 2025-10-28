@@ -42,6 +42,13 @@
     <input type="hidden" name="order" id="orderInput" value="{{#if query.order}}{{query.order}}{{else}}desc{{/if}}">
   </div>
 
+  <div>
+    <label class="form-label small mb-1 d-block">&nbsp;</label>
+    <a href="/courses" class="btn btn-secondary btn-sm" id="clearFiltersBtn">
+      <i class="bi bi-x-circle me-1"></i> Clear Filters
+    </a>
+  </div>
+
   <!-- Apply -->
   <div>
     <label class="form-label small mb-1 d-block">&nbsp;</label>
@@ -63,7 +70,10 @@
               <div class="row g-0">
                 <div class="col-md-4">
                   <a href="/courses/detail/{{course_id}}">
-                    <img src="{{#if image_url}}{{image_url}}{{else}}https://via.placeholder.com/400x300?text=No+Image{{/if}}" class="img-fluid rounded-start" alt="{{title}}">
+                    <img src="{{#if image_url}}{{image_url}}{{else}}https://via.placeholder.com/400x300?text=No+Image{{/if}}"
+                        alt="{{title}}"
+                        class="img-fluid rounded-start"
+                        style="width:100%; height:200px; object-fit:cover; object-position:center;">
                   </a>
                 </div>
                 <div class="col-md-8">

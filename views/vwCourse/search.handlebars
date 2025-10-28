@@ -1,5 +1,5 @@
 <div class="card">
-    <div class="card-header">Search results for: '{{q}}'</div>
+    <div class="card-header">Search results for: <span style="color: #eedd90;">{{q}}</span></div>
     <div class="card-body">
                 {{!-- Sort & order controls --}}
                 <form id="searchSortForm" method="get" class="mb-3 d-flex align-items-center gap-3">
@@ -50,14 +50,10 @@
                                                     </div>
                                                 </div>
                         <h5 class="card-title text-danger">{{format_number current_price}}</h5>
-                        <p class="card-text">{{description}}</p>
+                        <p class="card-text">{{{short_description}}}</p>
                         <a href="/courses/detail/{{course_id}}" class="btn btn-sm btn-outline-primary">
                             <i class="bi bi-eye"></i>
                             View Details
-                        </a>
-                        <a href="#" class="btn btn-sm btn-outline-success">
-                            <i class="bi bi-book"></i>
-                            Enroll
                         </a>
                     </div>
                 </div>
