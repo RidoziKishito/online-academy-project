@@ -58,8 +58,10 @@ export async function search(keyword, options = {}) {
 
   // Keep rawKeyword for bindings (use plainto_tsquery for safer parsing)
   const rawKeyword = String(keyword || '').trim();
-  // Build tsquery string (used earlier for legacy to_tsquery if needed)
-  const keywords = rawKeyword.split(/\s+/).filter(Boolean).join(' & ');
+  // Tokenize the keyword so we can fallback to per-token matching (helps when users type e.g. "node development")
+  const tokens = rawKeyword.split(/\s+/).filter(Boolean);
+  // Build tsquery string for combined highlighting (joined with '&' so headline highlights both terms when possible)
+  const combinedTsQuery = tokens.join(' & ');
 
   let query = db(TABLE_NAME)
     .leftJoin('categories', 'courses.category_id', 'categories.category_id')
@@ -71,28 +73,38 @@ export async function search(keyword, options = {}) {
     );
 
   if (rawKeyword) {
-    // Use unaccent + plainto_tsquery for safer user input handling
-    // We optionally include trigram-based fuzzy matching (pg_trgm) when enabled via env var
     const useTrigram = String(process.env.PG_TRGM || '').toLowerCase() === 'true';
 
-    if (useTrigram) {
-      // Combine FTS with trigram similarity and ILIKE fallback
-      query = query.where(function () {
-        this.whereRaw(`fts_document @@ plainto_tsquery('simple', unaccent(?))`, [rawKeyword])
-          .orWhereRaw(`similarity(unaccent(lower(courses.title)), unaccent(lower(?))) > 0.28`, [rawKeyword])
-          .orWhereRaw(`unaccent(lower(courses.title)) ILIKE unaccent(lower(?))`, [`%${rawKeyword}%`]);
-      });
-    } else {
-      // Fallback: only use FTS and ILIKE fallback to avoid DB errors when pg_trgm not installed
-      query = query.where(function () {
-        this.whereRaw(`fts_document @@ plainto_tsquery('simple', unaccent(?))`, [rawKeyword])
-          .orWhereRaw(`unaccent(lower(courses.title)) ILIKE unaccent(lower(?))`, [`%${rawKeyword}%`]);
-      });
-    }
+    if (tokens.length) {
+      // Build FTS clauses (per token) and ILIKE fallbacks per token
+      const ftsParts = tokens.map(() => "fts_document @@ plainto_tsquery('simple', unaccent(?))");
+      const ilikeParts = tokens.map(() => "unaccent(lower(courses.title)) ILIKE unaccent(lower(?))");
+      const ftsBindings = [...tokens];
+      const ilikeBindings = tokens.map(t => `%${t}%`);
 
-    // Select relevance rank and a snippet to show in search results (if FTS available)
-    query = query.select(db.raw("ts_rank(fts_document, plainto_tsquery('simple', unaccent(?))) as rank", [rawKeyword]));
-    query = query.select(db.raw("ts_headline('simple', COALESCE(courses.short_description, courses.full_description, ''), plainto_tsquery('simple', unaccent(?)), 'MaxFragments=2, MinWords=5, MaxWords=20') as snippet", [rawKeyword]));
+      // Combine clauses: (fts_token1 OR fts_token2 OR ... OR ilike_token1 OR ...)
+      const combinedWhere = '(' + ftsParts.concat(ilikeParts).join(' OR ') + ')';
+      query = query.whereRaw(combinedWhere, [...ftsBindings, ...ilikeBindings]);
+
+      // If trigram enabled, add similarity checks as additional OR clauses
+      if (useTrigram) {
+        const simParts = tokens.map(() => "similarity(unaccent(lower(courses.title)), unaccent(lower(?))) > 0.28");
+        const simBindings = [...tokens];
+        query = query.orWhereRaw('(' + simParts.join(' OR ') + ')', simBindings);
+      }
+
+      // Compute match_count = number of tokens matched (higher is better)
+      const matchCountExpr = tokens.map(() => "(fts_document @@ plainto_tsquery('simple', unaccent(?)))::int").join(' + ');
+      query = query.select(db.raw(`(${matchCountExpr}) as match_count`, tokens));
+
+      // Compute a rank sum across tokens to break ties / improve ordering
+      const rankExpr = tokens.map(() => "ts_rank(fts_document, plainto_tsquery('simple', unaccent(?)))").join(' + ');
+      query = query.select(db.raw(`(${rankExpr}) as rank`, tokens));
+
+      // Generate a headline/snippet using combined tsquery (joined by & so both terms are emphasized when present)
+      const headlineQuery = combinedTsQuery || rawKeyword;
+      query = query.select(db.raw("ts_headline('simple', COALESCE(courses.short_description, courses.full_description, ''), plainto_tsquery('simple', unaccent(?)), 'MaxFragments=2, MinWords=5, MaxWords=20') as snippet", [headlineQuery]));
+    }
   }
 
   if (categoryId) {
@@ -126,8 +138,12 @@ export async function search(keyword, options = {}) {
       query = query.orderBy('courses.is_bestseller', 'desc').orderBy('courses.enrollment_count', 'desc');
       break;
     case 'relevance':
-      // order by computed rank (selected above)
-      query = query.orderByRaw('rank DESC NULLS LAST');
+      // If we computed match_count/rank from tokens, prefer those; otherwise fall back to rank
+      if (tokens.length) {
+        query = query.orderByRaw('match_count DESC NULLS LAST').orderByRaw('rank DESC NULLS LAST');
+      } else {
+        query = query.orderByRaw('rank DESC NULLS LAST');
+      }
       // fallback ordering
       query = query.orderBy('courses.is_bestseller', 'desc').orderBy('courses.rating_avg', 'desc');
       break;
@@ -147,11 +163,20 @@ export async function search(keyword, options = {}) {
 }
 
 export async function countSearch(keyword, categoryId) {
-  const keywords = String(keyword || '').trim().split(/\s+/).filter(Boolean).join(' & ');
+  const raw = String(keyword || '').trim();
+  const tokens = raw.split(/\s+/).filter(Boolean);
   let query = db(TABLE_NAME).count('course_id as total');
-  if (keywords) {
-    query = query.whereRaw(`fts_document @@ to_tsquery('simple', unaccent(?))`, [keywords]);
+
+  if (tokens.length) {
+    // Use per-token FTS or title ILIKE to count broadly-matching rows (same logic as search())
+    const ftsParts = tokens.map(() => "fts_document @@ plainto_tsquery('simple', unaccent(?))");
+    const ilikeParts = tokens.map(() => "unaccent(lower(title)) ILIKE unaccent(lower(?))");
+    const ftsBindings = [...tokens];
+    const ilikeBindings = tokens.map(t => `%${t}%`);
+    const combinedWhere = '(' + ftsParts.concat(ilikeParts).join(' OR ') + ')';
+    query = query.whereRaw(combinedWhere, [...ftsBindings, ...ilikeBindings]);
   }
+
   if (categoryId) {
     if (Array.isArray(categoryId)) {
       query = query.whereIn('category_id', categoryId);
@@ -159,6 +184,7 @@ export async function countSearch(keyword, categoryId) {
       query = query.where('category_id', categoryId);
     }
   }
+
   const row = await query.first();
   return parseInt(row?.total || 0);
 }
