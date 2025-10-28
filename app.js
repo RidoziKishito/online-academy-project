@@ -274,14 +274,30 @@ app.engine('handlebars', engine({
 app.use(async function (req, res, next) {
   res.locals.isAuthenticated = req.session.isAuthenticated || false;
   res.locals.authUser = req.session.authUser || null;
-  res.locals.top3WeekCourses = await viewModel.findTop3WeekCourses();
+  res.locals.topWeekCourses = await viewModel.findTopWeekCourses();
   res.locals.topCategories = await viewModel.findTopCategories();
   res.locals.categoryIcons = {
     "Development": "bi bi-code-slash",
     "Design": "bi bi-palette",
     "Data Science": "bi bi-bar-chart-line",
-    "Digital Marketing": "bi bi-megaphone"
-  },
+    "Digital Marketing": "bi bi-megaphone",
+    "Frontend Development": "bi bi-laptop",
+    "Backend Development": "bi bi-server",
+    "UI Design": "bi bi-palette-fill",
+    "UX Design": "bi bi-people",
+    "Data Analysis": "bi bi-graph-up",
+    "Machine Learning": "bi bi-cpu",
+    "Social Media Marketing": "bi bi-share",
+    "Content Marketing": "bi bi-journal-text",
+    "SEO": "bi bi-search",
+    "Mobile Development": "bi bi-phone",
+    "DevOps": "bi bi-tools",
+    "Cloud Computing": "bi bi-cloud",
+    "Cyber Security": "bi bi-shield-lock",
+    "Business": "bi bi-briefcase",
+    "Photography": "bi bi-camera",
+    "Music": "bi bi-music-note-beamed"
+  };
   res.locals.newestCourses = await viewModel.findNewestCourses();
   res.locals.mostViewCourses = await viewModel.findMostViewCourses();
   next();
