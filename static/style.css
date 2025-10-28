@@ -1,0 +1,238 @@
+:root {
+    --green-light-bg: #ECF8E5;
+    --green-primary: #46935f;
+    --green-dark: #347571;
+    --white: #FFFFFF;
+    --light-tint: #f7fbf5;
+}
+
+html,
+body {
+    height: 100%;
+    font-family: 'Cabin', sans-serif;
+    background-color: var(--light-tint);
+    color: #203323;
+}
+
+.site-wrapper {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+main.content {
+    flex: 1 0 auto;
+    padding-top: 1.5rem;
+    padding-bottom: 2rem;
+}
+
+footer {
+    flex-shrink: 0;
+}
+
+/* Navbar */
+.navbar {
+    background-color: var(--white);
+    border-bottom: 3px solid var(--green-primary);
+    box-shadow: 0 2px 5px rgba(52, 117, 113, 0.05);
+}
+
+.navbar-brand {
+    font-size: 1.4rem;
+    letter-spacing: 0.5px;
+    font-weight: 700;
+    color: var(--green-dark) !important;
+}
+
+.nav-link {
+    font-weight: 500;
+    color: #355a40 !important;
+    transition: color 0.2s ease;
+}
+
+.nav-link.active,
+.nav-link:hover {
+    color: var(--green-primary) !important;
+}
+
+.dropdown-menu {
+  z-index: 2000 !important;
+}
+
+.btn-outline-primary {
+    color: var(--green-dark);
+    border-color: var(--green-primary);
+    transition: 0.2s;
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--green-primary);
+    color: white;
+    border-color: var(--green-primary);
+}
+
+/* Cards */
+.card {
+    border-radius: 16px;
+    border: 1px solid #dbeedb;
+    background-color: var(--white);
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.04);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+}
+
+.card-header {
+    background-color: var(--green-primary);
+    color: white;
+    font-weight: 600;
+    border-top-left-radius: 16px !important;
+    border-top-right-radius: 16px !important;
+}
+
+.list-group-item {
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.list-group-item:hover {
+    background-color: var(--green-light-bg);
+    color: var(--green-dark);
+}
+
+/* Buttons */
+.btn-primary {
+    background-color: var(--green-primary);
+    border-color: var(--green-primary);
+    transition: 0.2s;
+}
+
+.btn-primary:hover {
+    background-color: var(--green-dark);
+    border-color: var(--green-dark);
+}
+
+/* Footer */
+footer {
+    background-color: var(--white);
+    border-top: 3px solid var(--green-primary);
+    padding-top: 1.5rem;
+    padding-bottom: 1.5rem;
+    box-shadow: 0 -2px 5px rgba(52, 117, 113, 0.05);
+}
+
+footer h5,
+footer h6 {
+    color: var(--green-dark);
+    font-weight: 600;
+}
+
+footer p,
+footer a {
+    font-size: 0.9rem;
+}
+
+footer a {
+    color: var(--green-primary);
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+footer a:hover {
+    color: var(--green-dark);
+    text-decoration: underline;
+}
+
+/* Search bar */
+.form-control:focus {
+    border-color: var(--green-primary);
+    box-shadow: 0 0 0 0.2rem rgba(94, 197, 126, 0.2);
+}
+
+/* Scrollbar custom (light green tint) */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+    background-color: var(--green-primary);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background-color: var(--green-dark);
+}
+
+/* ======================================
+   Sidebar Categories
+   ====================================== */
+
+.sidebar-categories .dropdown-toggle-btn {
+  background-color: var(--green-light-bg);
+  border: none;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  line-height: 1;
+  padding: 0;
+  margin: 0;
+  transition: background-color 0.25s ease, transform 0.3s ease;
+}
+
+/* Hover: đổi nền */
+.sidebar-categories .dropdown-toggle-btn:hover {
+  background-color: var(--green-primary);
+}
+
+/* Icon bên trong */
+.sidebar-categories .dropdown-toggle-icon {
+  color: var(--green-dark);
+  font-size: 0.95rem;
+  position: relative;
+  top: 1px; /* nhẹ nhàng chỉnh giữa theo mắt */
+  transition: color 0.25s ease, transform 0.3s ease;
+}
+
+/* Hover: icon trắng */
+.sidebar-categories .dropdown-toggle-btn:hover .dropdown-toggle-icon {
+  color: #fff;
+}
+
+/* Khi mở dropdown: xoay 180° */
+.sidebar-categories
+  .dropdown-toggle-btn[aria-expanded="true"]
+  .dropdown-toggle-icon {
+  transform: rotate(-90deg);
+}
+
+
+/* BREAD SCRUMB DETAIL COURSE*/
+
+.card-header nav .breadcrumb a {
+  transition: color 0.2s ease;
+}
+.card-header nav .breadcrumb a:hover {
+  color: var(--green-dark);
+  text-decoration: underline;
+}
+
+
+/* ==========================
+    MODAL
+=============================*/
+.modal-content {
+  background-color: #000;
+  border-radius: 1rem;
+  overflow: hidden;
+  box-shadow: 0 0 30px rgba(0,0,0,0.6);
+}
+.modal-backdrop.show {
+  opacity: 0.85 !important;
+  backdrop-filter: blur(3px);
+}

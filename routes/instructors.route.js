@@ -21,9 +21,6 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
     const id = req.params.id;
     const instructor = await userModel.findById(id);
-    if (!instructor || instructor.role !== 'instructor') {
-        return res.status(404).render('404');
-    }
 
     const courses = await courseModel.findByInstructor(instructor.user_id);
 

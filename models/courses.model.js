@@ -49,10 +49,118 @@ export function findDetail(courseId, instructorId) {
     .first();
 }
 
-export function search(keyword) {
-  const keywords = keyword.split(' ').join(' & ');
-  return db(TABLE_NAME)
-    .whereRaw(`fts_document @@ to_tsquery('simple', remove_accents(?))`, [keywords]);
+/**
+ * Full-text search with optional filters, sorting and pagination.
+ * options: { categoryId, sortBy, order, page, limit }
+ */
+export async function search(keyword, options = {}) {
+  const { categoryId, sortBy, order = 'desc', page = 1, limit = 10 } = options;
+
+  // Keep rawKeyword for bindings (use plainto_tsquery for safer parsing)
+  const rawKeyword = String(keyword || '').trim();
+  // Build tsquery string (used earlier for legacy to_tsquery if needed)
+  const keywords = rawKeyword.split(/\s+/).filter(Boolean).join(' & ');
+
+  let query = db(TABLE_NAME)
+    .leftJoin('categories', 'courses.category_id', 'categories.category_id')
+    .leftJoin('users', 'courses.instructor_id', 'users.user_id')
+    .select(
+      'courses.*',
+      'categories.name as category_name',
+      'users.full_name as instructor_name'
+    );
+
+  if (rawKeyword) {
+    // Use unaccent + plainto_tsquery for safer user input handling
+    // We optionally include trigram-based fuzzy matching (pg_trgm) when enabled via env var
+    const useTrigram = String(process.env.PG_TRGM || '').toLowerCase() === 'true';
+
+    if (useTrigram) {
+      // Combine FTS with trigram similarity and ILIKE fallback
+      query = query.where(function () {
+        this.whereRaw(`fts_document @@ plainto_tsquery('simple', unaccent(?))`, [rawKeyword])
+          .orWhereRaw(`similarity(unaccent(lower(courses.title)), unaccent(lower(?))) > 0.28`, [rawKeyword])
+          .orWhereRaw(`unaccent(lower(courses.title)) ILIKE unaccent(lower(?))`, [`%${rawKeyword}%`]);
+      });
+    } else {
+      // Fallback: only use FTS and ILIKE fallback to avoid DB errors when pg_trgm not installed
+      query = query.where(function () {
+        this.whereRaw(`fts_document @@ plainto_tsquery('simple', unaccent(?))`, [rawKeyword])
+          .orWhereRaw(`unaccent(lower(courses.title)) ILIKE unaccent(lower(?))`, [`%${rawKeyword}%`]);
+      });
+    }
+
+    // Select relevance rank and a snippet to show in search results (if FTS available)
+    query = query.select(db.raw("ts_rank(fts_document, plainto_tsquery('simple', unaccent(?))) as rank", [rawKeyword]));
+    query = query.select(db.raw("ts_headline('simple', COALESCE(courses.short_description, courses.full_description, ''), plainto_tsquery('simple', unaccent(?)), 'MaxFragments=2, MinWords=5, MaxWords=20') as snippet", [rawKeyword]));
+  }
+
+  if (categoryId) {
+    // support passing either a single id or an array of ids (for parent + subcategories)
+    if (Array.isArray(categoryId)) {
+      query = query.whereIn('courses.category_id', categoryId);
+    } else {
+      query = query.where('courses.category_id', categoryId);
+    }
+  }
+
+  // Sorting
+  const direction = order && String(order).toLowerCase() === 'asc' ? 'asc' : 'desc';
+  // If user didn't specify a sort and there is a keyword, default to relevance
+  let effectiveSort = sortBy;
+  if (!effectiveSort && rawKeyword) effectiveSort = 'relevance';
+
+  switch (effectiveSort) {
+    case 'rating':
+      query = query.orderBy('courses.rating_avg', direction);
+      break;
+    case 'price':
+      // order by effective price (sale_price if present, otherwise price)
+      query = query.orderBy(db.raw('COALESCE(courses.sale_price, courses.price)'), direction === 'asc' ? 'asc' : 'desc');
+      break;
+    case 'newest':
+      query = query.orderBy('courses.created_at', direction);
+      break;
+    case 'bestseller':
+      // bestseller flag first, then enrollment_count
+      query = query.orderBy('courses.is_bestseller', 'desc').orderBy('courses.enrollment_count', 'desc');
+      break;
+    case 'relevance':
+      // order by computed rank (selected above)
+      query = query.orderByRaw('rank DESC NULLS LAST');
+      // fallback ordering
+      query = query.orderBy('courses.is_bestseller', 'desc').orderBy('courses.rating_avg', 'desc');
+      break;
+    default:
+      // default relevance: order by is_bestseller then rating then created_at
+      query = query.orderBy('courses.is_bestseller', 'desc').orderBy('courses.rating_avg', 'desc').orderBy('courses.created_at', 'desc');
+  }
+
+  // Pagination
+  const lim = parseInt(limit) || 10;
+  const pg = Math.max(1, parseInt(page) || 1);
+  const offset = (pg - 1) * lim;
+
+  query = query.limit(lim).offset(offset);
+
+  return query;
+}
+
+export async function countSearch(keyword, categoryId) {
+  const keywords = String(keyword || '').trim().split(/\s+/).filter(Boolean).join(' & ');
+  let query = db(TABLE_NAME).count('course_id as total');
+  if (keywords) {
+    query = query.whereRaw(`fts_document @@ to_tsquery('simple', unaccent(?))`, [keywords]);
+  }
+  if (categoryId) {
+    if (Array.isArray(categoryId)) {
+      query = query.whereIn('category_id', categoryId);
+    } else {
+      query = query.where('category_id', categoryId);
+    }
+  }
+  const row = await query.first();
+  return parseInt(row?.total || 0);
 }
 
 export function findAll() {
@@ -68,7 +176,6 @@ export function findAllWithCategory() {
     )
     .orderBy('courses.course_id', 'asc');
 }
-
 export function findAllWithCategoryFiltered(filters = {}) {
   let query = db(TABLE_NAME)
     .leftJoin('categories', 'courses.category_id', 'categories.category_id')
@@ -79,41 +186,23 @@ export function findAllWithCategoryFiltered(filters = {}) {
       'users.full_name as instructor_name'
     );
 
-  // Filter by category if provided
-  if (filters.categoryId) {
-    query = query.where('courses.category_id', filters.categoryId);
-  }
+  if (filters.categoryId) query = query.where('courses.category_id', filters.categoryId);
+  if (filters.status) query = query.where('courses.status', filters.status);
+  if (filters.instructorId) query = query.where('courses.instructor_id', filters.instructorId);
 
-  // Filter by status if provided
-  if (filters.status) {
-    query = query.where('courses.status', filters.status);
-  }
+  // Sorting: support created_at, rating_avg, view_count, enrollment_count
+  const allowedSort = ['created_at', 'rating_avg', 'view_count', 'enrollment_count', 'course_id'];
+  const sortBy = allowedSort.includes(filters.sortBy) ? filters.sortBy : 'created_at';
+  const direction = filters.order === 'asc' ? 'asc' : 'desc';
 
-  // Filter by instructor if provided
-  if (filters.instructorId) {
-    query = query.where('courses.instructor_id', filters.instructorId);
-  }
+  query = query.orderBy(`courses.${sortBy}`, direction);
 
-  // Sort by specified field or default to ID
-  const direction = filters.order === 'desc' ? 'desc' : 'asc';
-  
-  if (filters.sortBy === 'enrollment') {
-    query = query.orderBy('courses.enrollment_count', direction);
-  } else {
-    // Default: sort by ID with the selected order
-    query = query.orderBy('courses.course_id', direction);
-  }
-
-  // Pagination
-  if (filters.limit) {
-    query = query.limit(filters.limit);
-  }
-  if (filters.offset) {
-    query = query.offset(filters.offset);
-  }
+  if (filters.limit) query = query.limit(filters.limit);
+  if (filters.offset) query = query.offset(filters.offset);
 
   return query;
 }
+
 
 export async function countAllWithCategoryFiltered(filters = {}) {
   let query = db(TABLE_NAME)
@@ -194,4 +283,48 @@ export async function updateAverageRating(courseId) {
   return db(TABLE_NAME)
     .where('course_id', courseId)
     .update({ rating_avg: avg_rating, rating_count: rating_count });
+};
+
+export function findRelated(catId, courseId, numCourses = 4) {
+  return db('courses')
+    .where('category_id', catId)
+    .whereNot('course_id', courseId)
+    .orderBy('rating_avg', 'desc')
+    .orderBy('enrollment_count', 'desc')
+    .limit(numCourses);
+}
+
+// Đếm tổng số khóa học
+export async function countAll() {
+  const result = await db(TABLE_NAME).count('course_id as total').first();
+  return parseInt(result.total || 0);
+}
+
+// Lấy khóa học theo phân trang (Knex thuần)
+export function findPage(limit, offset) {
+  return db(TABLE_NAME)
+    .select('*')
+    .orderBy('course_id', 'desc')
+    .limit(limit)
+    .offset(offset);
+}
+
+
+export async function findByCategories(categoryIds) {
+  if (!Array.isArray(categoryIds) || categoryIds.length === 0) return [];
+
+  const rows = await db(TABLE_NAME)
+    .whereIn('category_id', categoryIds)
+    .select('*');
+  
+  return rows;
+}
+
+export async function updateCourseRating(courseId, avg_rating, total_reviews) {
+  await db(TABLE_NAME)
+    .where('course_id', courseId)
+    .update({
+      rating_avg: avg_rating,
+      rating_count: total_reviews
+    });
 }

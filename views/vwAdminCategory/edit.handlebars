@@ -1,58 +1,68 @@
 {{#fillContent 'js'}}
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-    (function () {
-        const input = document.getElementById('txtCatName');
-        const btn = document.getElementById('btnSave');
-        const deleteBtn = document.querySelector('button[formaction="/admin/categories/del"]');
-        const form = document.getElementById('frmAddCategory');
-        
-        if (!input || !btn) return;
-        
-        const toggle = () => {
-            const hasValue = input.value && input.value.trim().length > 0;
-            btn.disabled = !hasValue;
-        };
-        toggle();
-        input.addEventListener('input', toggle);
+(function () {
+    const input = document.getElementById('txtCatName');
+    const select = document.getElementById('ddlParentCat');
+    const btn = document.getElementById('btnSave');
+    const deleteBtn = document.querySelector('button[formaction="/admin/categories/del"]');
+    const form = document.getElementById('frmEditCategory');
 
-        // Show error alerts with SweetAlert2
-        {{#if error}}
-        Swal.fire({
-            icon: 'error',
-            title: 'Error!',
-            text: '{{error}}',
-            confirmButtonColor: '#0d6efd'
-        });
-        {{/if}}
+    if (!input || !btn) return;
 
-        // Confirmation dialog for delete
-        if (deleteBtn) {
-            deleteBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                Swal.fire({
-                    title: 'Are you sure?',
-                    text: "Do you want to delete this category?",
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonColor: '#dc3545',
-                    cancelButtonColor: '#6c757d',
-                    confirmButtonText: 'Yes, delete it!',
-                    cancelButtonText: 'Cancel'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        form.action = '/admin/categories/del';
-                        form.submit();
-                    }
-                });
+    // Enable/disable Save button based on input
+    const toggle = () => {
+        const hasValue = input.value && input.value.trim().length > 0;
+        btn.disabled = !hasValue;
+    };
+    toggle();
+    input.addEventListener('input', toggle);
+
+    // Show error/success alerts
+    {{#if error}}
+    Swal.fire({
+        icon: 'error',
+        title: 'Error!',
+        text: '{{error}}',
+        confirmButtonColor: '#0d6efd'
+    });
+    {{/if}}
+
+    {{#if success}}
+    Swal.fire({
+        icon: 'success',
+        title: 'Success!',
+        text: 'Category updated successfully.',
+        confirmButtonColor: '#198754'
+    });
+    {{/if}}
+
+    // Confirmation dialog for delete
+    if (deleteBtn) {
+        deleteBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            Swal.fire({
+                title: 'Are you sure?',
+                text: "Do you want to delete this category?",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc3545',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Yes, delete it!',
+                cancelButtonText: 'Cancel'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    form.action = '/admin/categories/del';
+                    form.submit();
+                }
             });
-        }
-    })();
+        });
+    }
+})();
 </script>
 {{/fillContent}}
 
-
-<form id="frmAddCategory" method="post">
+<form id="frmEditCategory" method="post" action="/admin/categories/patch">
     <div class="card">
         <div class="card-header">Edit Category</div>
         <div class="card-body">
@@ -60,24 +70,36 @@
                 <label for="txtCatId" class="form-label">#</label>
                 <input type="text" class="form-control" id="txtCatId" readonly name="catid" value="{{category.catid}}">
             </div>
+
             <div class="mb-3">
                 <label for="txtCatName" class="form-label">Category</label>
-                <input type="text" class="form-control" id="txtCatName" autofocus name="catname"
-                    value="{{category.catname}}" required>
+                <input type="text" class="form-control" id="txtCatName" name="catname"
+                       value="{{category.catname}}" required autofocus>
+            </div>
+
+            <div class="mb-3">
+                <label for="ddlParentCat" class="form-label">Parent Category</label>
+                <select class="form-select" id="ddlParentCat" name="parent_id">
+                    <option value="">None</option>
+                    {{#each categories}}
+                    <option value="{{this.category_id}}"
+                        {{#ifEq this.category_id ../category.parent_id}}selected{{/ifEq}}>
+                        {{this.name}}
+                    </option>
+                    {{/each}}
+                </select>
             </div>
         </div>
+
         <div class="card-footer text-muted">
             <a class="btn btn-outline-success" href="/admin/categories" role="button">
-                <i class="bi bi-arrow-left"></i>
-                Back
+                <i class="bi bi-arrow-left"></i> Back
             </a>
             <button type="submit" class="btn btn-danger" formaction="/admin/categories/del">
-                <i class="bi bi-trash"></i>
-                Delete
+                <i class="bi bi-trash"></i> Delete
             </button>
-                        <button type="submit" class="btn btn-success" formaction="/admin/categories/patch" id="btnSave" disabled>
-                <i class="bi bi-check2"></i>
-                Save
+            <button type="submit" class="btn btn-success" id="btnSave" disabled>
+                <i class="bi bi-check2"></i> Save
             </button>
         </div>
     </div>

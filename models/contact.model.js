@@ -7,4 +7,16 @@ export function add(message) {
   return db(TABLE_NAME).insert(message).returning('id');
 }
 
-export default { add };
+export async function all() {
+  return await db(TABLE_NAME).select('*').orderBy('created_at', 'desc');
+}
+
+export async function findById(id) {
+  return await db(TABLE_NAME).where('id', id).first();
+}
+
+export default {
+  add,
+  all,
+  findById
+};

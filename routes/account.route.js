@@ -3,17 +3,29 @@ import bcrypt from 'bcryptjs';
 import * as userModel from '../models/user.model.js';
 import { restrict } from '../middlewares/auth.mdw.js';
 import { sendResetEmail, sendVerifyEmail } from '../utils/mailer.js';
+import recaptcha from '../middlewares/recaptcha.mdw.js';
 
 const router = express.Router();
 
-router.get('/signup', (req, res) => {
-  res.render('vwAccount/signup');
+router.get('/signin', (req, res) => {
+  if (req.query.ret) req.session.retUrl = req.query.ret;
+  res.render('vwAccount/signin', { error: false});
 });
 
-router.post('/signup', async (req, res) => {
+router.post('/signup', recaptcha.middleware.verify, async (req, res) => {
   const { fullName, email, password, confirm_password } = req.body;
   const oldData = { fullName, email };
   const errorMessages = {};
+
+  // Kiểm tra CAPTCHA
+  if (req.recaptcha && req.recaptcha.error) {
+    errorMessages._global = ['CAPTCHA verification failed. Please try again.'];
+    return res.render('vwAccount/signup', { 
+      oldData, 
+      errorMessages,
+      recaptcha: recaptcha.render()
+    });
+  }
 
   // Basic server-side validation
   if (!fullName || fullName.trim().length === 0) {
@@ -30,7 +42,11 @@ router.post('/signup', async (req, res) => {
   }
 
   if (Object.keys(errorMessages).length > 0) {
-    return res.render('vwAccount/signup', { oldData, errorMessages });
+    return res.render('vwAccount/signup', { 
+      oldData, 
+      errorMessages,
+      recaptcha: recaptcha.render()
+    });
   }
 
   try {
@@ -65,11 +81,19 @@ router.post('/signup', async (req, res) => {
     if (err && err.code === '23505') {
       // Unique violation
       errorMessages.email = ['Email already in use.'];
-      return res.render('vwAccount/signup', { oldData, errorMessages });
+      return res.render('vwAccount/signup', { 
+        oldData, 
+        errorMessages,
+        recaptcha: recaptcha.render()
+      });
     }
     console.error(err);
     errorMessages._global = ['An unexpected error occurred. Please try again later.'];
-    return res.render('vwAccount/signup', { oldData, errorMessages });
+    return res.render('vwAccount/signup', { 
+      oldData, 
+      errorMessages,
+      recaptcha: recaptcha.render()
+    });
   }
 });
 
@@ -83,8 +107,10 @@ router.get('/is-email-available', async (req, res) => {
   res.json(false);
 });
 
-router.get('/signin', (req, res) => {
-  res.render('vwAccount/signin', { error: false });
+router.get('/signup', (req, res) => {
+  res.render('vwAccount/signup', {
+    recaptcha: recaptcha.render()
+  });
 });
 
 router.post('/signin', async (req, res) => {
@@ -120,6 +146,7 @@ router.post('/signin', async (req, res) => {
 router.post('/signout', (req, res) => {
   req.session.isAuthenticated = false;
   req.session.authUser = null;
+  req.session.retUrl = '/';
   res.redirect(req.headers.referer || '/');
 });
 
@@ -162,7 +189,8 @@ router.post('/profile', restrict, async (req, res) => {
   // Dữ liệu cần cập nhật
   const updatedUser = {
     full_name: req.body.fullName,
-    email: req.body.email
+    email: req.body.email,
+    avatar_url: req.body.avt_url
   };
   await userModel.patch(user_id, updatedUser);
 

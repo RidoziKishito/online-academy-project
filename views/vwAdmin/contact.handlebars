@@ -1,0 +1,78 @@
+<section class="py-4 bg-light">
+  <div class="container">
+    <h2 class="mb-4 fw-bold text-center text-success">Contact Messages</h2>
+    <div class="table-responsive bg-white shadow-sm rounded-3 p-3">
+      <table class="table table-hover align-middle text-center mb-0">
+        <thead class="table-light border-bottom border-2">
+          <tr class="text-secondary">
+            <th>ID</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Date</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#each contacts}}
+          <tr>
+            <td>{{id}}</td>
+            <td>{{name}}</td>
+            <td>{{email}}</td>
+            <td>{{created_at}}</td>
+            <td>
+              <button class="btn btn-sm btn-outline-primary see-detail-btn" data-id="{{id}}">
+                See Detail
+              </button>
+            </td>
+          </tr>
+          {{/each}}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Modal -->
+  <div class="modal fade" id="contactModal" tabindex="-1" aria-labelledby="contactModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content bg-light shadow-sm">
+        <div class="modal-header border-0">
+          <h5 class="modal-title fw-bold text-primary" id="contactModalLabel">Contact Detail</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="bg-white p-3 rounded-3 shadow-sm">
+            <p><strong>Name:</strong> <span id="detailName" class="text-muted"></span></p>
+            <p><strong>Email:</strong> <span id="detailEmail" class="text-muted"></span></p>
+            <p><strong>Message:</strong></p>
+            <div id="detailMessage" class="border p-3 rounded bg-light small"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const modalEl = document.getElementById('contactModal');
+  const modal = new bootstrap.Modal(modalEl);
+  const nameEl = document.getElementById('detailName');
+  const emailEl = document.getElementById('detailEmail');
+  const subjectEl = document.getElementById('detailSubject');
+  const msgEl = document.getElementById('detailMessage');
+
+  document.querySelectorAll('.see-detail-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.id;
+      const res = await fetch(`/admin/contact/${id}`);
+      if (!res.ok) return alert('Không thể tải chi tiết.');
+
+      const contact = await res.json();
+      nameEl.textContent = contact.name;
+      emailEl.textContent = contact.email;
+      msgEl.textContent = contact.message || '(Không có nội dung)';
+      modal.show();
+    });
+  });
+});
+</script>

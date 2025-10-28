@@ -1,308 +1,712 @@
-<div class="card">
-    <div class="card-header">Course Details</div>
-    <div class="card-body">
-        <!-- Existing course info -->
-        <img src="{{#if course.image_url}}{{course.image_url}}{{else}}https://via.placeholder.com/800x450?text=No+Image{{/if}}"
-            alt="{{course.title}}" class="img-fluid mb-3">
-        <h4 class="card-title">{{course.title}}</h4>
+<div class="card border-0 shadow-sm rounded-4 overflow-hidden">
 
-        <!-- Rating stats -->
-        <div class="mb-3">
-            <div class="d-flex align-items-center">
-                <div class="stars me-2">
-                    {{#repeat ratingStats.avg_rating}}⭐{{/repeat}}
-                </div>
-                <span class="text-muted">{{ratingStats.avg_rating}}/5 ({{ratingStats.total_reviews}} đánh giá)</span>
-            </div>
+  <!-- 🧭 Breadcrumb -->
+  <div class="card-header border-0 py-3 text-light">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-0 small" style="--bs-breadcrumb-divider-color: white;">
+        <li class="breadcrumb-item">
+          <a href="/" class="text-light fw-semibold text-decoration-none">Home</a>
+        </li>
+
+        {{#if categories.parent.id}}
+        <li class="breadcrumb-item">
+          <a href="/category/{{categories.parent.id}}" class="text-light fw-semibold text-decoration-none">
+            {{categories.parent.name}}
+          </a>
+        </li>
+        {{/if}}
+
+        {{#if categories.child.id}}
+        <li class="breadcrumb-item">
+          <a href="/category/{{categories.child.id}}" class="text-light fw-semibold text-decoration-none">
+            {{categories.child.name}}
+          </a>
+        </li>
+        {{/if}}
+
+        <li class="breadcrumb-item active text-light" aria-current="page">
+          {{course.title}}
+        </li>
+      </ol>
+    </nav>
+  </div>
+
+  <!-- 📘 Course Body -->
+  <div class="card-body p-4">
+
+    <!-- 🎓 Course Header -->
+    <div class="row g-4 align-items-start">
+      <div class="col-12">
+        <h2 class="fw-bold mb-3">{{course.title}}</h2>
+      </div>
+
+      <!-- Left Info -->
+      <div class="col-lg-4">
+
+        <!-- Rating + Stats -->
+        <div class="mb-3 small text-muted">
+          <span class="text-warning me-2">{{{render_stars course.rating_avg}}}</span>
+          ({{course.rating_count}} ratings) •
+          <i class="bi bi-people ms-1 me-1"></i>
+          <span id="enrollmentCount">{{course.enrollment_count}}</span> students •
+          <i class="bi bi-eye ms-1 me-1"></i>{{course.view_count}}
         </div>
 
-        <h5 class="card-text text-danger">Price: {{format_number course.current_price}}</h5>
-        <p class="card-text">Enrolled: {{course.enrollment_count}}</p>
-        <p class="card-text">{{{course.description}}}</p>
 
-        {{#if isEnrolled}}
-        <a class="btn btn-primary" href="/learn/{{course.course_id}}">Continue learning</a>
-        {{else}}
-        <div class="d-flex gap-2">
-        <form method="POST" action="/courses/detail/{{course.course_id}}/enroll">
-            <button type="submit" class="btn btn-success">Enroll now</button>
-        </form>
+        <p class="lead text-muted">{{course.short_description}}</p>
+
+        <!-- Badges -->
+        {{#if course.is_bestseller}}
+        <span class="badge bg-warning text-dark rounded-pill px-3 py-2 me-1">🔥 Bestseller</span>
         {{/if}}
 
-        {{#if @root.session.authUser}}
-        {{#if isInWishlist}}
-        <button type="button" class="btn btn-danger" id="wishlistBtn" data-course-id="{{course.course_id}}">
-            <i class="bi bi-heart-fill" id="wishlistIcon"></i>
-            <span id="wishlistText">Remove from Wishlist</span>
-        </button>
-        {{else}}
-        <button type="button" class="btn btn-outline-danger" id="wishlistBtn" data-course-id="{{course.course_id}}">
-            <i class="bi bi-heart" id="wishlistIcon"></i>
-            <span id="wishlistText">Add to Wishlist</span>
-        </button>
-        {{/if}}
-        {{else}}
-        <a href="/auth/login" class="btn btn-outline-danger">
-            <i class="bi bi-heart"></i> Add to Wishlist
+        <!-- Instructor -->
+        <div class="mt-4 d-flex align-items-center">
+          <img src="{{course.instructor_avatar}}" alt="Instructor"
+               class="rounded-circle me-3 shadow-sm" width="60" height="60">
+          <div>
+            <div class="fw-semibold">
+              Instructor:
+              <a href="/instructors/{{course.instructor_id}}" class="text-success text-decoration-none">
+                {{course.instructor_name}}
+              </a>
+            </div>
+            <small class="text-muted">
+              <i class="bi bi-clock me-1"></i>Updated {{format_date course.updated_at}}
+            </small>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Card -->
+      <div class="col-lg-8 d-flex align-items-stretch">
+        <div class="card border-0 shadow-lg rounded-4 overflow-hidden flex-fill">
+<div class="card-body p-4 d-flex flex-nowrap align-items-center justify-content-between">
+
+            <!-- Ảnh bên trái -->
+            <div class="flex-shrink-0 me-4 mb-3">
+              <img src="{{#if course.image_url}}{{course.image_url}}{{else}}https://via.placeholder.com/400x250?text=No+Image{{/if}}"
+                  alt="{{course.title}}" class="rounded-4 shadow-sm"
+                  style="width: 320px; height: 200px; object-fit: cover;">
+            </div>
+
+            <!-- Giá & Nút -->
+            <div class="flex-grow-1 d-flex flex-column justify-content-center text-center">
+              <!-- Giá -->
+              <div class="mb-3">
+                {{#if course.sale_price}}
+                  <h3 class="text-danger fw-bold mb-0">{{format_number course.sale_price}} VND</h3>
+                  <small class="text-muted text-decoration-line-through">{{format_number course.price}} VND</small>
+                {{else}}
+                  <h3 class="text-danger fw-bold mb-0">{{format_number course.price}} VND</h3>
+                {{/if}}
+              </div>
+
+              <!-- Nút hành động -->
+<div class="text-center">
+  {{#if isEnrolled}}
+    <a class="btn btn-primary rounded-pill py-2 px-4 shadow-sm fw-semibold" href="/learn/{{course.id}}">
+      <i class="bi bi-play-circle me-2"></i>Continue learning
+    </a>
+  {{else}}
+    <!-- Hàng 1: Add to Cart + Buy Now -->
+    <div class="d-flex justify-content-center align-items-center mb-3 flex-wrap">
+
+      {{!-- Replace existing Buy Now button with this block --}}
+      {{#if isEnrolled}}
+        <!-- User đã ghi danh: hiển thị nút Learn -->
+        <a href="/learn/{{course.course_id}}"
+          class="btn btn-success rounded-pill py-2 fw-semibold me-2">
+          <i class="bi bi-play-circle-fill me-2"></i>Learn
         </a>
+      {{else}}
+        {{#if @root.session.authUser}}
+          <!-- User đã login nhưng chưa enroll: bật modal thanh toán -->
+          <button type="button"
+                  class="btn btn-outline-success rounded-pill py-2 fw-semibold me-2"
+                  data-bs-toggle="modal"
+                  data-bs-target="#paymentQrModal">
+            <i class="bi bi-lightning-charge-fill me-2"></i>Buy Now
+          </button>
+        {{else}}
+          <!-- User chưa login: redirect giống wishlist (kèm retUrl) -->
+          <a href="/account/signin?ret={{retUrl}}"
+            class="btn btn-outline-success rounded-pill py-2 fw-semibold me-2">
+            <i class="bi bi-lightning-charge-fill me-2"></i>Buy Now
+          </a>
         {{/if}}
-        </div>
+      {{/if}}
+
+
+
+      {{#if @root.session.authUser}}
+        {{#if isInWishlist}}
+          <button type="button" class="btn btn-danger rounded-pill py-2" id="wishlistBtn" data-course-id="{{course.id}}">
+            <i class="bi bi-heart-fill"></i>
+            <span id="wishlistText">Remove</span>
+          </button>
+        {{else}}
+          <button type="button" class="btn btn-outline-danger rounded-pill py-2" id="wishlistBtn" data-course-id="{{course.id}}">
+            <i class="bi bi-heart"></i>
+            <span id="wishlistText">Add to Wishlist</span>
+          </button>
+        {{/if}}
+      {{else}}
+      <a href="/account/signin?ret={{retUrl}}" class="btn btn-outline-danger rounded-pill py-2">
+          <i class="bi bi-heart"></i> Add to Wishlist
+        </a>
+      {{/if}}
     </div>
+  {{/if}}
 </div>
 
-<!-- Review Section -->
-{{#if isEnrolled}}
-<div class="card mt-4">
-    <div class="card-header">
-        <h5>{{#if userReview}}Cập nhật đánh giá{{else}}Đánh giá khóa học{{/if}}</h5>
-    </div>
-    <div class="card-body">
-        <form id="reviewForm">
-            <div class="mb-3">
-                <label class="form-label">Rating:</label>
-                <div class="star-rating" style="font-size: 1.5rem;">
-                    <span class="star" data-rating="1" style="cursor: pointer; ">⭐</span>
-                    <span class="star" data-rating="2" style="cursor: pointer; ">⭐</span>
-                    <span class="star" data-rating="3" style="cursor: pointer; ">⭐</span>
-                    <span class="star" data-rating="4" style="cursor: pointer; ">⭐</span>
-                    <span class="star" data-rating="5" style="cursor: pointer; ">⭐</span>
-                </div>
-                <input type="hidden" id="rating" name="rating" value="0" required>
-            </div>
-            <div class="mb-3">
-                <label for="comment" class="form-label">Nhận xét:</label>
-                <textarea class="form-control" id="comment" name="comment" rows="4"
-                    placeholder="Chia sẻ trải nghiệm của bạn...">{{#if userReview}}{{userReview.comment}}{{/if}}</textarea>
-            </div>
-            <button type="submit" class="btn btn-primary">
-                {{#if userReview}}Cập nhật đánh giá{{else}}Gửi đánh giá{{/if}}
-            </button>
-            {{#if userReview}}
-            <button type="button" class="btn btn-outline-danger" id="deleteReview">Xóa đánh giá</button>
-            {{/if}}
-        </form>
-    </div>
-</div>
-{{/if}}
 
-<!-- Reviews Display -->
-{{#if reviews}}
-<div class="card mt-4">
-    <div class="card-header">
-        <h5>Đánh giá từ học viên ({{ratingStats.total_reviews}})</h5>
-    </div>
-    <div class="card-body">
-        {{#each reviews}}
-        <div class="review-item border-bottom pb-3 mb-3">
-            <div class="d-flex justify-content-between align-items-start">
-                <div>
-                    <strong>{{user_name}}{{#if username}} (@{{username}}){{/if}}</strong>
-                    <div class="stars mb-2">
-                        {{#repeat rating}}⭐{{/repeat}}
-                    </div>
-                </div>
-                <small class="text-muted">{{formatDate created_at}}</small>
+              {{!-- Enroll form for free course (optional) --}}
+              {{#if course.is_free}}
+                {{#unless isEnrolled}}
+                  <form method="POST" action="/courses/detail/{{course.id}}/enroll" class="mt-3">
+                    <button type="submit" class="btn btn-outline-primary btn-sm">Enroll for Free</button>
+                  </form>
+                {{/unless}}
+              {{/if}}
             </div>
-            {{#if comment}}
-            <p class="mb-0">{{comment}}</p>
-            {{/if}}
+          </div>
         </div>
+      </div>
+    </div>
+
+    <!-- Course content -->
+    <section class="mt-5">
+      <h4 class="fw-bold mb-3"><i class="bi bi-list-ul text-success me-2"></i>Course Content</h4>
+
+      <div class="accordion" id="courseContent">
+        {{#each course.sections}}
+          <div class="accordion-item border-0 border-bottom">
+            <h2 class="accordion-header" id="heading{{@index}}">
+              <button class="accordion-button collapsed fw-semibold text-dark" type="button"
+                      data-bs-toggle="collapse" data-bs-target="#collapse{{@index}}"
+                      aria-expanded="false" aria-controls="collapse{{@index}}">
+                {{this.title}}
+                <span class="badge bg-light text-dark ms-3">{{this.lecture_count}} lectures</span>
+              </button>
+            </h2>
+
+            <div id="collapse{{@index}}" class="accordion-collapse collapse" aria-labelledby="heading{{@index}}" data-bs-parent="#courseContent">
+              <div class="accordion-body p-0">
+                <ul class="list-group list-group-flush">
+                  {{#each this.lectures}}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                      <div class="d-flex align-items-center">
+                        {{#if this.is_previewable}}
+                          <a href="javascript:void(0)"
+                            class="preview-btn text-decoration-none text-dark me-2"
+                            data-video="{{this.video_url}}">
+                            {{this.order_index}}. {{this.title}}
+                            <span class="badge bg-success ms-2 small">Preview</span>
+                          </a>
+                        {{else}}
+                          <div class="text-decoration-none text-dark me-2">
+                            {{this.order_index}}. {{this.title}}
+                          </div>
+                        {{/if}}
+                      </div>
+                      <div>
+                        <small class="text-muted">{{this.duration}}</small>
+                      </div>
+                    </li>
+                  {{/each}}
+                  {{#unless this.lectures.length}}
+                    <li class="list-group-item text-muted small">No lessons yet.</li>
+                  {{/unless}}
+                </ul>
+              </div>
+            </div>
+          </div>
         {{/each}}
-    </div>
+      </div>
+    </section>
+
+    <!-- ✅ Requirements -->
+    <section class="mt-5">
+      <h4 class="fw-bold mb-3"><i class="bi bi-check-circle text-success me-2"></i>Requirements</h4>
+      <ul class="list-group list-group-flush">
+        {{{course.requirements}}}
+      </ul>
+    </section>
+
+    <!-- 📝 Detailed Description -->
+    <section class="mt-5">
+      <h4 class="fw-bold mb-3"><i class="bi bi-file-earmark-text text-success me-2"></i>Detailed Description</h4>
+      <div class="p-4 bg-light rounded-4 shadow-sm">
+        {{{course.full_description}}}
+      </div>
+    </section>
+
+    <!-- 💬 Feedback (Review Form when enrolled) -->
+    {{#if isEnrolled}}
+    <section class="mt-5">
+      <h4 class="fw-bold mb-3"><i class="bi bi-chat-dots text-success me-2"></i>Student Feedback</h4>
+
+      <!-- Review Form -->
+      <div class="card mb-4">
+        <div class="card-body">
+          <form id="reviewForm">
+            <div class="mb-3">
+              <label class="form-label">Rating:</label>
+
+              <div class="star-rating d-flex gap-1" style="font-size: 1.5rem; cursor: pointer;">
+                <span class="star" data-rating="1"><i class="bi bi-star"></i></span>
+                <span class="star" data-rating="2"><i class="bi bi-star"></i></span>
+                <span class="star" data-rating="3"><i class="bi bi-star"></i></span>
+                <span class="star" data-rating="4"><i class="bi bi-star"></i></span>
+                <span class="star" data-rating="5"><i class="bi bi-star"></i></span>
+              </div>
+              <input type="hidden" id="rating" name="rating" value="0" required>
+
+
+
+            </div>
+            <div class="mb-3">
+              <label for="comment" class="form-label">Comment:</label>
+              <textarea class="form-control" id="comment" name="comment" rows="4"
+                        placeholder="Chia sẻ trải nghiệm của bạn...">{{#if userReview}}{{userReview.comment}}{{/if}}</textarea>
+            </div>
+            <div class="d-flex gap-2">
+              <button type="submit" class="btn btn-primary">
+              {{#if userReview}}Cập nhật đánh giá{{else}}Send{{/if}}
+              </button>
+              {{#if userReview}}
+              <button type="button" class="btn btn-outline-danger" id="deleteReview">Xóa đánh giá</button>
+              {{/if}}
+            </div>
+          </form>
+        </div>
+      </div>
+    </section>
+    {{/if}}
+
+    <!-- 💬 Feedback Display -->
+    <section class="mt-4">
+      <h4 class="fw-bold mb-3"><i class="bi bi-chat-square-text text-success me-2"></i>Reviews from Students</h4>
+      <div class="row row-cols-1 row-cols-md-3 g-4">
+        {{#each course.reviews}}
+          <div class="col">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+              <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                  <img src="{{this.avatar}}" class="rounded-circle me-3" width="50" height="50" alt="{{this.name}}">
+                  <div>
+                    <div class="fw-semibold">{{this.name}}</div>
+                    <div class="text-warning small">{{{render_stars this.rating}}}</div>
+                  </div>
+                </div>
+                <p class="text-muted small mb-0">{{this.comment}}</p>
+              </div>
+            </div>
+          </div>
+        {{/each}}
+        {{#unless course.reviews.length}}
+          <div class="col-12">
+            <p class="text-muted small">Chưa có đánh giá nào.</p>
+          </div>
+        {{/unless}}
+      </div>
+    </section>
+
+    <!-- 👨‍🏫 Instructor -->
+    <section class="mt-5">
+      <h4 class="fw-bold mb-3"><i class="bi bi-person-workspace text-success me-2"></i>About the Instructor</h4>
+      <div class="card border-0 shadow-lg rounded-4">
+        <div class="card-body d-flex flex-wrap align-items-center">
+          <img src="{{course.instructor_avatar}}" class="rounded-circle me-4" width="100" height="100">
+          <div>
+            <h5 class="fw-bold mb-1">{{course.instructor_name}}</h5>
+            <p class="text-muted small mb-2">{{course.instructor_bio}}</p>
+            <div class="d-flex gap-2">
+              <a href="/instructors/{{course.instructor_id}}" class="btn btn-outline-success rounded-pill btn-sm">
+                View More Courses
+              </a>
+              {{#if @root.session.authUser}}
+                {{#if (ne @root.session.authUser.user_id course.instructor_id)}}
+                  <button type="button" 
+                          class="btn btn-primary rounded-pill btn-sm" 
+                          onclick="openChatWithInstructor('{{course.instructor_id}}', '{{course.instructor_name}}')">
+                    <i class="bi bi-chat-dots me-1"></i>Chat with Instructor
+                  </button>
+                {{/if}}
+              {{else}}
+                <a href="/account/signin?ret={{retUrl}}" class="btn btn-outline-primary rounded-pill btn-sm">
+                  <i class="bi bi-chat-dots me-1"></i>Chat with Instructor
+                </a>
+              {{/if}}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 🔗 Related Courses -->
+    <section class="mt-5">
+      <h4 class="fw-bold mb-3"><i class="bi bi-book text-success me-2"></i>Related Courses</h4>
+      <div class="row row-cols-1 row-cols-md-4 g-4">
+        {{#each related_courses}}
+          <a class="col text-decoration-none" href="/courses/detail/{{this.id}}">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+              <img src="{{this.image_url}}" class="card-img-top" height="180" alt="{{this.title}}">
+              <div class="card-body">
+                <h6 class="fw-semibold text-dark">{{this.title}}</h6>
+                <p class="text-muted small mb-1">{{this.instructor_name}}</p>
+                <div class="d-flex justify-content-between align-items-center">
+                  <span class="text-warning small">{{{render_stars this.rating_avg}}}</span>
+                  <span class="fw-semibold text-danger">{{format_number this.sale_price}}</span>
+                </div>
+              </div>
+            </div>
+          </a>
+        {{/each}}
+      </div>
+    </section>
+
+  </div>
 </div>
-{{/if}}
+
 <!-- Delete Confirmation Modal -->
 <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel"
-    aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header border-0">
-                <h5 class="modal-title text-danger" id="deleteConfirmModalLabel">
-                    <i class="bi bi-exclamation-triangle-fill me-2"></i>Xác nhận xóa
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body text-center">
-                <div class="mb-3">
-                    <i class="bi bi-trash3 text-danger" style="font-size: 3rem;"></i>
-                </div>
-                <h6>Bạn có chắc chắn muốn xóa đánh giá này không?</h6>
-                <p class="text-muted">Hành động này không thể hoàn tác.</p>
-            </div>
-            <div class="modal-footer border-0 justify-content-center">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
-                    <i class="bi bi-x-lg me-1"></i>Hủy
-                </button>
-                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
-                    <i class="bi bi-trash3 me-1"></i>Xóa đánh giá
-                </button>
-            </div>
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content bg-light text-dark">
+      <div class="modal-header border-0">
+        <h5 class="modal-title text-danger" id="deleteConfirmModalLabel">
+          <i class="bi bi-exclamation-triangle-fill me-2"></i>Xác nhận xóa
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body text-center">
+        <div class="mb-3">
+          <i class="bi bi-trash3 text-danger" style="font-size: 3rem;"></i>
         </div>
+        <h6>Bạn có chắc chắn muốn xóa đánh giá này không?</h6>
+        <p class="text-muted">Hành động này không thể hoàn tác.</p>
+      </div>
+      <div class="modal-footer border-0 justify-content-center">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+          <i class="bi bi-x-lg me-1"></i>Hủy
+        </button>
+        <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
+          <i class="bi bi-trash3 me-1"></i>Xóa đánh giá
+        </button>
+      </div>
     </div>
+  </div>
 </div>
+
+
+<!-- Note: global preview video modal is expected to exist on page (id="videoModal" and iframe id="previewVideo") -->
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    const stars = document.querySelectorAll('.star');
+  /* ---------- Helpers ---------- */
+  function showAlert(message, type = 'success') {
+    const existing = document.querySelector('.alert');
+    if (existing) existing.remove();
+    const title = type === 'success' ? 'Thành công!' : (type === 'warning' ? 'Cảnh báo!' : 'Lỗi!');
+    const html = `
+      <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+        <strong>${title}</strong> ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>`;
+    const reviewForm = document.getElementById('reviewForm');
+    if (reviewForm) reviewForm.insertAdjacentHTML('beforebegin', html);
+    else document.body.insertAdjacentHTML('afterbegin', html);
+    setTimeout(() => document.querySelector('.alert')?.remove(), 5000);
+  }
+
+  /* ---------- Video preview ---------- */
+  (function initVideoPreview() {
+    const previewBtns = document.querySelectorAll('.preview-btn');
+    const videoModalEl = document.getElementById('videoModal');
+    const videoIframe = document.getElementById('previewVideo');
+    if (!previewBtns.length || !videoModalEl || !videoIframe) return;
+
+    previewBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const url = btn.dataset.video;
+        if (!url) return;
+        videoIframe.src = url.includes('?') ? url + '&autoplay=1' : url + '?autoplay=1';
+        const myModal = new bootstrap.Modal(videoModalEl);
+        myModal.show();
+      });
+    });
+
+    videoModalEl.addEventListener('hidden.bs.modal', () => {
+      // stop video playback
+      videoIframe.src = '';
+    });
+  })();
+
+  /* ---------- Wishlist toggle ---------- */
+  (function initWishlist() {
+    const wishlistBtn = document.getElementById('wishlistBtn');
+    if (!wishlistBtn) return;
+
+    wishlistBtn.addEventListener('click', async function () {
+      const courseId = this.dataset.courseId;
+      const originalClass = this.className;
+      const originalContent = this.innerHTML;
+      this.disabled = true;
+      this.innerHTML = '<i class="bi bi-arrow-repeat spin"></i> Processing...';
+
+      try {
+        const res = await fetch('/courses/wishlist/toggle', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ courseId: Number(courseId) || 0 })
+        });
+        const result = await res.json();
+
+        if (result && result.success) {
+          if (result.action === 'added') {
+            this.className = 'btn btn-danger rounded-pill py-2';
+            this.innerHTML = '<i class="bi bi-heart-fill"></i> <span id="wishlistText">Remove</span>';
+          } else {
+            this.className = 'btn btn-outline-danger rounded-pill py-2';
+            this.innerHTML = '<i class="bi bi-heart"></i> <span id="wishlistText">Add to Wishlist</span>';
+          }
+        } else {
+          this.className = originalClass;
+          this.innerHTML = originalContent;
+          showAlert('Có lỗi: ' + (result?.message || 'Không thể thao tác wishlist.'), 'danger');
+        }
+      } catch (err) {
+        this.className = originalClass;
+        this.innerHTML = originalContent;
+        showAlert('Có lỗi xảy ra khi thao tác wishlist', 'danger');
+        console.error(err);
+      } finally {
+        this.disabled = false;
+      }
+    });
+  })();
+
+  /* ---------- Stars + Review submit & delete ---------- */
+  (function initStarsAndReview() {
+    const stars = Array.from(document.querySelectorAll('.star'));
     const ratingInput = document.getElementById('rating');
     const reviewForm = document.getElementById('reviewForm');
     const deleteBtn = document.getElementById('deleteReview');
+    const starContainer = document.querySelector('.star-rating');
 
-    function showAlert(message, type = 'success') {
-        const existingAlert = document.querySelector('.alert');
-        if (existingAlert) existingAlert.remove();
-        const html = `
-            <div class="alert alert-${type} alert-dismissible fade show" role="alert">
-                <strong>${type === 'success' ? 'Thành công!' : (type === 'warning' ? 'Cảnh báo!' : 'Lỗi!')}</strong> ${message}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>`;
-        if (reviewForm) reviewForm.insertAdjacentHTML('beforebegin', html);
-        else document.body.insertAdjacentHTML('afterbegin', html);
-        setTimeout(() => document.querySelector('.alert')?.remove(), 5000);
+    // Server-side template should replace {{course.id}} with actual id
+    const courseId = '{{course.id}}';
+    const reviewEndpoint = reviewForm?.getAttribute('action') || `/review/course/${courseId}`;
+
+    function updateStarDisplay(rating) {
+      stars.forEach((s, idx) => {
+        const icon = s.querySelector("i");
+        if (!icon) return;
+        if (idx < rating) {
+          icon.classList.add("bi-star-fill","text-warning");
+          icon.classList.remove("bi-star","text-secondary");
+        } else {
+          icon.classList.add("bi-star","text-secondary");
+          icon.classList.remove("bi-star-fill","text-warning");
+        }
+      });
     }
 
-    // 1) Gắn sự kiện Wishlist trước và độc lập
-    const wishlistBtn = document.getElementById('wishlistBtn');
-    if (wishlistBtn) {
-        wishlistBtn.addEventListener('click', async function() {
-            const courseId = this.dataset.courseId;
-            const originalClass = this.className;
-            const originalContent = this.innerHTML;
-
-            this.disabled = true;
-            this.innerHTML = '<i class="bi bi-arrow-repeat spin"></i> Processing...';
-
-            try {
-                const res = await fetch('/courses/wishlist/toggle', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ courseId: parseInt(courseId) })
-                });
-                const result = await res.json();
-
-                if (result.success) {
-                    if (result.action === 'added') {
-                        this.className = 'btn btn-danger';
-                        this.innerHTML = '<i class="bi bi-heart-fill"></i> <span>Remove from Wishlist</span>';
-                       
-                    } else {
-                        this.className = 'btn btn-outline-danger';
-                        this.innerHTML = '<i class="bi bi-heart"></i> <span>Add to Wishlist</span>';
-                    }
-                } else {
-                    this.className = originalClass;
-                    this.innerHTML = originalContent;
-                }
-            } catch (err) {
-                this.className = originalClass;
-                this.innerHTML = originalContent;
-                showAlert('Có lỗi xảy ra khi thao tác wishlist', 'danger');
-                console.error(err);
-            } finally {
-                this.disabled = false;
-            }
-        });
-    }
-
-    // 2) CHỈ chạy logic rating/review nếu có form review (khi đã enroll)
+    // Initialize visual state
     if (ratingInput) {
-        function updateStarDisplay(rating) {
-            stars.forEach((s, idx) => s.style.color = idx < rating ? 'gold' : 'lightgray');
-        }
+      ratingInput.value = Number(ratingInput.value) || 0;
+      updateStarDisplay(Number(ratingInput.value) || 0);
+    }
 
-        {{#if userReview}}
-        const currentRating = {{userReview.rating}};
-        ratingInput.value = currentRating;
-        updateStarDisplay(currentRating);
-        {{else}}
-        updateStarDisplay(0);
-        ratingInput.value = 0;
-        {{/if}}
-
-        stars.forEach(star => {
-            star.addEventListener('mouseenter', function () {
-                updateStarDisplay(this.dataset.rating);
-            });
-            star.addEventListener('click', function () {
-                ratingInput.value = this.dataset.rating;
-                updateStarDisplay(this.dataset.rating);
-            });
+    if (stars.length) {
+      stars.forEach(star => {
+        const starRating = Number(star.dataset.rating) || 0;
+        star.addEventListener('mouseenter', function () {
+          updateStarDisplay(starRating);
         });
+        star.addEventListener('click', function () {
+          if (ratingInput) ratingInput.value = starRating;
+          updateStarDisplay(starRating);
+        });
+      });
 
-        const starContainer = document.querySelector('.star-rating');
-        if (starContainer) {
-            starContainer.addEventListener('mouseleave', function () {
-                updateStarDisplay(ratingInput.value);
-            });
+      if (starContainer) {
+        starContainer.addEventListener('mouseleave', () => {
+          updateStarDisplay(Number(ratingInput?.value) || 0);
+        });
+      }
+    }
+
+    // Submit review
+    function wireFormSubmit() {
+      if (!reviewForm) return;
+      reviewForm.addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        if (!ratingInput || Number(ratingInput.value) === 0) {
+          showAlert('Vui lòng chọn số sao đánh giá!', 'warning');
+          return;
         }
 
-        if (reviewForm) {
-            reviewForm.addEventListener('submit', async function (e) {
-                e.preventDefault();
-                if (ratingInput.value === "0") {
-                    showAlert('Vui lòng chọn số sao đánh giá!', 'warning');
-                    return;
-                }
-                const data = {
-                    rating: ratingInput.value,
-                    comment: document.getElementById('comment')?.value || ''
-                };
-                try {
-                    const resp = await fetch(`/review/course/{{course.course_id}}`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(data)
-                    });
-                    const result = await resp.json();
-                    if (result.success) {
-                        showAlert(result.message, 'success');
-                        setTimeout(() => location.reload(), 1500);
-                    } else showAlert(result.message, 'danger');
-                } catch (err) {
-                    console.error(err);
-                    showAlert('Có lỗi xảy ra khi gửi đánh giá', 'danger');
-                }
-            });
-        }
+        const data = {
+          rating: Number(ratingInput.value),
+          comment: document.getElementById('comment')?.value || ''
+        };
 
-        if (deleteBtn) {
-            deleteBtn.addEventListener('click', function () {
-                const modal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
-                modal.show();
+        const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
+
+        try {
+          const resp = await fetch(reviewEndpoint, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(csrf ? { 'X-CSRF-Token': csrf } : {})
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify(data)
+          });
+
+          if (!resp.ok) {
+            const text = await resp.text().catch(()=>null);
+            throw new Error(`HTTP ${resp.status} ${resp.statusText} ${text ? '- '+text : ''}`);
+          }
+
+          const result = await resp.json().catch(()=>({ success: false, message: 'Invalid JSON response' }));
+          if (result && result.success) {
+            showAlert(result.message || 'Gửi đánh giá thành công', 'success');
+            setTimeout(() => location.reload(), 1200);
+          } else {
+            showAlert(result?.message || 'Có lỗi khi gửi đánh giá', 'danger');
+          }
+        } catch (err) {
+          console.error(err);
+          showAlert('Có lỗi xảy ra khi gửi đánh giá', 'danger');
+        }
+      });
+    }
+
+    // Delete review
+    function wireDelete() {
+      if (!deleteBtn) return;
+      deleteBtn.addEventListener('click', function () {
+        const modalEl = document.getElementById('deleteConfirmModal');
+        if (!modalEl) return;
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+
+        const confirmBtn = document.getElementById('confirmDeleteBtn');
+        if (!confirmBtn) return;
+
+        confirmBtn.addEventListener('click', async function handler() {
+          modal.hide();
+          const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
+
+          try {
+            const resp = await fetch(reviewEndpoint, {
+              method: 'DELETE',
+              headers: {
+                ...(csrf ? { 'X-CSRF-Token': csrf } : {})
+              },
+              credentials: 'same-origin'
             });
-            const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
-            if (confirmDeleteBtn) {
-                confirmDeleteBtn.addEventListener('click', async function () {
-                    const modal = bootstrap.Modal.getInstance(document.getElementById('deleteConfirmModal'));
-                    modal.hide();
-                    try {
-                        const resp = await fetch(`/review/course/{{course.course_id}}`, { method: 'DELETE' });
-                        const result = await resp.json();
-                        if (result.success) {
-                            showAlert(result.message, 'success');
-                            setTimeout(() => location.reload(), 1500);
-                        } else showAlert(result.message, 'danger');
-                    } catch (err) {
-                        console.error(err);
-                        showAlert('Có lỗi xảy ra khi xóa đánh giá', 'danger');
-                    }
-                });
+
+            if (!resp.ok) {
+              const text = await resp.text().catch(()=>null);
+              throw new Error(`HTTP ${resp.status} ${resp.statusText} ${text ? '- '+text : ''}`);
             }
-        }
+
+            const result = await resp.json().catch(()=>({ success: false, message: 'Invalid JSON response' }));
+            if (result && result.success) {
+              showAlert(result.message || 'Xóa đánh giá thành công', 'success');
+              setTimeout(() => location.reload(), 1200);
+            } else {
+              showAlert(result?.message || 'Không thể xóa đánh giá', 'danger');
+            }
+          } catch (err) {
+            console.error(err);
+            showAlert('Có lỗi xảy ra khi xóa đánh giá', 'danger');
+          }
+        }, { once: true });
+      });
     }
-});
+
+    wireFormSubmit();
+    wireDelete();
+  })();
+
+  /* ---------- Chat with Instructor ---------- */
+  window.openChatWithInstructor = function(instructorId, instructorName) {
+    // Check if chat system is available
+    if (typeof window.chatSystem !== 'undefined') {
+      window.chatSystem.openChatWithUser(instructorId, instructorName);
+    } else {
+      // Fallback: show alert and try to initialize chat system
+      console.log('Chat system not initialized, attempting to initialize...');
+      if (typeof ChatSystem !== 'undefined') {
+        window.chatSystem = new ChatSystem();
+        window.chatSystem.openChatWithUser(instructorId, instructorName);
+      } else {
+        alert('Chat system is not available. Please refresh the page and try again.');
+      }
+    }
+  };
+
+}); // DOMContentLoaded
 </script>
+
+
 <style>
-    .spin {
-        animation: spin 1s linear infinite;
-    }
+.spin {
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
 
-    @keyframes spin {
-        from {
-            transform: rotate(0deg);
-        }
 
-        to {
-            transform: rotate(360deg);
-        }
-    }
+.star i {
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+.star:hover i {
+  transform: scale(1.2);
+}
+
+
 </style>
+
+
+<!-- ===== Payment Modal (bg-light) ===== -->
+<div class="modal fade" id="paymentQrModal" tabindex="-1" aria-labelledby="paymentQrModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 rounded-4 shadow bg-light text-dark">
+      <form id="paymentForm" method="POST" action="/payment/confirm">
+        <!-- nếu dùng CSRF, chèn token ở đây -->
+        <div class="modal-body text-center p-4">
+          <h5 id="paymentQrModalLabel" class="mb-1 text-success">Thanh toán đơn hàng</h5>
+          <p class="small text-muted mb-3">Quét mã QR bằng app ngân hàng/ ví điện tử để thanh toán.</p>
+
+          <input type="hidden" name="course_id" value="{{course.id}}">
+          <input type="hidden" name="price" value="{{#if course.sale_price}}{{course.sale_price}}{{else}}{{course.price}}{{/if}}">
+
+          <div class="my-3">
+            <img src="/static/qr.jpg" alt="QR Payment" class="img-fluid" style="max-width:320px; width:100%; height:auto;" />
+          </div>
+
+          <p class="small text-muted mb-3">Sau khi quét và thanh toán, nhấn nút bên dưới để xác nhận.</p>
+
+          <div class="d-flex justify-content-center gap-2">
+            <button type="submit" class="btn btn-success rounded-pill px-4 py-2 fw-semibold">
+              Đã thanh toán
+            </button>
+            <button type="button" class="btn btn-outline-secondary rounded-pill px-3 py-2" data-bs-dismiss="modal">
+              Hủy
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

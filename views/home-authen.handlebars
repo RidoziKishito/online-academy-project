@@ -1,0 +1,379 @@
+{{!-- student-home.handlebars --}}
+{{!-- Entire page wrapped in a single card (no header) and using different images.
+     "Most viewed" and "Newest" use Swiper carousels. AOS + Swiper init included. --}}
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+<link rel="stylesheet" href="https://unpkg.com/aos@next/dist/aos.css" />
+
+<style>
+  /* Small layout tweaks */
+  .hero-img { width:100%; height: 380px; object-fit: cover; border-radius: .5rem; }
+  .card-wrap { border-radius: .75rem; overflow: hidden; }
+  .course-card-sm { height: 100%; display:flex; flex-direction:column; }
+  .course-card-sm .card-img-top { height: 140px; object-fit:cover; }
+  .badge-cat { position: absolute; top: .75rem; left: .75rem; z-index: 2; }
+  /* ensure swiper controls are visible */
+  .swiper-button-next, .swiper-button-prev { color: #0d6efd; }
+  .swiper-pagination-bullet { background: rgba(0,0,0,.3); }
+  .star-line i { margin-right: 2px; }
+</style>
+
+<div class="card card-wrap shadow-sm">
+  <div class="card-body">
+
+    <!-- HERO -->
+    <section id="hero" class="mb-4">
+      <div class="row align-items-center g-4">
+        <div class="col-lg-6" data-aos="fade-right">
+          <h1 class="display-5 fw-bold">
+            Khám phá tiềm năng, <br><span class="text-success">Mở lối tương lai</span>
+          </h1>
+          <p class="text-muted mb-3">
+            Chào <strong>{{#if authUser.full_name}}{{authUser.full_name}}{{else}}{{authUser.email}}{{/if}}</strong>.
+            Gợi ý khoá học hàng đầu dành cho bạn — cập nhật theo xu hướng tuần này.
+          </p>
+          <div class="d-flex gap-2">
+            <a href="/courses" class="btn btn-success btn-lg rounded-pill">Bắt đầu học</a>
+            <a href="/student/my-courses" class="btn btn-outline-secondary btn-lg rounded-pill">My Courses</a>
+          </div>
+        </div>
+
+        <div class="col-lg-6" data-aos="fade-left">
+          {{!-- if you pass heroBanners the carousel will be used, otherwise fall back to new images --}}
+          {{#if heroBanners}}
+            <div id="heroCarousel" class="carousel slide rounded-3" data-bs-ride="carousel">
+              <div class="carousel-inner">
+                {{#each heroBanners}}
+                  <div class="carousel-item {{#if @first}}active{{/if}}">
+                    <img src="{{this.image_url}}" alt="{{this.title}}" class="hero-img shadow-sm">
+                    {{#if this.caption}}
+                      <div class="carousel-caption d-none d-md-block text-start">
+                        <h5 class="fw-bold">{{this.title}}</h5>
+                        <p class="small">{{this.caption}}</p>
+                      </div>
+                    {{/if}}
+                  </div>
+                {{/each}}
+              </div>
+              <button class="carousel-control-prev" type="button" data-bs-target="#heroCarousel" data-bs-slide="prev">
+                <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                <span class="visually-hidden">Previous</span>
+              </button>
+              <button class="carousel-control-next" type="button" data-bs-target="#heroCarousel" data-bs-slide="next">
+                <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                <span class="visually-hidden">Next</span>
+              </button>
+            </div>
+          {{else}}
+            {{!-- different default image set --}}
+            <img src="https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=1400&q=80" alt="Học trực tuyến" class="hero-img shadow-sm">
+          {{/if}}
+        </div>
+      </div>
+    </section>
+
+    <!-- Featured this week (3-4 courses) -->
+    <section id="featured-courses" class="mb-5" data-aos="fade-up">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h3 class="mb-0">Nổi bật tuần qua</h3>
+          <a href="/courses?filter=trending" class="small text-muted">Xem tất cả →</a>
+        </div>
+
+        {{#if top3WeekCourses}}
+          <section id="featured-courses" class="bg-white">
+            <div class="container">
+                <div class="row g-4">
+
+                    {{#each top3WeekCourses}}
+                    <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="100">
+                        <div class="card h-100 shadow-sm border-0 overflow-hidden">
+                            <div class="position-relative">
+                                <a href="/courses/detail/{{this.course_id}}"><img src={{this.image_url}} class="card-img-top"></a>
+                                <span class="badge bg-success position-absolute top-0 start-0 m-3 rounded-pill">{{this.category_name}}</span>
+                            </div>
+                            <div class="card-body d-flex flex-column">
+                                <a href="#" class="h5 card-title text-decoration-none text-body-emphasis mb-2">{{this.title}}</a>
+                                <span class="star-rating">
+                                    {{{render_stars this.rating_avg}}}
+                                </span>
+                            </div>
+                            <div class="card-footer bg-white pt-0 border-top-0 pb-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div class="d-flex align-items-center">
+                                        <img src={{this.avatar_url}} alt="Author" class="rounded-circle" width="30" height="30">
+                                        <span class="ms-2 small text-muted">{{this.instructor_name}}</span>
+                                    </div>
+                                    <span class="fs-5 fw-bold text-success">{{format_number this.sale_price}}đ</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {{/each}}
+
+                </div>
+            </div>
+        </section>
+      {{else}}
+        <div class="text-muted">Chưa có khoá học nổi bật trong tuần.</div>
+      {{/if}}
+    </section>
+
+    <!-- Top categories this week -->
+    <section id="top-categories" class="mb-5" data-aos="fade-up">
+      <div class="d-flex justify-content-between align-items-center mb-1">
+        <h3 class="mb-0">Lĩnh vực được đăng ký nhiều nhất trong tuần</h3>
+        <a href="/courses/allCat" class="small text-muted">Xem tất cả →</a>
+      </div>
+
+      <div class="row g-3">
+        {{#if topCategories}}
+            <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4">
+                
+                {{#each topCategories}}
+                <div class="col" data-aos="fade-up" data-aos-delay="100">
+                    <a href="/courses/by-category/{{this.category_id}}" 
+                    class="card h-100 text-decoration-none text-center p-4 shadow-sm border-0 category-card-hover" 
+                    style="background-color: #f8fdf9;">
+                      <i class="{{iconOrDefault ../categoryIcons this.name}} fs-1 text-success mb-3"></i>
+                      <h4 class="h5 mb-1">{{this.name}}</h4>
+                      <p class="text-muted small mb-0">{{this.total_courses}}+ courses</p>
+                    </a>
+                </div>
+                {{/each}}
+                
+            </div>
+        {{else}}
+          <div class="col-12 text-muted">Không có dữ liệu lĩnh vực tuần này.</div>
+        {{/if}}
+      </div>
+    </section>
+
+    <!-- Most viewed (Swiper carousel) -->
+    <section id="most-viewed" class="mb-5" data-aos="fade-up">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="mb-0">Xem nhiều nhất</h3>
+        <a href="/courses?sort=views" class="small text-muted">Xem tất cả →</a>
+      </div>
+
+      {{#if mostViewCourses}}
+        <div class="swiper" id="most-viewed-swiper">
+          <div class="swiper-wrapper">
+            {{#each mostViewCourses}}
+              <div class="swiper-slide">
+                <div class="card course-card-sm shadow-sm">
+                  <div class="position-relative">
+                    <a href="/courses/detail/{{this.course_id}}">
+                      <img src="{{this.image_url}}" class="card-img-top" alt="{{this.title}}">
+                    </a>
+                    <span class="badge bg-success text-white rounded-pill badge-cat">{{this.category_name}}</span>
+                  </div>
+                  <div class="card-body p-2 d-flex flex-column">
+                    <a href="/courses/detail/{{this.course_id}}" class="text-decoration-none text-dark">
+                      <h6 class="mb-1 small">{{this.title}}</h6>
+                    </a>
+                    <div class="small text-muted mb-2">{{this.instructor_name}}</div>
+                    <div class="mt-auto d-flex justify-content-between align-items-center">
+                      <div class="small text-warning">{{{render_stars this.rating_avg}}}</div>
+                      <div class="fw-semibold text-success small">{{format_number this.sale_price}}đ</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            {{/each}}
+          </div>
+
+          <!-- pagination & navigation -->
+          <div class="swiper-pagination"></div>
+          <div class="swiper-button-prev"></div>
+          <div class="swiper-button-next"></div>
+        </div>
+      {{else}}
+        <div class="text-muted">Chưa có khoá học.</div>
+      {{/if}}
+    </section>
+
+    <!-- Newest courses (Swiper carousel) -->
+    <section id="newest-courses" class="mb-5" data-aos="fade-up">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="mb-0">Khoá học mới nhất</h3>
+        <a href="/courses?sort=newest" class="small text-muted">Xem tất cả →</a>
+      </div>
+
+      {{#if newestCourses}}
+        <div class="swiper" id="newest-courses-swiper">
+          <div class="swiper-wrapper">
+            {{#each newestCourses}}
+              <div class="swiper-slide">
+                <div class="card course-card-sm shadow-sm">
+                  <div class="position-relative">
+                    <a href="/courses/detail/{{this.course_id}}">
+                      <img src="{{this.image_url}}" class="card-img-top" alt="{{this.title}}">
+                    </a>
+                    <span class="badge bg-success text-white rounded-pill badge-cat">{{this.category_name}}</span>
+                  </div>
+                  <div class="card-body p-2 d-flex flex-column">
+                    <a href="/courses/detail/{{this.course_id}}" class="text-decoration-none text-dark">
+                      <h6 class="mb-1 small">{{this.title}}</h6>
+                    </a>
+                    <div class="small text-muted mb-2">{{this.instructor_name}}</div>
+                    <div class="mt-auto d-flex justify-content-between align-items-center">
+                      <div class="small text-warning"> {{{render_stars this.rating_avg}}} </div>
+                      <div class="fw-semibold text-success small">{{format_number this.sale_price}}đ</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            {{/each}}
+          </div>
+
+          <div class="swiper-pagination"></div>
+          <div class="swiper-button-prev"></div>
+          <div class="swiper-button-next"></div>
+        </div>
+      {{else}}
+        <div class="text-muted">Chưa có khoá học mới.</div>
+      {{/if}}
+    </section>
+
+  </div> <!-- .card-body -->
+</div> <!-- .card -->
+
+<div class="card card-wrap shadow-sm mt-3">
+<a href="/contact" class="card-body text-decoration-none">
+    <section data-aos="fade-up">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <h5 class="mb-1 text-success">Cần hỗ trợ chọn khoá học?</h5>
+          <p class="mb-0 small text-muted">Tư vấn lộ trình học cá nhân hoá phù hợp với mục tiêu nghề nghiệp của bạn.</p>
+        </div>
+      </div>
+    </section>
+</a>
+</div>
+
+<!-- required scripts for AOS + Swiper -->
+<script src="https://unpkg.com/aos@next/dist/aos.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+
+    // --- 1. KHỞI TẠO AOS (Animate on Scroll) ---
+    if (window.AOS) {
+      AOS.init({
+        duration: 800,
+        once: true,
+        offset: 100,
+      });
+    }
+
+    // --- 2. KHỞI TẠO SWIPER (Carousels) ---
+
+    // Carousel cho "Most Viewed"
+    if (window.Swiper) {
+      var mostViewedSwiper = new Swiper('#most-viewed-swiper', {
+          loop: false,
+          autoplay: {
+              delay: 4000,
+              disableOnInteraction: false,
+          },
+          pagination: {
+              el: '#most-viewed-swiper .swiper-pagination',
+              clickable: true,
+          },
+          navigation: {
+              nextEl: '#most-viewed-swiper .swiper-button-next',
+              prevEl: '#most-viewed-swiper .swiper-button-prev',
+          },
+          slidesPerView: 1,
+          spaceBetween: 20,
+          breakpoints: {
+              768: {
+                  slidesPerView: 2,
+                  spaceBetween: 25
+              },
+              992: {
+                  slidesPerView: 3,
+                  spaceBetween: 30
+              }
+          }
+      });
+
+      // Carousel cho "Newest Courses"
+      var newestCoursesSwiper = new Swiper('#newest-courses-swiper', {
+          loop: false,
+          autoplay: {
+              delay: 4500,
+              disableOnInteraction: false,
+          },
+          pagination: {
+              el: '#newest-courses-swiper .swiper-pagination',
+              clickable: true,
+          },
+          navigation: {
+              nextEl: '#newest-courses-swiper .swiper-button-next',
+              prevEl: '#newest-courses-swiper .swiper-button-prev',
+          },
+          slidesPerView: 1,
+          spaceBetween: 20,
+          breakpoints: {
+              768: {
+                  slidesPerView: 3,
+                  spaceBetween: 25
+              },
+              992: {
+                  slidesPerView: 4,
+                  spaceBetween: 30
+              }
+          }
+      });
+    }
+
+    // --- 3. Optional: draggable behavior for mouse on small carousels (if needed) ---
+    // Not required for Swiper sections; keep for any .cards-scroll if you use them elsewhere
+
+  });
+</script>
+
+<style>
+  /* --- TÙY CHỈNH SWIPER NAVIGATION --- */
+  .swiper-button-prev,
+  .swiper-button-next {
+    color: var(--bs-success) !important; /* dùng màu text-success */
+    width: 36px;
+    height: 36px;
+    background: rgba(255,255,255,0.85);
+    border-radius: 50%;
+    box-shadow: 0 0 6px rgba(0,0,0,0.15);
+    transition: all .3s ease;
+  }
+  .swiper-button-prev:hover,
+  .swiper-button-next:hover {
+    background: var(--bs-success);
+    color: #fff !important;
+    transform: scale(1.05);
+  }
+
+  /* Ẩn các pseudo-element mặc định của Swiper (mũi tên trắng) */
+  .swiper-button-prev::after,
+  .swiper-button-next::after {
+    font-size: 18px;
+    font-weight: bold;
+  }
+
+  /* --- TÙY CHỈNH PAGINATION (chấm tròn) --- */
+  .swiper-pagination {
+    position: relative;
+    margin-top: 12px; /* đẩy xuống dưới để không đè vào card */
+    text-align: center;
+  }
+
+  .swiper-pagination-bullet {
+    background-color: rgba(0,0,0,0.2);
+    opacity: 1;
+  }
+
+  .swiper-pagination-bullet-active {
+    background-color: var(--bs-success);
+  }
+</style>

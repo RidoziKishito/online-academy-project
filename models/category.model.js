@@ -1,4 +1,5 @@
 import db from '../utils/db.js';
+import { findByCourseId } from './chapter.model.js';
 
 const TABLE_NAME = 'categories';
 
@@ -19,11 +20,9 @@ export async function findParentCategories() {
 
 export async function findSubcategories(parentId) {
   try {
-    console.log('Finding subcategories for parent:', parentId);
     const results = await db(TABLE_NAME)
       .where('parent_category_id', parentId)
       .orderBy('name', 'asc');
-    console.log('Found subcategories:', results);
     return results;
   } catch (err) {
     console.error('Error in findSubcategories:', err);
@@ -51,6 +50,18 @@ export function findById(id) {
   return db(TABLE_NAME).where('category_id', id).first();
 }
 
+// Find the best matching category by name using trigram similarity (requires pg_trgm)
+export async function findByNameFuzzy(name, threshold = 0.28) {
+  if (!name || String(name).trim().length === 0) return null;
+  // Search by similarity in DB to get best candidate
+  const row = await db(TABLE_NAME)
+    .select('category_id', 'name')
+    .whereRaw("similarity(unaccent(lower(name)), unaccent(lower(?))) > ?", [name, threshold])
+    .orderByRaw("similarity(unaccent(lower(name)), unaccent(lower(?))) DESC", [name])
+    .first();
+  return row || null;
+}
+
 export function del(id) {
   return db(TABLE_NAME).where('category_id', id).del();
 }
@@ -59,8 +70,35 @@ export function patch(id, category) {
   return db(TABLE_NAME).where('category_id', id).update(category);
 }
 
-export function hasCourse(categoryId) {
-  return db('courses')
+export async function findParentSon(id) {
+  // 🔹 Lấy thông tin category con
+  const child = await db(TABLE_NAME)
+    .select('category_id', 'name', 'parent_category_id')
+    .where('category_id', id)
+    .first();
+
+  if (!child) return null; // Không tồn tại category này
+
+  // 🔹 Lấy thông tin cha (nếu có)
+  let parent = null;
+  if (child.parent_category_id) {
+    parent = await db(TABLE_NAME)
+      .select('category_id', 'name')
+      .where('category_id', child.parent_category_id)
+      .first();
+  }
+
+  // 🔹 Trả về cấu trúc gọn gàng
+  return {
+    parent: parent
+      ? { id: parent.category_id, name: parent.name }
+      : { id: null, name: 'None' },
+    child: { id: child.category_id, name: child.name },
+  };
+}
+
+export async function hasCourse(categoryId) {
+  return await db('courses')
     .where('category_id', categoryId)
     .count({ count: '*' })
     .first()
@@ -86,3 +124,20 @@ export async function existsByNameExceptId(name, excludeId) {
     .first('category_id');
   return !!row;
 }
+
+export async function getAllWithChildren() {
+  // Lấy tất cả categories
+  const categories = await db('categories').select('*').orderBy('category_id', 'asc');
+
+  // Gom nhóm theo parent
+  const parents = categories.filter(c => c.parent_category_id === null);
+  const children = categories.filter(c => c.parent_category_id !== null);
+
+  // Gắn con vào cha
+  parents.forEach(parent => {
+    parent.children = children.filter(ch => ch.parent_category_id === parent.category_id);
+  });
+
+  return parents;
+}
+

@@ -4,13 +4,50 @@ import hsb_sections from 'express-handlebars-sections';
 import session from 'express-session';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import Handlebars from 'handlebars';
+import dotenv from 'dotenv';
+
+// Load environment variables first
+dotenv.config();
 
 import { testEmailConfig } from './utils/mailer.js';
 testEmailConfig();
 // Import Middlewares
-import { restrict, isAdmin, isInstructor } from './middlewares/auth.mdw.js';
+import { restrict, isAdmin, isInstructor, isStudent } from './middlewares/auth.mdw.js';
 // Import Models (chỉ cần cho middleware)
 import * as categoryModel from './models/category.model.js';
+import * as viewModel from './models/views.model.js';
+
+const app = express();
+const PORT = 3000;
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+app.set('trust proxy', 1)
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'fallback-secret-please-set-SESSION_SECRET-in-env',
+  resave: false,
+  saveUninitialized: true,
+  cookie: { 
+    secure: process.env.NODE_ENV === 'production', // true in production with HTTPS
+    httpOnly: true,
+    maxAge: 1000 * 60 * 60 * 24 // 24 hours
+  }
+}));
+
+// Passport (after session)
+app.use(passport.initialize());
+app.use(passport.session());
+
+
+app.set('view engine', 'handlebars');
+app.set('views', './views');
+
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json()); // Thêm dòng này để xử lý JSON body cho các API
+app.use('/static', express.static('static'));
+app.use(express.static('public')); // Add this line to serve files from public directory
 
 // Import Routers
 import accountRouter from './routes/account.route.js';
@@ -23,30 +60,17 @@ import instructorAdminRouter from './routes/instructor.route.js';
 import courseAdminRouter from './routes/course-admin.route.js';
 import adminDashboardRouter from './routes/admin-dashboard.route.js';
 import adminAccountsRouter from './routes/admin-accounts.route.js';
+import adminContactRouter from './routes/admin-contact.route.js';
 import contactRouter from './routes/contact.route.js';
 import sitemapRouter from './routes/sitemap.route.js';
 import instructorsRouter from './routes/instructors.route.js';
 import reviewRoute from './routes/review.route.js';
+import chatRouter from './routes/chat.route.js';
+import testChatRouter from './routes/test-chat.route.js';
 import passport from './utils/passport.js';
 import authRouter from './routes/auth.route.js';
-
-const app = express();
-const PORT = 3000;
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-app.set('trust proxy', 1)
-app.use(session({
-  secret: 'jgiejghewhuoweofijw2t498hjwoifjw4twnfowejhf',
-  resave: false,
-  saveUninitialized: true,
-  cookie: { secure: false }
-}));
-
-// Passport (after session)
-app.use(passport.initialize());
-app.use(passport.session());
+import rateLimit from 'express-rate-limit';
+import paymentRouter from './routes/payment.route.js';
 
 app.engine('handlebars', engine({
   defaultLayout: 'main',
@@ -85,11 +109,53 @@ app.engine('handlebars', engine({
     eq(a, b) {
       return a === b;
     },
+    ne(a, b) {
+      return a !== b;
+    },
     ifEq(a, b, options) {
       if (a === b) {
         return options.fn(this);
       }
       return options.inverse(this);
+    },
+
+    render_stars(rating) {
+      const fullStars = Math.floor(rating || 0);
+      const halfStar = (rating % 1) >= 0.5;
+      let stars = '';
+
+      // ⭐ Full stars
+      for (let i = 0; i < fullStars; i++) {
+        stars += '<i class="bi bi-star-fill text-warning"></i>';
+      }
+
+      // 🌗 Half star
+      if (halfStar) {
+        stars += '<i class="bi bi-star-half text-warning"></i>';
+      }
+
+      // ☆ Empty stars
+      for (let i = fullStars + (halfStar ? 1 : 0); i < 5; i++) {
+        stars += '<i class="bi bi-star text-warning"></i>';
+      }
+
+      return new Handlebars.SafeString(stars);
+    },
+
+    format_date: function (timestamp) {
+      if (!timestamp) return '';
+      const date = new Date(timestamp);
+      return date.toLocaleDateString('vi-VN');
+    },
+
+    // Trả về danh sách category con của một category cha
+    subCategories: function (parentId, categories) {
+      return categories.filter(c => c.parent_category_id === parentId);
+    },
+
+    // Kiểm tra category có subcategory con hay không
+    hasSubCategories: function (parentId, categories) {
+      return categories.some(c => c.parent_category_id === parentId);
     },
     repeat(count, options) {
       let result = '';
@@ -151,22 +217,67 @@ app.engine('handlebars', engine({
       }
 
       return pages;
+    },
+
+    iconOrDefault(categoryIcons, name) {
+      return categoryIcons[name] || "bi bi-folder";
+    },
+    encodeURIComponent(str) {
+    return encodeURIComponent(str);
+    },
+    isYouTube(url) {
+        if (!url) return false;
+        return url.includes('youtube.com') || url.includes('youtu.be');
+    },
+    // Convert YouTube URL to embed URL
+    getYouTubeEmbedUrl(url) {
+        if (!url) return '';
+        
+        // https://www.youtube.com/watch?v=VIDEO_ID
+        // https://youtu.be/VIDEO_ID
+        let videoId = '';
+        
+        if (url.includes('youtube.com/watch')) {
+            const urlParams = new URL(url).searchParams;
+            videoId = urlParams.get('v');
+        } else if (url.includes('youtu.be/')) {
+            videoId = url.split('youtu.be/')[1].split('?')[0];
+        } else if (url.includes('youtube.com/embed/')) {
+            return url; // Already embed URL
+        }
+        
+        if (videoId) {
+            return `https://www.youtube.com/embed/${videoId}?enablejsapi=1`;
+        }
+        
+        return url;
+    },
+    isStudent(options) {
+      const user = options.data.root.authUser; // lấy từ res.locals.authUser
+      if (!user) return false;
+      return user.role === 'student';
     }
+
+
   }
 }));
-app.set('view engine', 'handlebars');
-app.set('views', './views');
 
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json()); // Thêm dòng này để xử lý JSON body cho các API
-app.use('/static', express.static('static'));
-app.use(express.static('public')); // Add this line to serve files from public directory
 
 // ================= MIDDLEWARES TOÀN CỤC =================
 // Middleware cung cấp thông tin đăng nhập cho tất cả các view
-app.use(function (req, res, next) {
+app.use(async function (req, res, next) {
   res.locals.isAuthenticated = req.session.isAuthenticated || false;
   res.locals.authUser = req.session.authUser || null;
+  res.locals.top3WeekCourses = await viewModel.findTop3WeekCourses();
+  res.locals.topCategories = await viewModel.findTopCategories();
+  res.locals.categoryIcons = {
+    "Development": "bi bi-code-slash",
+    "Design": "bi bi-palette",
+    "Data Science": "bi bi-bar-chart-line",
+    "Digital Marketing": "bi bi-megaphone"
+  },
+  res.locals.newestCourses = await viewModel.findNewestCourses();
+  res.locals.mostViewCourses = await viewModel.findMostViewCourses();
   next();
 });
 
@@ -183,6 +294,13 @@ app.use(function (req, res, next) {
 // Provide current year to templates
 app.use(function (req, res, next) {
   res.locals.currentYear = new Date().getFullYear();
+  next();
+});
+
+// Provide Supabase configuration to templates
+app.use(function (req, res, next) {
+  res.locals.supabaseUrl = process.env.SUPABASE_URL;
+  res.locals.supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
   next();
 });
 
@@ -210,11 +328,34 @@ app.use(function (req, res, next) {
 // ================= ROUTERS =================
 // -- Routes công khai (ai cũng xem được) --
 app.get('/', (req, res) => {
-  res.render('home');
+  const user = req.session.authUser;
+
+  if (!req.session.isAuthenticated || !user) {
+    // chưa đăng nhập
+    return res.render('home', { layout: 'home-main' });
+  }
+
+  // đã đăng nhập
+  if (user.role === 'student') {
+    return res.render('home-authen', { layout: 'main' });
+  }
+
+  if (user.role === 'instructor') {
+    return res.redirect('/instructor');
+  }
+
+  if (user.role === 'admin') {
+    return res.redirect('/admin/dashboard');
+  }
+
+  // fallback
+  res.render('home', { layout: 'home-main' });
 });
+
 app.use('/account', accountRouter);
 app.use('/courses', courseRouter);
 app.use('/auth', authRouter);
+app.use('/payment', paymentRouter); 
 
 // -- Routes của học viên (cần đăng nhập) --
 app.use('/student', restrict, studentRouter);
@@ -233,8 +374,34 @@ app.use('/admin/instructors', restrict, isAdmin, instructorAdminRouter);
 app.use('/admin/courses', restrict, isAdmin, courseAdminRouter);
 app.use('/admin/dashboard', restrict, isAdmin, adminDashboardRouter);
 app.use('/admin/accounts', restrict, isAdmin, adminAccountsRouter);
+app.use('/admin/contact', restrict, isAdmin, adminContactRouter);
 app.use('/contact', contactRouter);
 app.use('/sitemap', sitemapRouter);
+
+// Rate limiting for chat endpoints
+const chatRateLimit = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 100, // limit each IP to 100 requests per windowMs
+    message: {
+        success: false,
+        message: 'Too many requests, please try again later'
+    }
+});
+
+const messageRateLimit = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 30, // limit each IP to 30 message requests per windowMs
+    message: {
+        success: false,
+        message: 'Too many messages, please slow down'
+    }
+});
+
+// -- Chat API Routes (need authentication) --
+app.use('/api/chat', restrict, chatRateLimit, chatRouter);
+
+// -- Test Chat Route (for debugging) --
+app.use('/test', restrict, testChatRouter);
 // =======================================================
 
 
@@ -249,5 +416,5 @@ app.use((err, req, res, next) => {
 });
 // =======================================================
 app.listen(PORT, () => {
-  console.log(`Application listening on port ${PORT}`);
+  console.log('Application listening on port ' + PORT + ' | http://localhost:' + PORT);
 });

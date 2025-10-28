@@ -1,0 +1,239 @@
+<div class="card">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h5 class="mb-0">Students - {{course.title}}</h5>
+    <div>
+      <button id="selectAllBtn" class="btn btn-sm btn-outline-primary me-2">
+        <i class="bi bi-check-all"></i> Select All
+      </button>
+      <button id="sendBulkMessageBtn" class="btn btn-sm btn-primary" disabled>
+        <i class="bi bi-chat-dots"></i> Send Message
+      </button>
+    </div>
+  </div>
+
+  <div class="card-body">
+    {{#if students.length}}
+      <div class="table-responsive">
+        <table class="table table-hover">
+          <thead>
+            <tr>
+              <th width="50">
+                <input type="checkbox" id="selectAllCheckbox" class="form-check-input">
+              </th>
+              <th>Student</th>
+              <th>Email</th>
+              <th>Enrolled</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{#each students}}
+            <tr>
+              <td>
+                <input type="checkbox" class="form-check-input student-checkbox" value="{{user_id}}">
+              </td>
+              <td>
+                <div class="d-flex align-items-center">
+                  <div class="avatar me-2">
+                    {{#if avatar_url}}
+                      <img src="{{avatar_url}}" alt="{{full_name}}" class="rounded-circle" width="32" height="32">
+                    {{else}}
+                      <i class="bi bi-person-circle text-muted" style="font-size: 1.5rem;"></i>
+                    {{/if}}
+                  </div>
+                  <div>
+                    <div class="fw-semibold">{{full_name}}</div>
+                  </div>
+                </div>
+              </td>
+              <td>{{email}}</td>
+              <td>{{format_date enrolled_at}}</td>
+              <td>
+                <button class="btn btn-sm btn-outline-primary send-message-btn" data-student-id="{{user_id}}" data-student-name="{{full_name}}">
+                  <i class="bi bi-chat-dots"></i> Chat
+                </button>
+              </td>
+            </tr>
+            {{/each}}
+          </tbody>
+        </table>
+      </div>
+    {{else}}
+      <div class="text-center text-muted py-4">
+        <i class="bi bi-people" style="font-size: 3rem; opacity: 0.5;"></i>
+        <p class="mt-2 mb-0">No students enrolled in this course yet.</p>
+      </div>
+    {{/if}}
+  </div>
+</div>
+
+<!-- Bulk Message Modal -->
+<div class="modal fade" id="bulkMessageModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Send Message to Selected Students</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label for="bulkMessageContent" class="form-label">Message</label>
+          <textarea class="form-control" id="bulkMessageContent" rows="4" placeholder="Type your message here..."></textarea>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Selected Students</label>
+          <div id="selectedStudentsList" class="border rounded p-2" style="max-height: 150px; overflow-y: auto;">
+            <!-- Selected students will be listed here -->
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="sendBulkMessageConfirm">
+          <i class="bi bi-send"></i> Send Message
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+  const studentCheckboxes = document.querySelectorAll('.student-checkbox');
+  const selectAllBtn = document.getElementById('selectAllBtn');
+  const sendBulkMessageBtn = document.getElementById('sendBulkMessageBtn');
+  const sendMessageBtns = document.querySelectorAll('.send-message-btn');
+  const bulkMessageModal = new bootstrap.Modal(document.getElementById('bulkMessageModal'));
+  const sendBulkMessageConfirm = document.getElementById('sendBulkMessageConfirm');
+
+  // Select all functionality
+  selectAllCheckbox.addEventListener('change', function() {
+    studentCheckboxes.forEach(checkbox => {
+      checkbox.checked = this.checked;
+    });
+    updateBulkMessageButton();
+  });
+
+  selectAllBtn.addEventListener('click', function() {
+    const allChecked = Array.from(studentCheckboxes).every(cb => cb.checked);
+    studentCheckboxes.forEach(checkbox => {
+      checkbox.checked = !allChecked;
+    });
+    selectAllCheckbox.checked = !allChecked;
+    updateBulkMessageButton();
+  });
+
+  // Individual checkbox change
+  studentCheckboxes.forEach(checkbox => {
+    checkbox.addEventListener('change', function() {
+      updateBulkMessageButton();
+      updateSelectAllCheckbox();
+    });
+  });
+
+  // Send individual message
+  sendMessageBtns.forEach(btn => {
+    btn.addEventListener('click', function() {
+      const studentId = this.dataset.studentId;
+      const studentName = this.dataset.studentName;
+      
+      // Open chat with specific student
+      if (window.openChat) {
+        window.openChat({{authUser.user_id}}, studentId);
+      } else {
+        alert('Chat system not available');
+      }
+    });
+  });
+
+  // Bulk message functionality
+  sendBulkMessageBtn.addEventListener('click', function() {
+    const selectedStudents = getSelectedStudents();
+    if (selectedStudents.length === 0) {
+      alert('Please select at least one student');
+      return;
+    }
+
+    // Show selected students in modal
+    const selectedStudentsList = document.getElementById('selectedStudentsList');
+    selectedStudentsList.innerHTML = selectedStudents.map(student => 
+      `<div class="d-flex justify-content-between align-items-center mb-1">
+        <span>${student.name}</span>
+        <small class="text-muted">ID: ${student.id}</small>
+      </div>`
+    ).join('');
+
+    bulkMessageModal.show();
+  });
+
+  // Send bulk message
+  sendBulkMessageConfirm.addEventListener('click', async function() {
+    const selectedStudents = getSelectedStudents();
+    const messageContent = document.getElementById('bulkMessageContent').value.trim();
+
+    if (!messageContent) {
+      alert('Please enter a message');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/chat/bulk-message', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          studentIds: selectedStudents.map(s => s.id),
+          content: messageContent,
+          messageType: 'text'
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        alert(`Message sent to ${data.data.filter(r => r.success).length} students successfully`);
+        bulkMessageModal.hide();
+        document.getElementById('bulkMessageContent').value = '';
+        
+        // Uncheck all checkboxes
+        studentCheckboxes.forEach(cb => cb.checked = false);
+        selectAllCheckbox.checked = false;
+        updateBulkMessageButton();
+      } else {
+        alert('Failed to send message: ' + data.message);
+      }
+    } catch (error) {
+      console.error('Error sending bulk message:', error);
+      alert('Error sending message');
+    }
+  });
+
+  function getSelectedStudents() {
+    return Array.from(studentCheckboxes)
+      .filter(cb => cb.checked)
+      .map(cb => {
+        const row = cb.closest('tr');
+        return {
+          id: cb.value,
+          name: row.querySelector('.fw-semibold').textContent
+        };
+      });
+  }
+
+  function updateBulkMessageButton() {
+    const selectedCount = getSelectedStudents().length;
+    sendBulkMessageBtn.disabled = selectedCount === 0;
+    sendBulkMessageBtn.innerHTML = selectedCount > 0 
+      ? `<i class="bi bi-chat-dots"></i> Send Message (${selectedCount})`
+      : `<i class="bi bi-chat-dots"></i> Send Message`;
+  }
+
+  function updateSelectAllCheckbox() {
+    const checkedCount = Array.from(studentCheckboxes).filter(cb => cb.checked).length;
+    selectAllCheckbox.checked = checkedCount === studentCheckboxes.length;
+    selectAllCheckbox.indeterminate = checkedCount > 0 && checkedCount < studentCheckboxes.length;
+  }
+});
+</script>

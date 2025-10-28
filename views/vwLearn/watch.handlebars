@@ -1,193 +1,414 @@
-<div class="container-fluid p-0">
-    <div class="row g-0">
-        <!-- Video Player Section -->
-        <div class="col-lg-8">
-            <div class="video-container bg-dark position-relative">
-                {{#if currentLesson.video_url}}
-                <video id="mainVideo" class="w-100" controls style="height: 500px;">
-                    <source src="{{currentLesson.video_url}}" type="video/mp4">
-                    Your browser does not support the video tag.
+<!-- WATCH PAGE: Video (Left) + Sidebar (Right) -->
+<div class="container-fluid">
+  <div class="row gx-4 align-items-start">
+    
+    <!-- Main Content: Video player - BÊN TRÁI -->
+    <section class="col-lg-9 col-md-8 mb-4">
+      <div class="card h-100 border-0 shadow-sm rounded-4">
+        <div class="card-body p-0">
+          <!-- Video Container -->
+          <div class="video-container bg-dark position-relative rounded-top-4 overflow-hidden">
+            {{#if currentLesson.video_url}}
+              {{#if (isYouTube currentLesson.video_url)}}
+                <div class="ratio ratio-16x9" style="min-height: 450px;">
+                  <iframe id="youtubePlayer" src="{{getYouTubeEmbedUrl currentLesson.video_url}}"
+                    title="{{currentLesson.title}}" frameborder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowfullscreen></iframe>
+                </div>
+              {{else}}
+                <video id="mainVideo" class="w-100"
+                  style="max-height:720px; min-height:450px; width:100%; object-fit:contain;">
+                  <source src="{{currentLesson.video_url}}" type="video/mp4">
                 </video>
+                
+                <!-- Custom Controls -->
+                <div id="videoControls" class="position-absolute bottom-0 start-0 end-0 bg-dark bg-opacity-75 p-3">
+                  <div class="mb-2">
+                    <input id="progressBar" class="form-range" type="range" min="0" max="100" step="0.1" value="0">
+                  </div>
+                  <div class="d-flex justify-content-between align-items-center text-white">
+                    <div class="d-flex align-items-center gap-2">
+                      <button id="playPauseBtn" class="btn btn-link text-white p-0">
+                        <i id="playIcon" class="bi bi-play-fill fs-4"></i>
+                      </button>
+                      <small id="timeDisplay">0:00 / 0:00</small>
+
+                      <div class="d-flex align-items-center gap-2 ms-3">
+                        <i id="volumeIcon" class="bi bi-volume-up-fill"></i>
+                        <input id="volumeBar" class="form-range" type="range" min="0" max="100" value="100" style="width:80px;">
+                      </div>
+                    </div>
+
+                    <button id="fullscreenBtn" class="btn btn-link text-white p-0">
+                      <i class="bi bi-fullscreen fs-5"></i>
+                    </button>
+                  </div>
+                </div>
+              {{/if}}
+            {{else}}
+              <div class="d-flex align-items-center justify-content-center text-white" style="height: 500px;">
+                <div class="text-center">
+                  <i class="bi bi-camera-video display-1 mb-3"></i>
+                  <h4>No video available</h4>
+                </div>
+              </div>
+            {{/if}}
+          </div>
+
+          <!-- Lesson Info below video -->
+          <div class="p-4 bg-white rounded-bottom-4">
+            <div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-3">
+              <div class="flex-grow-1">
+                <h4 class="mb-2">{{currentLesson.title}}</h4>
+                <p class="text-muted mb-0">
+                  <i class="bi bi-book me-1"></i> {{course.title}}
+                  {{#if currentLesson.duration}}
+                  <span class="ms-3"><i class="bi bi-clock me-1"></i> {{currentLesson.duration}}</span>
+                  {{/if}}
+                </p>
+              </div>
+
+              <div class="d-flex gap-2" style="min-width: 280px;">
+                <a href="{{#if prevLesson}}/learn/{{course.course_id}}/lesson/{{prevLesson.lesson_id}}{{else}}#{{/if}}"
+                  class="btn btn-outline-success w-50 {{#unless prevLesson}}disabled{{/unless}}">
+                  <i class="bi bi-skip-backward"></i> Previous
+                </a>
+
+                <a id="nextLessonBtn" 
+                  href="{{#if nextLesson}}/learn/{{course.course_id}}/lesson/{{nextLesson.lesson_id}}{{else}}#{{/if}}"
+                  class="btn btn-success w-50 {{#unless nextLesson}}disabled{{/unless}}">
+                  Next <i class="bi bi-skip-forward"></i>
+                </a>
+              </div>
+            </div>
+
+            <hr>
+
+            <!-- Description -->
+            {{#if currentLesson.description}}
+            <div class="mb-4">
+              <h5 class="mb-3"><i class="bi bi-info-circle me-2"></i>Description</h5>
+              <p class="text-muted">{{currentLesson.description}}</p>
+            </div>
+            {{/if}}
+
+            <!-- Lesson Materials -->
+            {{#if currentLesson.content}}
+            <div class="mb-4">
+              <h5 class="mb-3"><i class="bi bi-file-text me-2"></i>Lesson Materials</h5>
+              <div class="border rounded-3 p-3 bg-light">
+                {{{currentLesson.content}}}
+              </div>
+            </div>
+            {{/if}}
+
+            <!-- Mark Complete Button -->
+            <div class="mt-4">
+              <button class="btn btn-success w-100 py-2" id="markCompleteBtn"
+                data-lesson-id="{{currentLesson.lesson_id}}"
+                data-course-id="{{course.course_id}}"
+                {{#if currentLesson.is_completed}}disabled{{/if}}>
+                {{#if currentLesson.is_completed}}
+                  <i class="bi bi-check-circle-fill me-2"></i> Completed
                 {{else}}
-                <div class="d-flex align-items-center justify-content-center text-white" style="height: 500px;">
-                    <div class="text-center">
-                        <i class="bi bi-camera-video display-1 mb-3"></i>
-                        <h4>No video available</h4>
-                    </div>
-                </div>
+                  <i class="bi bi-check-circle me-2"></i> Mark as Complete
                 {{/if}}
-
-                <!-- Video Controls Overlay -->
-                <div class="position-absolute bottom-0 start-0 end-0 p-3 bg-gradient"
-                    style="background: linear-gradient(transparent, rgba(0,0,0,0.7));">
-                    <div class="d-flex justify-content-between align-items-center text-white">
-                        <div>
-                            <h5 class="mb-1">{{currentLesson.title}}</h5>
-                            <small>{{course.title}}</small>
-                        </div>
-                        <div class="btn-group">
-                            {{#if prevLesson}}
-                            <a href="/learn/{{course.course_id}}/lesson/{{prevLesson.lesson_id}}"
-                                class="btn btn-outline-light btn-sm">
-                                <i class="bi bi-skip-backward"></i> Previous
-                            </a>
-                            {{/if}}
-                            {{#if nextLesson}}
-                            <a href="/learn/{{course.course_id}}/lesson/{{nextLesson.lesson_id}}"
-                                class="btn btn-primary btn-sm">
-                                Next <i class="bi bi-skip-forward"></i>
-                            </a>
-                            {{/if}}
-                        </div>
-                    </div>
-                </div>
+              </button>
             </div>
 
-            <!-- Lesson Info -->
-            <div class="p-4">
-                <div class="row">
-                    <div class="col-md-8">
-                        <h3>{{currentLesson.title}}</h3>
-                        <p class="text-muted">{{currentLesson.description}}</p>
-
-                        <!-- Lesson Content/Materials -->
-                        {{#if currentLesson.content}}
-                        <div class="mt-4">
-                            <h5>Lesson Materials</h5>
-                            <div class="border rounded p-3 bg-light">
-                                {{{currentLesson.content}}}
-                            </div>
-                        </div>
-                        {{/if}}
-                    </div>
-                    <div class="col-md-4">
-                        <!-- Progress Info -->
-                        <div class="card">
-                            <div class="card-body">
-                                <h6 class="card-title">Your Progress</h6>
-                                <div class="progress mb-2">
-                                    <div class="progress-bar" style="width: {{courseProgress}}%"></div>
-                                </div>
-                                <small class="text-muted">{{completedLessons}}/{{totalLessons}} lessons
-                                    completed</small>
-
-                                <div class="mt-3">
-                                    <button class="btn btn-success btn-sm w-100" id="markCompleteBtn" {{#if
-                                        currentLesson.is_completed}}disabled{{/if}}>
-                                        {{#if currentLesson.is_completed}}
-                                        <i class="bi bi-check-circle"></i> Completed
-                                        {{else}}
-                                        <i class="bi bi-check"></i> Mark as Complete
-                                        {{/if}}
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <!-- Success Alert (hidden initially) -->
+            <div id="successAlert" class="alert alert-success mt-3" style="display: none;">
+              <i class="bi bi-check-circle-fill me-2"></i>
+              <span>Lesson completed successfully!</span>
             </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Sidebar: Course Content - BÊN PHẢI -->
+    <aside class="col-lg-3 col-md-4 mb-4">
+      <div class="card shadow-sm sticky-top" style="top: 20px; overflow: hidden">
+        <!-- Header -->
+        <div class="card-header bg-success text-white border-0">
+          <h5 class="mb-0"><i class="bi bi-list-ul me-2"></i>Course Content</h5>
         </div>
 
-        <!-- Course Curriculum Sidebar -->
-        <div class="col-lg-4 bg-light border-start">
-            <div class="p-3 border-bottom bg-white">
-                <h5 class="mb-1">{{course.title}}</h5>
-                <small class="text-muted">{{totalLessons}} lessons</small>
-            </div>
-
-            <div class="curriculum-list" style="max-height: 600px; overflow-y: auto;">
-                {{#each lessons}}
-                <div
-                    class="lesson-item p-3 border-bottom {{#if is_current}}bg-primary text-white{{/if}} {{#if is_completed}}bg-success bg-opacity-10{{/if}}">
-                    <div class="d-flex align-items-start">
-                        <div class="me-2 mt-1">
-                            {{#if is_completed}}
-                            <i class="bi bi-check-circle text-success"></i>
-                            {{else if is_current}}
-                            <i class="bi bi-play-circle"></i>
-                            {{else}}
-                            <i class="bi bi-circle"></i>
-                            {{/if}}
-                        </div>
-                        <div class="flex-grow-1">
-                            {{#if is_accessible}}
-                            <a href="/learn/{{../course.course_id}}/lesson/{{lesson_id}}"
-                                class="text-decoration-none {{#if is_current}}text-white{{else}}text-dark{{/if}}">
-                                <h6 class="mb-1">{{title}}</h6>
-                            </a>
-                            {{else}}
-                            <h6 class="mb-1 text-muted">{{title}}</h6>
-                            <small class="text-muted"><i class="bi bi-lock"></i> Locked</small>
-                            {{/if}}
-                            {{#if duration}}
-                            <small class="text-muted d-block">{{duration}} minutes</small>
-                            {{/if}}
-                        </div>
-                    </div>
+        <!-- Body: scrollable lessons list -->
+        <div class="card-body p-0" style="overflow-y: auto; max-height: calc(100vh - 150px);">
+          <div class="list-group list-group-flush" id="chaptersList">
+            {{#each chapters}}
+            <div class="chapter-group">
+              <!-- Chapter Header -->
+              <div class="list-group-item bg-light border-0 py-3 px-3">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div class="fw-bold text-dark">
+                    <i class="bi bi-folder2-open me-2"></i>{{this.title}}
+                  </div>
+                  {{#if this.lessons.length}}
+                  <button class="btn btn-sm btn-link p-0 text-dark" 
+                    data-bs-toggle="collapse"
+                    data-bs-target="#ch{{this.chapter_id}}" 
+                    aria-expanded="true">
+                    <i class="bi bi-chevron-down"></i>
+                  </button>
+                  {{/if}}
                 </div>
+              </div>
+
+              <!-- Lessons List -->
+              {{#if this.lessons.length}}
+              <div class="collapse show" id="ch{{this.chapter_id}}">
+                {{#each this.lessons}}
+                <a href="/learn/{{../../course.course_id}}/lesson/{{this.lesson_id}}"
+                  class="list-group-item list-group-item-action border-0 py-3 px-4 lesson-item {{#if this.is_completed}}lesson-completed{{/if}}"
+                  data-lesson-id="{{this.lesson_id}}">
+                  
+                  <div class="d-flex align-items-start">
+                    <!-- Icon -->
+                    <span class="me-3 mt-1">
+                      {{#if this.is_completed}}
+                        <i class="bi bi-check-circle-fill text-success fs-5"></i>
+                      {{else}}
+                        <i class="bi bi-play-circle text-success fs-5"></i>
+                      {{/if}}
+                    </span>
+                    
+                    <!-- Content -->
+                    <div class="flex-grow-1">
+                      <div class="fw-semibold mb-1">{{this.title}}</div>
+                      {{#if this.duration}}
+                      <small class="text-muted">
+                        <i class="bi bi-clock me-1"></i>{{this.duration}}
+                      </small>
+                      {{/if}}
+                    </div>
+                  </div>
+                </a>
                 {{/each}}
+              </div>
+              {{/if}}
             </div>
+            {{/each}}
+          </div>
         </div>
-    </div>
+      </div>
+    </aside>
+
+  </div>
 </div>
+
+<style>
+/* Lesson Item Styles */
+.lesson-item {
+  transition: all 0.2s ease;
+  cursor: pointer;
+  border-left: 3px solid transparent !important;
+}
+
+.lesson-item:hover {
+  background-color: #f8f9fa !important;
+  border-left-color: #0d6efd !important;
+}
+
+/* Completed Lesson */
+.lesson-completed .fw-semibold {
+  color: #198754;
+}
+
+/* Chapter styling */
+.chapter-group:not(:last-child) {
+  border-bottom: 2px solid #e9ecef;
+}
+
+/* Scrollbar styling */
+.card-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.card-body::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.card-body::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 3px;
+}
+
+.card-body::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Animation for success alert */
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* Pulse animation for next button */
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(25, 135, 84, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(25, 135, 84, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(25, 135, 84, 0);
+  }
+}
+
+.btn-pulse {
+  animation: pulse 2s infinite;
+}
+</style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const video = document.getElementById('mainVideo');
-    const markCompleteBtn = document.getElementById('markCompleteBtn');
+  const video = document.getElementById('mainVideo');
+  const markCompleteBtn = document.getElementById('markCompleteBtn');
+  
+  // Video controls (nếu không phải YouTube)
+  if (video) {
+    const playPauseBtn = document.getElementById('playPauseBtn');
+    const playIcon = document.getElementById('playIcon');
+    const progressBar = document.getElementById('progressBar');
+    const timeDisplay = document.getElementById('timeDisplay');
+    const volumeBar = document.getElementById('volumeBar');
+    const volumeIcon = document.getElementById('volumeIcon');
+    const fullscreenBtn = document.getElementById('fullscreenBtn');
 
-    // Track video progress
-    if (video) {
-        video.addEventListener('timeupdate', function() {
-            const progress = (video.currentTime / video.duration) * 100;
-            if (progress > 80) { // Auto-complete when 80% watched
-                markCompleteBtn.disabled = false;
-            }
-        });
+    // Play/Pause
+    playPauseBtn?.addEventListener('click', () => {
+      if (video.paused) {
+        video.play();
+        playIcon.classList.replace('bi-play-fill', 'bi-pause-fill');
+      } else {
+        video.pause();
+        playIcon.classList.replace('bi-pause-fill', 'bi-play-fill');
+      }
+    });
 
-        // Save watch time periodically
-        setInterval(() => {
-            if (!video.paused) {
-                fetch('/learn/progress', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        courseId: {{course.course_id}},
-                        lessonId: {{currentLesson.lesson_id}},
-                        watchTime: Math.floor(video.currentTime)
-                    })
-                });
-            }
-        }, 30000); // Save every 30 seconds
+    // Progress bar
+    video.addEventListener('timeupdate', () => {
+      const progress = (video.currentTime / video.duration) * 100;
+      progressBar.value = progress;
+      
+      const current = formatTime(video.currentTime);
+      const total = formatTime(video.duration);
+      timeDisplay.textContent = `${current} / ${total}`;
+    });
+
+    progressBar?.addEventListener('input', (e) => {
+      const time = (e.target.value / 100) * video.duration;
+      video.currentTime = time;
+    });
+
+    // Volume
+    volumeBar?.addEventListener('input', (e) => {
+      video.volume = e.target.value / 100;
+      updateVolumeIcon(e.target.value);
+    });
+
+    function updateVolumeIcon(value) {
+      if (value == 0) {
+        volumeIcon.className = 'bi bi-volume-mute-fill';
+      } else if (value < 50) {
+        volumeIcon.className = 'bi bi-volume-down-fill';
+      } else {
+        volumeIcon.className = 'bi bi-volume-up-fill';
+      }
     }
 
-    // Mark lesson as complete
-    if (markCompleteBtn) {
-        markCompleteBtn.addEventListener('click', async function() {
-            try {
-                const response = await fetch('/learn/mark-complete', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        courseId: {{course.course_id}},
-                        lessonId: {{currentLesson.lesson_id}}
-                    })
-                });
+    // Fullscreen
+    fullscreenBtn?.addEventListener('click', () => {
+      if (video.requestFullscreen) {
+        video.requestFullscreen();
+      }
+    });
 
-                const result = await response.json();
-                if (result.success) {
-                    if (result.nextLesson) {
-                        // Auto redirect to next lesson
-                        window.location.href = result.nextLesson;
-                    } else {
-                        // Course completed, reload or show completion message
-                        location.reload();
-                    }
-                }
-            } catch (error) {
-                console.error('Error marking lesson complete:', error);
-            }
-        });
+    function formatTime(seconds) {
+      const mins = Math.floor(seconds / 60);
+      const secs = Math.floor(seconds % 60);
+      return `${mins}:${secs.toString().padStart(2, '0')}`;
     }
+  }
+
+  // Mark Complete
+  markCompleteBtn?.addEventListener('click', async function() {
+    const lessonId = this.dataset.lessonId;
+    const courseId = this.dataset.courseId;
+
+    try {
+      const response = await fetch('/learn/mark-complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lessonId, courseId })
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        this.disabled = true;
+        this.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i> Completed';
+        
+        // Show success alert with animation
+        const successAlert = document.getElementById('successAlert');
+        if (successAlert) {
+          successAlert.style.display = 'block';
+          successAlert.style.animation = 'slideInDown 0.5s ease-out';
+          
+          setTimeout(() => {
+            successAlert.style.animation = 'fadeOut 0.5s ease-out';
+            setTimeout(() => {
+              successAlert.style.display = 'none';
+            }, 500);
+          }, 2000);
+        }
+        
+        // Update sidebar
+        const lessonItem = document.querySelector(`[data-lesson-id="${lessonId}"]`);
+        if (lessonItem) {
+          lessonItem.classList.add('lesson-completed');
+          const icon = lessonItem.querySelector('i');
+          if (icon) {
+            icon.className = 'bi bi-check-circle-fill text-success fs-5';
+          }
+        }
+
+        // Update next button style
+        const nextBtn = document.getElementById('nextLessonBtn');
+        if (nextBtn && !nextBtn.classList.contains('disabled')) {
+          nextBtn.classList.add('btn-pulse');
+        }
+
+        // Auto navigate to next lesson after 2.5s
+        if (data.nextLesson) {
+          setTimeout(() => {
+            window.location.href = data.nextLesson;
+          }, 2500);
+        }
+      }
+    } catch (error) {
+      console.error('Error marking complete:', error);
+      alert('Failed to mark lesson as complete');
+    }
+  });
 });
 </script>

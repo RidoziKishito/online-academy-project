@@ -10,10 +10,35 @@ const router = express.Router();
 router.use(restrict);
 
 // Trang "Các khóa học của tôi"
-router.get('/my-courses', async (req, res) => {
+router.get('/my-courses', async (req, res) =>
+{
     const userId = req.session.authUser.user_id;
-    const courses = await enrollmentModel.findCoursesByUserId(userId);
-    res.render('vwStudent/my-courses', { courses });
+
+    const enrolledCourses = await enrollmentModel.findCoursesByUserId(userId);
+    
+    const coursesWithProgress = await Promise.all(
+        enrolledCourses.map(async (course) =>
+        {
+            const [allLessons, completedInCourse] = await Promise.all([
+                progressModel.countLessonsByCourse(course.course_id),
+                progressModel.countCompletedLessons(course.course_id, userId)
+            ]);
+
+            const progress = allLessons > 0 ? Math.round((completedInCourse / allLessons) * 100) : 0;
+
+            return {
+                ...course,
+                totalLessons: allLessons,
+                completedLessons: completedInCourse,
+                progress
+            };
+        })
+    );
+
+    res.render('vwStudent/my-courses', {
+        courses: coursesWithProgress,
+        layout: 'main'
+    });
 });
 
 // Trang "Danh sách yêu thích"

@@ -2,7 +2,7 @@
     <div class="card">
         <div class="card-header d-flex justify-content-between align-items-center">
             <span>Sign In</span>
-            <a href="/account/signup" class="small text-decoration-none">Don't have an account? Sign up</a>
+            <a href="/account/signup" class="small text-decoration-non text-light">Don't have an account? Sign up</a>
         </div>
         <div class="card-body">
             {{#if success}}
@@ -27,22 +27,22 @@
                 <input type="password" class="form-control" id="txtPassword" name="password">
             </div>
             <div class="mb-3 text-end">
-                <a href="/account/forgot-password" class="text-decoration-none small">
+                <a href="/account/forgot-password" class="text-decoration-none text-success small">
                     <i class="bi bi-key-fill me-1"></i>Forgot Password?
-                </a>
-            </div>
-
-            <div class="text-center my-3">
-                <div class="text-muted small mb-2">or continue with</div>
-                <a class="btn btn-outline-dark btn-sm" href="/auth/google">
-                    <i class="bi bi-google me-1"></i> Google
                 </a>
             </div>
         </div>
         <div class="card-footer text-muted">
-            <button type="submit" class="btn btn-outline-primary"><i class="bi bi-box-arrow-in-right"></i>
-                Sign in</button>
+        <div class="d-flex text-start align-items-center gap-2">
+            <button type="submit" class="btn btn-outline-primary">
+            <i class="bi bi-box-arrow-in-right"></i> Sign in
+            </button>
+            <a class="btn btn-outline-dark" href="/auth/google">
+            <i class="bi bi-google me-1"></i> Google
+            </a>
         </div>
+        </div>
+
     </div>
 
 </form>

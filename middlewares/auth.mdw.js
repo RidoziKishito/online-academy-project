@@ -25,3 +25,10 @@ export function isInstructor(req, res, next) {
   }
   res.status(403).render('403');
 }
+
+export function isStudent(req, res, next) {
+  if (req.session.isAuthenticated && req.session.authUser.role === 'student') {
+    return next();
+  }
+  res.status(403).render('403');
+}
