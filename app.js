@@ -5,6 +5,7 @@ import session from 'express-session';
 import connectPgSimple from 'connect-pg-simple';
 import helmet from 'helmet';
 import cors from 'cors';
+import pinoHttp from 'pino-http';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import Handlebars from 'handlebars';
@@ -28,9 +29,28 @@ const PORT = process.env.PORT || 3000;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Security middleware
+// Security & logging middleware
+const isProd = process.env.NODE_ENV === 'production';
+
+// Request logging with request-id
+import logger from './utils/logger.js';
+app.use(pinoHttp({
+  logger,
+  genReqId: (req) => req.headers['x-request-id'] || undefined,
+  autoLogging: true,
+}));
+
+// CORS: allowlist via env (comma-separated)
+let corsOptions = { origin: true, credentials: true };
+if (process.env.CORS_ALLOWED_ORIGINS) {
+  const origins = process.env.CORS_ALLOWED_ORIGINS.split(',').map(s => s.trim()).filter(Boolean);
+  corsOptions = { origin: origins, credentials: true };
+} else if (isProd) {
+  logger.warn('CORS_ALLOWED_ORIGINS not set in production; CORS is currently permissive');
+}
+
 app.use(helmet());
-app.use(cors({ origin: true, credentials: true }));
+app.use(cors(corsOptions));
 
 // Sessions with Postgres store
 app.set('trust proxy', 1)
@@ -94,7 +114,7 @@ import passport from './utils/passport.js';
 import authRouter from './routes/auth.route.js';
 import rateLimit from 'express-rate-limit';
 import paymentRouter from './routes/payment.route.js';
-import logger from './utils/logger.js';
+// logger already imported above for pino-http
 
 app.engine('handlebars', engine({
   defaultLayout: 'main',
@@ -462,6 +482,11 @@ app.use('/test', restrict, testChatRouter);
 
 
 // ================= XỬ LÝ LỖI =================
+// Health check
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok', time: new Date().toISOString() });
+});
+
 app.use((req, res) => {
   res.status(404).render('404');
 });
