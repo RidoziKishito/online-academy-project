@@ -1,5 +1,6 @@
 import express from 'express';
 import * as categoryModel from '../models/category.model.js';
+import logger from '../utils/logger.js';
 
 const router = express.Router();
 
@@ -23,7 +24,7 @@ router.get('/add', async (req, res) => {
       categories: parentCategories
     });
   } catch (err) {
-    console.error('Error fetching parent categories:', err);
+    logger.error({ err }, 'Error fetching parent categories');
     res.status(500).render('vwAdminCategory/add', {
       error: 'Failed to load parent categories.'
     });
@@ -90,7 +91,7 @@ router.get('/edit/:id', async (req, res) => {
       categories: parentOptions
     });
   } catch (err) {
-    console.error('Error fetching category for edit:', err);
+    logger.error({ err, id: req.params?.id }, 'Error fetching category for edit');
     res.status(500).render('vwAdminCategory/edit', {
       error: 'Failed to load category for editing.'
     });

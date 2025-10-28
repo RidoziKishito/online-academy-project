@@ -2,6 +2,7 @@
 import express from 'express';
 import { restrict } from '../middlewares/auth.mdw.js';
 import * as enrollmentModel from '../models/enrollment.model.js';
+import logger from '../utils/logger.js';
 
 const router = express.Router();
 
@@ -34,7 +35,7 @@ router.post('/confirm', async (req, res) => {
     // 3) redirect tới trang học hoặc course detail (tuỳ bạn)
     return res.redirect(`/student/my-courses`);
   } catch (err) {
-    console.error('payment.confirm error:', err);
+    logger.error({ err, userId: req.session?.authUser?.user_id, body: req.body }, 'payment.confirm error');
     // Tùy app của bạn: render error page hoặc redirect back with flash
     return res.status(500).render('500', { message: 'Có lỗi khi ghi danh' });
   }

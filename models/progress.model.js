@@ -1,4 +1,5 @@
 import db from '../utils/db.js';
+import logger from '../utils/logger.js';
 
 const TABLE_NAME = 'user_lesson_progress'; // Sử dụng thống nhất 1 tên bảng
 
@@ -35,7 +36,7 @@ export async function markAsCompleted(userId, lessonId) {
     return rows && rows[0] ? rows[0] : true;
   } catch (error) {
     // Log lỗi để debug
-    console.error('markAsCompleted error:', error);
+    logger.error({ err: error, userId, lessonId }, 'markAsCompleted error');
     // Tùy workflow: ném lỗi lên caller hoặc trả false/true; ở đây mình rethrow để caller biết có vấn đề
     throw error;
   }

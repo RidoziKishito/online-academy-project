@@ -10,6 +10,7 @@ import * as reviewModel from '../models/review.model.js';
 import * as wishlistModel from '../models/wishlist.model.js';
 import { restrict } from '../middlewares/auth.mdw.js';
 import session from 'express-session';
+import logger from '../utils/logger.js';
 
 const router = express.Router();
 
@@ -205,7 +206,7 @@ router.get('/search', async (req, res) =>
           categoryFilter = [fuzzy.category_id, ...findSubCategoryIds(fuzzy.category_id)];
         }
       } catch (err) {
-        console.error('Error in fuzzy category lookup', err);
+        logger.error({ err, rawCategory }, 'Error in fuzzy category lookup');
       }
     }
   }
@@ -408,7 +409,7 @@ router.get('/detail/:id', async (req, res) => {
     });
 
   } catch (err) {
-    console.error('❌ Error loading course details:', err);
+    logger.error({ err, courseId: req.params?.id }, 'Error loading course details');
     res.redirect('/courses');
   }
 });
@@ -456,8 +457,8 @@ router.post('/wishlist/toggle', restrict, async (req, res) => {
                 message: 'Đã thêm vào danh sách yêu thích!' 
             });
         }
-    } catch (error) {
-        console.error('Wishlist toggle error:', error);
+  } catch (error) {
+    logger.error({ err: error, userId: req.session?.authUser?.user_id, courseId: req.body?.courseId }, 'Wishlist toggle error');
         res.status(500).json({ success: false, message: 'Lỗi server' });
     }
 });
@@ -555,7 +556,7 @@ router.get('/by-category/:id', async (req, res) => {
       query: { sortBy, order }
     });
   } catch (err) {
-    console.error(err);
+    logger.error({ err, categoryId }, 'Error loading courses by category');
     res.status(500).send('Internal server error');
   }
 });
@@ -570,7 +571,7 @@ router.get('/allCat', async (req, res) => {
       session: req.session,
     });
   } catch (err) {
-    console.error('❌ Error loading categories:', err);
+    logger.error({ err }, 'Error loading categories');
     res.status(500).render('vwError/500', { layout: 'main' });
   }
 });

@@ -1,5 +1,6 @@
 import db from '../utils/db.js';
 import { findByCourseId } from './chapter.model.js';
+import logger from '../utils/logger.js';
 
 const TABLE_NAME = 'categories';
 
@@ -25,7 +26,7 @@ export async function findSubcategories(parentId) {
       .orderBy('name', 'asc');
     return results;
   } catch (err) {
-    console.error('Error in findSubcategories:', err);
+    logger.error({ err, parentId }, 'Error in findSubcategories');
     throw err;
   }
 }

@@ -7,6 +7,7 @@ import * as instructorModel from '../models/instructors.model.js';
 import * as categoryModel from '../models/category.model.js';
 import * as enrollmentModel from '../models/enrollment.model.js';
 import { z } from 'zod'; // <-- THÊM: Import Zod
+import logger from '../utils/logger.js';
 
 const router = express.Router();
 
@@ -164,7 +165,7 @@ router.post('/create', async (req, res) => {
         instructors
       });
     }
-    console.error(error);
+    logger.error({ err: error }, 'Create course error');
     res.status(500).send('Server error');
   }
 });
@@ -176,7 +177,7 @@ router.post('/approve/:id', async (req, res) => {
     await courseModel.approveCourse(courseId);
     res.redirect('/admin/courses?action=approved');
   } catch (error) {
-    console.error(error);
+    logger.error({ err: error, courseId }, 'Approve course error');
     res.redirect('/admin/courses?error=approve_failed');
   }
 });
@@ -188,7 +189,7 @@ router.post('/hide/:id', async (req, res) => {
     await courseModel.hideCourse(courseId);
     res.redirect('/admin/courses?action=hidden');
   } catch (error) {
-    console.error(error);
+    logger.error({ err: error, courseId }, 'Hide course error');
     res.redirect('/admin/courses?error=hide_failed');
   }
 });
@@ -200,7 +201,7 @@ router.post('/show/:id', async (req, res) => {
     await courseModel.showCourse(courseId);
     res.redirect('/admin/courses?action=shown');
   } catch (error) {
-    console.error(error);
+    logger.error({ err: error, courseId }, 'Show course error');
     res.redirect('/admin/courses?error=show_failed');
   }
 });
@@ -219,7 +220,7 @@ router.post('/delete/:id', async (req, res) => {
     await courseModel.del(courseId);
     res.redirect('/admin/courses?action=deleted');
   } catch (error) {
-    console.error(error);
+    logger.error({ err: error, courseId }, 'Delete course error');
     res.redirect('/admin/courses?error=delete_failed');
   }
 });

@@ -15,6 +15,7 @@ const transporter = nodemailer.createTransport({
     rejectUnauthorized: false
   }
 });
+import logger from './logger.js';
 
 /**
  * Send password reset email with token
@@ -78,10 +79,10 @@ export async function sendResetEmail(email, token, fullName = 'User') {
 
   try {
     await transporter.sendMail(mailOptions);
-    console.log(`Password reset email sent to ${email}`);
+    logger.info({ email }, 'Password reset email sent');
     return true;
   } catch (error) {
-    console.error('Error sending reset email:', error);
+    logger.error({ err: error, email }, 'Error sending reset email');
     throw new Error('Failed to send reset email');
   }
 }
@@ -141,10 +142,10 @@ export async function sendVerifyEmail(email, token, fullName = 'User') {
 
   try {
     await transporter.sendMail(mailOptions);
-    console.log(`Verification email sent to ${email}`);
+    logger.info({ email }, 'Verification email sent');
     return true;
   } catch (error) {
-    console.error('Error sending verification email:', error);
+    logger.error({ err: error, email }, 'Error sending verification email');
     throw new Error('Failed to send verification email');
   }
 }
@@ -155,10 +156,10 @@ export async function sendVerifyEmail(email, token, fullName = 'User') {
 export async function testEmailConfig() {
   try {
     await transporter.verify();
-    console.log('Email server is ready to send messages');
+    logger.info('Email server is ready to send messages');
     return true;
   } catch (error) {
-    console.error('Email configuration error:', error);
+    logger.error({ err: error }, 'Email configuration error');
     return false;
   }
 }

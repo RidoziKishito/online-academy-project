@@ -6,6 +6,7 @@ import * as courseModel from '../models/courses.model.js';
 import * as chapterModel from '../models/chapter.model.js';
 import * as lessonModel from '../models/lesson.model.js';
 import * as progressModel from '../models/progress.model.js';
+import logger from '../utils/logger.js';
 
 const router = express.Router();
 
@@ -54,7 +55,7 @@ router.get('/:courseId', async (req, res) => {
       return res.redirect(`/courses/detail/${courseId}`);
     }
   } catch (err) {
-    console.error('learn.index error:', err);
+    logger.error({ err, courseId: req.params?.courseId }, 'learn.index error');
     return res.status(500).render('500', { message: 'Server error' });
   }
 });
@@ -111,7 +112,7 @@ router.get('/:courseId/lesson/:lessonId', async (req, res) => {
       isEnrolled
     });
   } catch (err) {
-    console.error('learn.watch error:', err);
+    logger.error({ err, courseId: req.params?.courseId, lessonId: req.params?.lessonId }, 'learn.watch error');
     return res.status(500).render('500', { message: 'Server error' });
   }
 });
@@ -152,7 +153,7 @@ router.post('/mark-complete', async (req, res) => {
       nextLesson: nextLesson ? `/learn/${courseId}/lesson/${nextLesson.lesson_id}` : null
     });
   } catch (err) {
-    console.error('mark-complete error:', err);
+    logger.error({ err, body: req.body }, 'mark-complete error');
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });
@@ -167,13 +168,13 @@ router.post('/progress', async (req, res) => {
       try {
         await progressModel.updateWatchTime(userId, lessonId, watchTime);
       } catch (e) {
-        console.warn('updateWatchTime warning:', e);
+        logger.warn({ err: e, lessonId, watchTime }, 'updateWatchTime warning');
       }
     }
 
     res.json({ success: true });
   } catch (error) {
-    console.error('Progress save error:', error);
+    logger.error({ err: error, body: req.body }, 'Progress save error');
     res.status(500).json({ success: false });
   }
 });

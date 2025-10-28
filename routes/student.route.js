@@ -5,6 +5,7 @@ import * as wishlistModel from '../models/wishlist.model.js';
 import * as courseModel from '../models/courses.model.js';
 import * as progressModel from '../models/progress.model.js';
 import * as userModel from '../models/user.model.js';
+import logger from '../utils/logger.js';
 const router = express.Router();
 
 // Áp dụng middleware cho tất cả route trong file này
@@ -115,7 +116,7 @@ router.get('/profile', restrict, async (req, res) => {
             layout: 'main'
         });
     } catch (error) {
-        console.error('Profile error:', error);
+        logger.error({ err: error, userId: req.session?.authUser?.user_id }, 'Profile error');
         res.redirect('/student/my-courses');
     }
 });
@@ -208,7 +209,7 @@ router.get('/public-profile', async (req, res) => {
             layout: 'main'
         });
     } catch (error) {
-        console.error('Public profile error:', error);
+        logger.error({ err: error, userId: req.query?.id }, 'Public profile error');
         res.status(500).render('error', { 
             message: 'Error loading profile',
             layout: 'main'

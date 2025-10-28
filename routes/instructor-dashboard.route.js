@@ -5,6 +5,7 @@ import * as progressModel from '../models/progress.model.js';
 import * as enrollmentModel from '../models/enrollment.model.js';
 import * as categoryModel from '../models/category.model.js';
 import ChatService from '../services/chat.service.js';
+import logger from '../utils/logger.js';
 
 const router = express.Router();
 
@@ -83,7 +84,7 @@ router.get('/students-chat/:courseId', async (req, res) => {
             students: students
         });
     } catch (error) {
-        console.error('Error loading students chat page:', error);
+        logger.error({ err: error, courseId: req.params?.courseId, instructorId: req.session?.authUser?.user_id }, 'Error loading students chat page');
         res.status(500).render('500');
     }
 });
@@ -125,7 +126,7 @@ router.get('/api/courses/:courseId/content', async (req, res) => {
 
         res.json({ chapters });
     } catch (err) {
-        console.error('Error fetching course content:', err);
+        logger.error({ err, courseId: req.params?.courseId, instructorId: req.session?.authUser?.user_id }, 'Error fetching course content');
         res.status(500).json({ error: 'Internal server error' });
     }
 });
@@ -145,7 +146,7 @@ router.post('/api/courses/:courseId/content', async (req, res) => {
 
         res.json({ success: true });
     } catch (err) {
-        console.error('Error saving course content:', err);
+        logger.error({ err, courseId: req.params?.courseId, instructorId: req.session?.authUser?.user_id }, 'Error saving course content');
         res.status(500).json({ error: 'Internal server error' });
     }
 });
@@ -174,7 +175,7 @@ router.delete('/api/courses/:courseId/chapters/:chapterId', async (req, res) => 
 
         res.json({ success: true });
     } catch (err) {
-        console.error('Error deleting chapter:', err);
+        logger.error({ err, courseId: req.params?.courseId, chapterId: req.params?.chapterId, instructorId: req.session?.authUser?.user_id }, 'Error deleting chapter');
         res.status(500).json({ error: 'Internal server error' });
     }
 });
@@ -202,7 +203,7 @@ router.get('/create', async (req, res) => {
             }
         });
     } catch (err) {
-        console.error('Error loading create course page:', err);
+        logger.error({ err, instructorId: req.session?.authUser?.user_id }, 'Error loading create course page');
         req.session.flash = { error: 'Failed to load create course page' };
         res.redirect('/instructor/create');
     }
@@ -273,7 +274,7 @@ router.post('/create', async (req, res) => {
         req.session.flash = { success: 'Course created.' };
         res.redirect('/instructor/create');
     } catch (err) {
-        console.error(err);
+        logger.error({ err, instructorId: req.session?.authUser?.user_id }, 'Instructor create course error');
         const categories = await categoryModel.findAll();
         return res.status(400).render('vwInstructor/create', { errorMessages: { general: ['Invalid data'] }, oldData: req.body, categories });
     }
@@ -368,7 +369,7 @@ router.get('/api/categories/:categoryId/subcategories', async (req, res) => {
         // Luôn trả về một mảng, ngay cả khi không có subcategories
         res.json(subcategories || []);
     } catch (err) {
-        console.error('Error fetching subcategories:', err);
+            logger.error({ err, categoryId }, 'Error fetching subcategories');
         res.status(500).json({
             error: 'Internal server error',
             details: err.message
@@ -394,8 +395,8 @@ router.post('/courses/hide', isInstructor, async (req, res) => {
     }
 
     return res.json({ ok:true, message: 'Khóa học đã được ẩn thành công.' });
-  } catch (err) {
-    console.error('POST /instructor/courses/hide error:', err);
+    } catch (err) {
+        logger.error({ err, body: req.body, instructorId: req.session?.authUser?.user_id }, 'POST /instructor/courses/hide error');
     return res.status(500).json({ ok:false, message: 'Server error' });
   }
 });
@@ -413,7 +414,7 @@ router.post('/courses/show', isInstructor, async (req, res) => {
 
     return res.json({ success:true, message:'Khóa học đã được hiện.' });
   } catch (err) {
-    console.error(err);
+        logger.error({ err, body: req.body, instructorId: req.session?.authUser?.user_id }, 'POST /instructor/courses/show error');
     return res.status(500).json({ success:false, message:'Server error' });
   }
 });

@@ -2,10 +2,14 @@ import express from 'express';
 import { engine } from 'express-handlebars';
 import hsb_sections from 'express-handlebars-sections';
 import session from 'express-session';
+import connectPgSimple from 'connect-pg-simple';
+import helmet from 'helmet';
+import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import Handlebars from 'handlebars';
 import dotenv from 'dotenv';
+import NodeCache from 'node-cache';
 
 // Load environment variables first
 dotenv.config();
@@ -24,15 +28,34 @@ const PORT = process.env.PORT || 3000;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Security middleware
+app.use(helmet());
+app.use(cors({ origin: true, credentials: true }));
+
+// Sessions with Postgres store
 app.set('trust proxy', 1)
+const PgStore = connectPgSimple(session);
+const sessionStore = new PgStore({
+  conObject: {
+    host: process.env.DB_HOST || process.env.HOST,
+    port: Number(process.env.DB_PORT || process.env.PORT) || 5432,
+    user: process.env.DB_USER || process.env.USER,
+    password: process.env.DB_PASSWORD || process.env.PASSWORD,
+    database: process.env.DB_NAME || 'postgres',
+  },
+  createTableIfMissing: true,
+});
+
 app.use(session({
+  store: sessionStore,
   secret: process.env.SESSION_SECRET || 'fallback-secret-please-set-SESSION_SECRET-in-env',
   resave: false,
-  saveUninitialized: true,
-  cookie: { 
-    secure: process.env.NODE_ENV === 'production', // true in production with HTTPS
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
-    maxAge: 1000 * 60 * 60 * 24 // 24 hours
+    maxAge: 1000 * 60 * 60 * 24,
+    sameSite: process.env.NODE_ENV === 'production' ? 'lax' : 'lax'
   }
 }));
 
@@ -71,6 +94,7 @@ import passport from './utils/passport.js';
 import authRouter from './routes/auth.route.js';
 import rateLimit from 'express-rate-limit';
 import paymentRouter from './routes/payment.route.js';
+import logger from './utils/logger.js';
 
 app.engine('handlebars', engine({
   defaultLayout: 'main',
@@ -270,12 +294,22 @@ app.engine('handlebars', engine({
 
 
 // ================= MIDDLEWARES TOÀN CỤC =================
+// Simple in-memory cache for global data
+const cache = new NodeCache({ stdTTL: 300, checkperiod: 60 }); // 5 minutes TTL
+async function getOrSet(key, fetcher) {
+  const cached = cache.get(key);
+  if (cached) return cached;
+  const data = await fetcher();
+  cache.set(key, data);
+  return data;
+}
+
 // Middleware cung cấp thông tin đăng nhập cho tất cả các view
 app.use(async function (req, res, next) {
   res.locals.isAuthenticated = req.session.isAuthenticated || false;
   res.locals.authUser = req.session.authUser || null;
-  res.locals.topWeekCourses = await viewModel.findTopWeekCourses();
-  res.locals.topCategories = await viewModel.findTopCategories();
+  res.locals.topWeekCourses = await getOrSet('topWeekCourses', () => viewModel.findTopWeekCourses());
+  res.locals.topCategories = await getOrSet('topCategories', () => viewModel.findTopCategories());
   res.locals.categoryIcons = {
     "Development": "bi bi-code-slash",
     "Design": "bi bi-palette",
@@ -298,8 +332,8 @@ app.use(async function (req, res, next) {
     "Photography": "bi bi-camera",
     "Music": "bi bi-music-note-beamed"
   };
-  res.locals.newestCourses = await viewModel.findNewestCourses();
-  res.locals.mostViewCourses = await viewModel.findMostViewCourses();
+  res.locals.newestCourses = await getOrSet('newestCourses', () => viewModel.findNewestCourses());
+  res.locals.mostViewCourses = await getOrSet('mostViewCourses', () => viewModel.findMostViewCourses());
   next();
 });
 
@@ -328,7 +362,7 @@ app.use(function (req, res, next) {
 
 // Middleware cung cấp danh sách lĩnh vực cho layout
 app.use(async function (req, res, next) {
-  const list = await categoryModel.findAll();
+  const list = await getOrSet('globalCategories', () => categoryModel.findAll());
   // Provide both the DB row and legacy keys used by older templates
   res.locals.globalCategories = list.map(cat => ({
     ...cat,
@@ -433,10 +467,10 @@ app.use((req, res) => {
 });
 
 app.use((err, req, res, next) => {
-  console.error(err.stack);
+  logger.error({ err }, 'Unhandled error middleware');
   res.status(500).render('500');
 });
 // =======================================================
 app.listen(PORT, () => {
-  console.log('Application listening on port ' + PORT + ' | http://localhost:' + PORT);
+  logger.info({ port: PORT }, `Application listening on port ${PORT}`);
 });
