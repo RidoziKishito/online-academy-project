@@ -124,6 +124,12 @@ app.engine('handlebars', engine({
     not(a) {
       return !a;
     },
+    ifEq2(a, b, options) {
+      if (a == b) {
+        return options.fn(this);
+      }
+      return options.inverse(this);
+    },
 
     render_stars(rating) {
       const fullStars = Math.floor(rating || 0);

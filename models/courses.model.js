@@ -97,7 +97,8 @@ export function findByInstructor(instructorId) {
       'c.sale_price',
       'c.is_complete',
       'c.enrollment_count',
-      'cat.name as category_name'
+      'cat.name as category_name',
+      'c.status'
     )
     .where('c.instructor_id', instructorId)
     .orderBy('c.created_at', 'desc');
@@ -506,4 +507,32 @@ export async function findRelated(catId, courseId, numCourses = 4) {
     .orderBy('rating_avg', 'desc')
     .orderBy('enrollment_count', 'desc')
     .limit(numCourses);
+}
+
+
+/**
+ * Safe version: chỉ cho phép owner (instructor) ẩn
+ * Trả về number of rows updated
+ */
+export async function hideCourseByInstructor(courseId, instructorId) {
+  return await db('courses')
+    .where({ course_id: courseId, instructor_id: instructorId })
+    .update({
+      status: 'hidden',
+      updated_at: db.fn.now()
+    });
+}
+
+
+/**
+ * Safe version: chỉ cho phép owner (instructor) ẩn
+ * Trả về number of rows updated
+ */
+export async function showCourseByInstructor(courseId, instructorId) {
+  return await db('courses')
+    .where({ course_id: courseId, instructor_id: instructorId })
+    .update({
+      status: 'approved',
+      updated_at: db.fn.now()
+    });
 }

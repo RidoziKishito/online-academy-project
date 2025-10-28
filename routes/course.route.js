@@ -90,6 +90,17 @@ router.get('/', async (req, res, next) => {
       });
     }
 
+    // ----- get categories (only for the current page courses) -----
+    const categoryIds = [...new Set(courses.map(c => c.category_id).filter(Boolean))];
+    let categoriesMap = {};
+    if (categoryIds.length) {
+      const categories = await Promise.all(categoryIds.map(id => categoryModel.findById(id)));
+      categories.forEach(cat => {
+        if (!cat) return;
+        categoriesMap[cat.category_id] = cat.category_name || cat.name || 'Uncategorized';
+      });
+    }
+
     // ----- assemble courseList for view -----
     const courseList = courses.map(c => {
       const lessons = lessonsByCourse[c.course_id] || [];
@@ -100,6 +111,7 @@ router.get('/', async (req, res, next) => {
       return {
         ...c,
         instructor_name: c.instructor_name || instructorsMap[c.instructor_id] || 'Unknown',
+        category_name: categoriesMap[c.category_id] || 'Uncategorized',
         description: c.full_description || c.short_description || '',
         image_url: c.image_url || c.large_image_url || null,
         current_price: (c.sale_price != null && c.sale_price > 0) ? c.sale_price : c.price,
@@ -145,7 +157,6 @@ router.get('/', async (req, res, next) => {
     next(err);
   }
 });
-
 
 
 // Route search: GET /courses/search?q=...

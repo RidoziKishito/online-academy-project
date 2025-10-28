@@ -55,6 +55,15 @@
               {{/if}}
             </td>
             <td class="text-end">
+              {{#if (eq this.role 'student')}}
+                <a class="btn btn-sm btn-outline-info" href="/student/public-profile?id={{this.user_id}}" title="View Profile">
+                  <i class="bi bi-person"></i>
+                </a>
+              {{else if (eq this.role 'instructor')}}
+                <a class="btn btn-sm btn-outline-info" href="/instructors/{{this.user_id}}" title="View Profile">
+                  <i class="bi bi-person"></i>
+                </a>
+              {{/if}}
               <a class="btn btn-sm btn-outline-primary" href="/admin/accounts/edit?id={{this.user_id}}" title="Edit">
                 <i class="bi bi-pencil-square"></i>
               </a>
@@ -104,6 +113,15 @@
 document.addEventListener('DOMContentLoaded', function() {
   let currentPage = {{pagination.currentPage}};
 
+  function getProfileButton(role, userId) {
+    if (role === 'student') {
+      return `<a class="btn btn-sm btn-outline-info" href="/student/public-profile?id=${userId}" title="View Profile"><i class="bi bi-person"></i></a>`;
+    } else if (role === 'instructor') {
+      return `<a class="btn btn-sm btn-outline-info" href="/instructor/${userId}" title="View Profile"><i class="bi bi-person"></i></a>`;
+    }
+    return '';
+  }
+
   function renderRows(users) {
     const tbody = document.getElementById('accountsTableBody');
     tbody.innerHTML = '';
@@ -116,6 +134,7 @@ document.addEventListener('DOMContentLoaded', function() {
         <td>${u.role || ''}</td>
         <td>${u.is_verified ? '<span class="badge bg-success">Yes</span>' : '<span class="badge bg-secondary">No</span>'}</td>
         <td class="text-end">
+          ${getProfileButton(u.role, u.user_id)}
           <a class="btn btn-sm btn-outline-primary" href="/admin/accounts/edit?id=${u.user_id}" title="Edit">
             <i class="bi bi-pencil-square"></i>
           </a>

@@ -4,6 +4,7 @@ import * as enrollmentModel from '../models/enrollment.model.js';
 import * as wishlistModel from '../models/wishlist.model.js';
 import * as courseModel from '../models/courses.model.js';
 import * as progressModel from '../models/progress.model.js';
+import * as userModel from '../models/user.model.js';
 const router = express.Router();
 
 // Áp dụng middleware cho tất cả route trong file này
@@ -143,4 +144,77 @@ function calculateBadges(stats, courses) {
     
     return badges;
 }
+
+
+router.get('/public-profile', async (req, res) => {
+    try {
+        const userId = req.query.id;
+        
+        if (!userId) {
+            return res.redirect('/');
+        }
+
+        // Lấy thông tin user
+        const user = await userModel.findById(userId);
+        
+        if (!user || user.role !== 'student') {
+            return res.status(404).render('error', { 
+                message: 'Student not found',
+                layout: 'main'
+            });
+        }
+
+        // Lấy thông tin công khai
+        const [enrolledCourses, completedLessons] = await Promise.all([
+            enrollmentModel.findCoursesByUserId(userId),
+            progressModel.findCompletedLessonsByUserAll(userId)
+        ]);
+
+        // Tính toán thống kê công khai
+        const stats = {
+            totalCourses: enrolledCourses.length,
+            totalCompletedLessons: completedLessons.length
+        };
+
+        // Tính tiến độ từng khóa học
+        const coursesWithProgress = await Promise.all(
+            enrolledCourses.map(async (course) => {
+                const [allLessons, completedInCourse] = await Promise.all([
+                    progressModel.countLessonsByCourse(course.course_id),
+                    progressModel.countCompletedLessons(course.course_id, userId)
+                ]);
+                
+                const progress = allLessons > 0 ? Math.round((completedInCourse / allLessons) * 100) : 0;
+                
+                return {
+                    ...course,
+                    totalLessons: allLessons,
+                    completedLessons: completedInCourse,
+                    progress: progress
+                };
+            })
+        );
+
+        // Tính badges
+        const badges = calculateBadges(stats, coursesWithProgress);
+
+        res.render('vwStudent/public-profile', {
+            profileUser: user, // User được xem
+            currentUser: req.session.authUser, // User đang đăng nhập (nếu có)
+            stats,
+            coursesWithProgress,
+            badges,
+            isOwnProfile: req.session.authUser?.user_id === parseInt(userId),
+            layout: 'main'
+        });
+    } catch (error) {
+        console.error('Public profile error:', error);
+        res.status(500).render('error', { 
+            message: 'Error loading profile',
+            layout: 'main'
+        });
+    }
+});
+
+
 export default router;

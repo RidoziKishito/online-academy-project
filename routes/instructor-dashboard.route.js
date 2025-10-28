@@ -376,4 +376,46 @@ router.get('/api/categories/:categoryId/subcategories', async (req, res) => {
     }
 });
 
+router.post('/courses/hide', isInstructor, async (req, res) => {
+  try {
+    const { course_id } = req.body;
+    if (!course_id) return res.status(400).json({ ok:false, message: 'Missing course_id' });
+
+    const instructorId = req.session.authUser.user_id;
+
+    // Nếu model có hàm kiểm tra quyền (recommended)
+    if (typeof courseModel.hideCourseByInstructor === 'function') {
+      const updated = await courseModel.hideCourseByInstructor(course_id, instructorId);
+      if (!updated) return res.status(403).json({ ok:false, message: 'Không tìm thấy khóa học hoặc không có quyền.' });
+    } else {
+      // Fallback: dùng hàm đơn giản (cần chắc server kiểm soát quyền khác)
+      const updated = await courseModel.hideCourse(course_id);
+      if (!updated) return res.status(404).json({ ok:false, message: 'Không thể cập nhật khóa học.' });
+    }
+
+    return res.json({ ok:true, message: 'Khóa học đã được ẩn thành công.' });
+  } catch (err) {
+    console.error('POST /instructor/courses/hide error:', err);
+    return res.status(500).json({ ok:false, message: 'Server error' });
+  }
+});
+
+
+
+router.post('/courses/show', isInstructor, async (req, res) => {
+  try {
+    const { course_id } = req.body;
+    if (!course_id) return res.status(400).json({ success:false, message:'Missing course_id' });
+
+    const userId = req.session.authUser.user_id;
+    const updated = await courseModel.showCourseByInstructor(course_id, userId);
+    if (!updated) return res.status(403).json({ success:false, message:'Không tìm thấy khóa học hoặc không có quyền.' });
+
+    return res.json({ success:true, message:'Khóa học đã được hiện.' });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ success:false, message:'Server error' });
+  }
+});
+
 export default router;

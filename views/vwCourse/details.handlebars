@@ -10,7 +10,7 @@
 
         {{#if categories.parent.id}}
         <li class="breadcrumb-item">
-          <a href="/category/{{categories.parent.id}}" class="text-light fw-semibold text-decoration-none">
+          <a href="/courses/by-category/{{categories.parent.id}}" class="text-light fw-semibold text-decoration-none">
             {{categories.parent.name}}
           </a>
         </li>
@@ -18,7 +18,7 @@
 
         {{#if categories.child.id}}
         <li class="breadcrumb-item">
-          <a href="/category/{{categories.child.id}}" class="text-light fw-semibold text-decoration-none">
+          <a href="/courses/by-category/{{categories.child.id}}" class="text-light fw-semibold text-decoration-none">
             {{categories.child.name}}
           </a>
         </li>
