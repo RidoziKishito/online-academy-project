@@ -204,11 +204,20 @@ export async function search(keyword, options = {}) {
 }
 
 export async function countSearch(keyword, categoryId) {
-  const keywords = String(keyword || '').trim().split(/\s+/).filter(Boolean).join(' & ');
+  const raw = String(keyword || '').trim();
+  const tokens = raw.split(/\s+/).filter(Boolean);
   let query = db(TABLE_NAME).count('course_id as total');
-  if (keywords) {
-    query = query.whereRaw(`fts_document @@ to_tsquery('simple', unaccent(?))`, [keywords]);
+
+  if (tokens.length) {
+    // Use per-token FTS or title ILIKE to count broadly-matching rows (same logic as search())
+    const ftsParts = tokens.map(() => "fts_document @@ plainto_tsquery('simple', unaccent(?))");
+    const ilikeParts = tokens.map(() => "unaccent(lower(title)) ILIKE unaccent(lower(?))");
+    const ftsBindings = [...tokens];
+    const ilikeBindings = tokens.map(t => `%${t}%`);
+    const combinedWhere = '(' + ftsParts.concat(ilikeParts).join(' OR ') + ')';
+    query = query.whereRaw(combinedWhere, [...ftsBindings, ...ilikeBindings]);
   }
+
   if (categoryId) {
     if (Array.isArray(categoryId)) {
       query = query.whereIn('category_id', categoryId);
@@ -216,6 +225,7 @@ export async function countSearch(keyword, categoryId) {
       query = query.where('category_id', categoryId);
     }
   }
+
   const row = await query.first();
   return parseInt(row?.total || 0, 10);
 }
