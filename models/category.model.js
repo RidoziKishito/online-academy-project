@@ -50,6 +50,18 @@ export function findById(id) {
   return db(TABLE_NAME).where('category_id', id).first();
 }
 
+// Find the best matching category by name using trigram similarity (requires pg_trgm)
+export async function findByNameFuzzy(name, threshold = 0.28) {
+  if (!name || String(name).trim().length === 0) return null;
+  // Search by similarity in DB to get best candidate
+  const row = await db(TABLE_NAME)
+    .select('category_id', 'name')
+    .whereRaw("similarity(unaccent(lower(name)), unaccent(lower(?))) > ?", [name, threshold])
+    .orderByRaw("similarity(unaccent(lower(name)), unaccent(lower(?))) DESC", [name])
+    .first();
+  return row || null;
+}
+
 export function del(id) {
   return db(TABLE_NAME).where('category_id', id).del();
 }

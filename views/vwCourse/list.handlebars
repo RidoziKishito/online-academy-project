@@ -71,6 +71,8 @@
                     <div>
                       <h5 class="card-title">
                         <a href="/courses/detail/{{course_id}}" class="text-decoration-none text-dark">{{title}}</a>
+                        {{#if is_new}}<span class="badge bg-info text-dark ms-2">New</span>{{/if}}
+                        {{#if is_bestseller}}<span class="badge bg-warning text-dark ms-2">🔥 Bestseller</span>{{/if}}
                       </h5>
                       <p class="card-text text-muted mb-1">{{short_description}}</p>
                       <p class="card-text mb-1"><small class="text-muted">Instructor: {{instructor_name}}</small></p>
