@@ -1,12 +1,8 @@
-{{#fillContent 'css'}}
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-{{/fillContent}}
-
 <div class="container-fluid px-4 py-4">
   <!-- Page Header -->
   <div class="mb-4">
     <h1 class="h2 fw-bold text-success mb-2">
-      <i class="fa-solid fa-gauge-high me-2"></i>Admin Dashboard
+      <i class="bi bi-speedometer2 me-2"></i>Admin Dashboard
     </h1>
     <p class="text-muted mb-0">Overview of users, courses, enrollments, and reviews</p>
   </div>
@@ -19,14 +15,14 @@
           <div class="d-flex align-items-center">
             <div class="flex-shrink-0 me-3">
               <div class="bg-primary bg-opacity-10 text-primary rounded p-3">
-                <i class="fa-solid fa-users fa-2x"></i>
+                <i class="bi bi-people-fill fs-1"></i>
               </div>
             </div>
             <div class="flex-grow-1">
               <p class="text-muted text-uppercase small mb-1">Total Users</p>
               <h3 class="mb-1">{{metrics.usersTotal}}</h3>
               <p class="small text-success mb-0">
-                <i class="fa-solid fa-check-circle me-1"></i>
+                <i class="bi bi-check-circle-fill me-1"></i>
                 {{metrics.usersVerified}} verified
               </p>
             </div>
@@ -41,14 +37,14 @@
           <div class="d-flex align-items-center">
             <div class="flex-shrink-0 me-3">
               <div class="bg-success bg-opacity-10 text-success rounded p-3">
-                <i class="fa-solid fa-chalkboard-user fa-2x"></i>
+                <i class="bi bi-person-video3 fs-1"></i>
               </div>
             </div>
             <div class="flex-grow-1">
               <p class="text-muted text-uppercase small mb-1">Instructors</p>
               <h3 class="mb-1">{{metrics.instructors}}</h3>
               <p class="small text-warning mb-0">
-                <i class="fa-solid fa-user-shield me-1"></i>
+                <i class="bi bi-shield-fill-check me-1"></i>
                 {{metrics.admins}} admins
               </p>
             </div>
@@ -63,7 +59,7 @@
           <div class="d-flex align-items-center">
             <div class="flex-shrink-0 me-3">
               <div class="bg-warning bg-opacity-10 text-warning rounded p-3">
-                <i class="fa-solid fa-graduation-cap fa-2x"></i>
+                <i class="bi bi-mortarboard-fill fs-1"></i>
               </div>
             </div>
             <div class="flex-grow-1">
@@ -82,14 +78,14 @@
           <div class="d-flex align-items-center">
             <div class="flex-shrink-0 me-3">
               <div class="bg-info bg-opacity-10 text-info rounded p-3">
-                <i class="fa-solid fa-user-check fa-2x"></i>
+                <i class="bi bi-person-check-fill fs-1"></i>
               </div>
             </div>
             <div class="flex-grow-1">
               <p class="text-muted text-uppercase small mb-1">Enrollments</p>
               <h3 class="mb-1">{{metrics.enrollmentsTotal}}</h3>
               <p class="small text-primary mb-0">
-                <i class="fa-solid fa-star me-1"></i>
+                <i class="bi bi-star-fill me-1"></i>
                 {{metrics.reviewsTotal}} reviews
               </p>
             </div>
@@ -106,7 +102,7 @@
       <div class="card shadow-sm border-0">
         <div class="card-header bg-white border-bottom">
           <h5 class="mb-0">
-            <i class="fa-solid fa-trophy text-warning me-2"></i>
+            <i class="bi bi-trophy-fill text-warning me-2"></i>
             Top Courses by Enrollment
           </h5>
         </div>
@@ -137,7 +133,7 @@
                       </td>
                       <td class="text-muted">
                         {{#if instructor_name}}
-                          <i class="fa-solid fa-user me-1"></i>{{instructor_name}}
+                          <i class="bi bi-person-fill me-1"></i>{{instructor_name}}
                         {{else}}
                           <span class="text-muted fst-italic">Not assigned</span>
                         {{/if}}
@@ -151,7 +147,7 @@
                       <td class="text-center pe-3">
                         {{#if rating_avg}}
                           <span class="badge bg-warning text-dark">
-                            <i class="fa-solid fa-star"></i> {{rating_avg}} ({{rating_count}})
+                            <i class="bi bi-star-fill"></i> {{rating_avg}} ({{rating_count}})
                           </span>
                         {{else}}
                           <span class="text-muted small">No ratings</span>
@@ -162,7 +158,7 @@
                 {{else}}
                   <tr>
                     <td colspan="6" class="text-center text-muted py-4">
-                      <i class="fa-solid fa-inbox fa-2x mb-2 d-block opacity-50"></i>
+                      <i class="bi bi-inbox fs-1 mb-2 d-block opacity-50"></i>
                       No courses found
                     </td>
                   </tr>
@@ -179,7 +175,7 @@
       <div class="card shadow-sm border-0">
         <div class="card-header bg-white border-bottom">
           <h5 class="mb-0">
-            <i class="fa-solid fa-user-clock text-primary me-2"></i>
+            <i class="bi bi-clock-history text-primary me-2"></i>
             Recent Users
           </h5>
         </div>
@@ -218,11 +214,11 @@
                       <td class="text-center pe-3">
                         {{#if is_verified}}
                           <span class="badge bg-success">
-                            <i class="fa-solid fa-check me-1"></i>Verified
+                            <i class="bi bi-check-lg me-1"></i>Verified
                           </span>
                         {{else}}
                           <span class="badge bg-warning text-dark">
-                            <i class="fa-solid fa-clock me-1"></i>Pending
+                            <i class="bi bi-clock me-1"></i>Pending
                           </span>
                         {{/if}}
                       </td>
@@ -231,7 +227,7 @@
                 {{else}}
                   <tr>
                     <td colspan="3" class="text-center text-muted py-4">
-                      <i class="fa-solid fa-user-slash fa-2x mb-2 d-block opacity-50"></i>
+                      <i class="bi bi-person-x fs-1 mb-2 d-block opacity-50"></i>
                       No users found
                     </td>
                   </tr>
