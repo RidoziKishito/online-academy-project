@@ -41,7 +41,17 @@ export async function findTopCategories() {
 
 export async function findNewestCourses() {
     try {
-        return await db('vw_newest_courses').select('*');
+        const rows = await db('vw_newest_courses').select('*');
+        return rows.map(r => ({
+          // stable fields expected by templates
+          course_id: r.course_id,
+          title: r.title || r.course_title,
+          image_url: r.image_url || r.thumbnail_url,
+          instructor_name: r.instructor_name || r.full_name,
+          category_name: r.category_name || r.name,
+          sale_price: r.sale_price ?? r.price,
+          rating_avg: r.rating_avg ?? r.avg_rating,
+        }));
     } catch (err) {
         return [];
     }
@@ -49,7 +59,16 @@ export async function findNewestCourses() {
 
 export async function findMostViewCourses() {
     try {
-        return await db('vw_most_view_courses').select('*');
+        const rows = await db('vw_most_view_courses').select('*');
+        return rows.map(r => ({
+          course_id: r.course_id,
+          title: r.title || r.course_title,
+          image_url: r.image_url || r.thumbnail_url,
+          instructor_name: r.instructor_name || r.full_name,
+          category_name: r.category_name || r.name,
+          sale_price: r.sale_price ?? r.price,
+          rating_avg: r.rating_avg ?? r.avg_rating,
+        }));
     } catch (err) {
         return [];
     }
