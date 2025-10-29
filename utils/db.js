@@ -11,9 +11,15 @@ const db = knex({
         password: process.env.DB_PASSWORD,
         database: process.env.DB_NAME || 'postgres',
     },
-    pool: { 
-        min: 2,  // Minimum connections to maintain
-        max: 10  // Maximum connections allowed
+    // Keep a very small pool to avoid exhausting Supabase pooler limits
+    // (Render free + Supabase pooler often caps concurrent clients)
+    pool: {
+        min: 0,
+        max: 3,
+        // Tarn (knex) pool options to fail fast and free idle clients
+        acquireTimeoutMillis: 10000,
+        idleTimeoutMillis: 10000,
+        reapIntervalMillis: 3000,
     },
 });
 

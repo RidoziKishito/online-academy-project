@@ -201,7 +201,7 @@
                         {{#if this.is_previewable}}
                           <a href="javascript:void(0)"
                             class="preview-btn text-decoration-none text-dark me-2"
-                            data-video="{{this.video_url}}">
+                            data-video="{{getYouTubeEmbedUrl this.video_url}}">
                             {{this.order_index}}. {{this.title}}
                             <span class="badge bg-success ms-2 small">Preview</span>
                           </a>
@@ -693,7 +693,7 @@ document.addEventListener('DOMContentLoaded', function () {
           <input type="hidden" name="price" value="{{#if course.sale_price}}{{course.sale_price}}{{else}}{{course.price}}{{/if}}">
 
           <div class="my-3">
-            <img src="/static/qr.jpg" alt="QR Payment" class="img-fluid" style="max-width:320px; width:100%; height:auto;" />
+            <img src="/qr.jpg" alt="QR Payment" class="img-fluid" style="max-width:320px; width:100%; height:auto;" />
           </div>
 
           <p class="small text-muted mb-3">Sau khi quét và thanh toán, nhấn nút bên dưới để xác nhận.</p>

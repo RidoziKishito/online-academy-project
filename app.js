@@ -3,9 +3,11 @@ import { engine } from 'express-handlebars';
 import hsb_sections from 'express-handlebars-sections';
 import session from 'express-session';
 import connectPgSimple from 'connect-pg-simple';
+import pg from 'pg';
 import helmet from 'helmet';
 import cors from 'cors';
 import pinoHttp from 'pino-http';
+import compression from 'compression';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import Handlebars from 'handlebars';
@@ -49,20 +51,60 @@ if (process.env.CORS_ALLOWED_ORIGINS) {
   logger.warn('CORS_ALLOWED_ORIGINS not set in production; CORS is currently permissive');
 }
 
-app.use(helmet());
+// Security headers with relaxed CSP for web app functionality
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+  scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdn.jsdelivr.net", "https://www.google.com", "https://www.gstatic.com", "https://www.youtube.com", "https://www.recaptcha.net"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com", "https://cdn.jsdelivr.net", "data:"],
+      imgSrc: ["'self'", "data:", "https:", "http:"],
+      mediaSrc: ["'self'", "https:", "http:", "data:", "blob:"],
+  connectSrc: ["'self'", "https://www.google.com", "https://www.recaptcha.net", "https:", "http:"],
+  frameSrc: ["'self'", "https://www.google.com", "https://www.recaptcha.net", "https://www.youtube.com", "https://www.youtube-nocookie.com"],
+      objectSrc: ["'none'"],
+      upgradeInsecureRequests: isProd ? [] : null,
+    },
+  },
+  crossOriginEmbedderPolicy: false,
+}));
 app.use(cors(corsOptions));
+
+// Disable X-Powered-By header (defense in depth)
+app.disable('x-powered-by');
+
+// Enable gzip/deflate compression
+app.use(compression());
+
+// Add HSTS in production (enforce HTTPS)
+if (isProd) {
+  app.use(helmet.hsts({ maxAge: 15552000 })); // 180 days
+}
 
 // Sessions with Postgres store
 app.set('trust proxy', 1)
 const PgStore = connectPgSimple(session);
+
+// Use a dedicated, tiny pg Pool for the session store to avoid exhausting Supabase pooler
+const { Pool } = pg;
+const sessionPgPool = new Pool({
+  host: process.env.DB_HOST || process.env.HOST,
+  port: Number(process.env.DB_PORT || process.env.PORT) || 5432,
+  user: process.env.DB_USER || process.env.USER,
+  password: process.env.DB_PASSWORD || process.env.PASSWORD,
+  database: process.env.DB_NAME || 'postgres',
+  max: 2,                 // keep very small
+  idleTimeoutMillis: 10000,
+  connectionTimeoutMillis: 10000,
+});
+
+sessionPgPool.on('error', (err) => {
+  logger.error({ err }, 'pg session pool error');
+});
+
 const sessionStore = new PgStore({
-  conObject: {
-    host: process.env.DB_HOST || process.env.HOST,
-    port: Number(process.env.DB_PORT || process.env.PORT) || 5432,
-    user: process.env.DB_USER || process.env.USER,
-    password: process.env.DB_PASSWORD || process.env.PASSWORD,
-    database: process.env.DB_NAME || 'postgres',
-  },
+  pool: sessionPgPool,
   createTableIfMissing: true,
 });
 
@@ -89,8 +131,7 @@ app.set('views', './views');
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json()); // Thêm dòng này để xử lý JSON body cho các API
-app.use('/static', express.static('static'));
-app.use(express.static('public')); // Add this line to serve files from public directory
+app.use(express.static('static')); // Serve all static files from /static folder
 
 // Import Routers
 import accountRouter from './routes/account.route.js';
@@ -367,6 +408,11 @@ app.use(function (req, res, next) {
   res.locals.isInstructor = !!(req.session && req.session.authUser && req.session.authUser.role === 'instructor');
   next();
 });
+// Provide isStudent flag to templates
+app.use(function (req, res, next) {
+  res.locals.isStudent = !!(req.session && req.session.authUser && req.session.authUser.role === 'student');
+  next();
+});
 // Provide current year to templates
 app.use(function (req, res, next) {
   res.locals.currentYear = new Date().getFullYear();
@@ -403,7 +449,7 @@ app.use(function (req, res, next) {
 
 // ================= ROUTERS =================
 // -- Routes công khai (ai cũng xem được) --
-app.get('/', (req, res) => {
+app.get('/', async (req, res) => {
   const user = req.session.authUser;
 
   if (!req.session.isAuthenticated || !user) {
@@ -413,7 +459,47 @@ app.get('/', (req, res) => {
 
   // đã đăng nhập
   if (user.role === 'student') {
-    return res.render('home-authen', { layout: 'main' });
+    try {
+      // Load courses data for authenticated student home
+      const coursesModel = await import('./models/courses.model.js');
+      
+      // Get top courses (limit 6 for featured section)
+      const topWeekCourses = await coursesModel.getAllWithBadge({ 
+        limit: 6, 
+        offset: 0,
+        order: 'views_count' // or 'avg_rating'
+      });
+      
+      // Get most viewed courses
+      const mostViewedCourses = await coursesModel.getAllWithBadge({ 
+        limit: 8, 
+        offset: 0,
+        order: 'views_count'
+      });
+      
+      // Get newest courses
+      const newestCourses = await coursesModel.getAllWithBadge({ 
+        limit: 8, 
+        offset: 0,
+        order: 'created_at'
+      });
+      
+      return res.render('home-authen', { 
+        layout: 'main',
+        topWeekCourses: topWeekCourses || [],
+        mostViewedCourses: mostViewedCourses || [],
+        newestCourses: newestCourses || []
+      });
+    } catch (error) {
+      logger.error({ err: error }, 'Error loading home page data');
+      // Fallback to render without data
+      return res.render('home-authen', { 
+        layout: 'main',
+        topWeekCourses: [],
+        mostViewedCourses: [],
+        newestCourses: []
+      });
+    }
   }
 
   if (user.role === 'instructor') {
@@ -434,13 +520,15 @@ app.use('/auth', authRouter);
 app.use('/payment', paymentRouter); 
 
 // -- Routes của học viên (cần đăng nhập) --
-app.use('/student', restrict, studentRouter);
-app.use('/learn', restrict, learnRouter);
+// Student-only areas
+app.use('/student', restrict, isStudent, studentRouter);
+app.use('/learn', restrict, isStudent, learnRouter);
 
 // Public instructors profiles
 app.use('/instructors', instructorsRouter);
 
-app.use('/review', restrict, reviewRoute);
+// Only students should create reviews
+app.use('/review', restrict, isStudent, reviewRoute);
 // -- Routes của giảng viên (cần đăng nhập và là instructor) --
 app.use('/instructor', restrict, isInstructor, instructorDashboardRouter);
 
@@ -496,6 +584,32 @@ app.use((err, req, res, next) => {
   res.status(500).render('500');
 });
 // =======================================================
-app.listen(PORT, () => {
+// Graceful shutdown & error observers
+process.on('unhandledRejection', (reason) => {
+  logger.error({ err: reason }, 'Unhandled Promise Rejection');
+});
+
+process.on('uncaughtException', (err) => {
+  logger.error({ err }, 'Uncaught Exception');
+});
+
+const server = app.listen(PORT, () => {
   logger.info({ port: PORT }, `Application listening on port ${PORT}`);
 });
+
+function shutdown() {
+  logger.info('Shutting down gracefully...');
+  try {
+    server.close(() => {
+      logger.info('HTTP server closed');
+      try { sessionPgPool.end(); } catch (e) { logger.warn({ err: e }, 'Error closing session pool'); }
+      process.exit(0);
+    });
+  } catch (e) {
+    logger.error({ err: e }, 'Error during shutdown');
+    process.exit(1);
+  }
+}
+
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);

@@ -1,5 +1,5 @@
 import express from 'express';
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcrypt';
 import * as userModel from '../models/user.model.js';
 import { restrict } from '../middlewares/auth.mdw.js';
 import { sendResetEmail, sendVerifyEmail } from '../utils/mailer.js';
