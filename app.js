@@ -337,8 +337,13 @@ app.engine('handlebars', engine({
 const cache = new NodeCache({ stdTTL: 300, checkperiod: 60 }); // 5 minutes TTL
 async function getOrSet(key, fetcher) {
   const cached = cache.get(key);
-  if (cached) return cached;
+  if (cached) {
+    logger.debug(`Cache HIT for key: ${key}`);
+    return cached;
+  }
+  logger.debug(`Cache MISS for key: ${key}, fetching data...`);
   const data = await fetcher();
+  logger.debug(`Fetched ${data?.length || 0} items for key: ${key}`);
   cache.set(key, data);
   return data;
 }
@@ -551,6 +556,13 @@ app.use('/test', restrict, testChatRouter);
 // Health check
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok', time: new Date().toISOString() });
+});
+
+// Clear cache endpoint (development only)
+app.get('/api/clear-cache', (req, res) => {
+  cache.flushAll();
+  logger.info('Cache cleared manually');
+  res.json({ success: true, message: 'Cache cleared successfully' });
 });
 
 app.use((req, res) => {
