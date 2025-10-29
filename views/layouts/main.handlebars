@@ -64,6 +64,30 @@
       font-size: 1rem;
     }
 
+    /* Dropdown menu hiển thị bên ngoài navbar trên desktop */
+    @media (min-width: 992px) {
+      .navbar .nav-item.dropdown {
+        position: static;
+      }
+      
+      .navbar .dropdown-menu {
+        position: absolute !important;
+        top: 100%;
+        right: 1rem;
+        transform: none !important;
+        margin-top: 0.5rem;
+      }
+    }
+
+    /* Mobile: dropdown nằm trong navbar như bình thường */
+    @media (max-width: 991.98px) {
+      .navbar .dropdown-menu {
+        position: static !important;
+        transform: none !important;
+        border: none;
+        box-shadow: none;
+      }
+    }
     
   </style>
 </head>
@@ -208,7 +232,7 @@
             <div class="card mb-3">
               <h5 class="card-header">
                 {{#if isAuthenticated}}
-                  {{#if (eq authUser.role 'instructor')}}Instructor Tools{{/if}}{{#if isAdmin}}Admin Navigation{{else}}My Learning{{/if}}
+                  {{#if (eq authUser.role 'instructor')}}Instructor Tools{{/if}}{{#if isAdmin}}Admin Navigation{{/if}}{{#if (isStudent)}}My Learning{{/if}}
                 {{else}}
                   Hi there!
                 {{/if}}
@@ -269,34 +293,6 @@
                 {{/if}}
               </div>
             </div>
-
-            <!-- Account Quick Actions (always visible when logged in) -->
-            {{#if isAuthenticated}}
-            <div class="card mb-3">
-              <h5 class="card-header">Account</h5>
-              <div class="card-body">
-                <div class="d-grid gap-2">
-                  <a href="/account/profile" class="btn btn-outline-primary btn-sm">
-                    <i class="bi bi-person"></i> Profile
-                  </a>
-                  <a href="/account/change-pwd" class="btn btn-outline-warning btn-sm">
-                    <i class="bi bi-lock"></i> Change Password
-                  </a>
-                  {{#if (isStudent)}}
-                  <a href="/contact" class="btn btn-outline-success btn-sm">
-                    <i class="bi bi-person-video2"></i> Become an Instructor
-                  </a>
-                  {{/if}}
-                  <form id="frmSignoutSidebar" action="/account/signout" method="post"></form>
-                  <button type="button" class="btn btn-outline-danger btn-sm"
-                          onclick="document.getElementById('frmSignoutSidebar').submit();">
-                    <i class="bi bi-box-arrow-right"></i> Sign Out
-                  </button>
-                </div>
-              </div>
-            </div>
-            {{/if}}
-
             <!-- Additional Featured Card -->
           </aside>
 
