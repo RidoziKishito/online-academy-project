@@ -323,15 +323,15 @@
           <div>
             <h5 class="fw-bold mb-1">{{course.instructor_name}}</h5>
             <p class="text-muted small mb-2">{{course.instructor_bio}}</p>
-            <div class="d-flex gap-2">
+            <div class="d-flex gap-2 flex-wrap">
               <a href="/instructors/{{course.instructor_id}}" class="btn btn-outline-success rounded-pill btn-sm">
-                View More Courses
+                <i class="bi bi-collection me-1"></i>View More Courses
               </a>
-              {{#if @root.session.authUser}}
-                {{#if (ne @root.session.authUser.user_id course.instructor_id)}}
+              {{#if isAuthenticated}}
+                {{#if (ne authUser.user_id course.instructor_id)}}
                   <button type="button" 
                           class="btn btn-primary rounded-pill btn-sm" 
-                          onclick="openChatWithInstructor('{{course.instructor_id}}', '{{course.instructor_name}}')">
+                          onclick="openChatWithInstructor({{course.instructor_id}}, '{{course.instructor_name}}')">
                     <i class="bi bi-chat-dots me-1"></i>Chat with Instructor
                   </button>
                 {{/if}}
@@ -711,3 +711,4 @@ document.addEventListener('DOMContentLoaded', function () {
     </div>
   </div>
 </div>
+

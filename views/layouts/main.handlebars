@@ -389,12 +389,7 @@
   <!-- Supabase JS (for real-time features) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   
-  <!-- Chat System JS -->
-  <script src="/chat.js"></script>
-
-  {{{_sections.js}}}
-  
-  <!-- Initialize Supabase and Chat System -->
+  <!-- Set global auth user BEFORE loading chat.js -->
   <script>
     // Make auth user available globally
     window.authUser = {{#if authUser}}{
@@ -403,6 +398,17 @@
       email: "{{authUser.email}}",
       role: "{{authUser.role}}"
     }{{else}}null{{/if}};
+    
+    console.log('Auth user set:', window.authUser);
+  </script>
+  
+  <!-- Chat System JS -->
+  <script src="/chat.js"></script>
+
+  {{{_sections.js}}}
+  
+  <!-- Initialize Supabase and Chat System -->
+  <script>
     
     // Initialize Supabase if configured
     {{#if supabaseUrl}}
@@ -420,9 +426,13 @@
         });
       }
 
+      // Initialize chat system only if user is authenticated
       if (typeof ChatSystem !== 'undefined' && window.authUser) {
+        console.log('Initializing chat system for user:', window.authUser.full_name);
         window.chatSystem = new ChatSystem();
-        console.log('Chat system initialized for user:', window.authUser.full_name);
+        console.log('Chat system initialized successfully');
+      } else {
+        console.log('Chat system not initialized - user not authenticated or ChatSystem class not loaded');
       }
     });
   </script>

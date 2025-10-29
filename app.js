@@ -4,7 +4,7 @@ import hsb_sections from 'express-handlebars-sections';
 import session from 'express-session';
 import connectPgSimple from 'connect-pg-simple';
 import pg from 'pg';
-import helmet from 'helmet';
+// import helmet from 'helmet'; // Removed - CSP disabled
 import cors from 'cors';
 import pinoHttp from 'pino-http';
 import compression from 'compression';
@@ -51,36 +51,14 @@ if (process.env.CORS_ALLOWED_ORIGINS) {
   logger.warn('CORS_ALLOWED_ORIGINS not set in production; CORS is currently permissive');
 }
 
-// Security headers with relaxed CSP for web app functionality
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-  scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdn.jsdelivr.net", "https://www.google.com", "https://www.gstatic.com", "https://www.youtube.com", "https://www.recaptcha.net"],
-      styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://fonts.googleapis.com"],
-      fontSrc: ["'self'", "https://fonts.gstatic.com", "https://cdn.jsdelivr.net", "data:"],
-      imgSrc: ["'self'", "data:", "https:", "http:"],
-      mediaSrc: ["'self'", "https:", "http:", "data:", "blob:"],
-  connectSrc: ["'self'", "https://www.google.com", "https://www.recaptcha.net", "https:", "http:"],
-  frameSrc: ["'self'", "https://www.google.com", "https://www.recaptcha.net", "https://www.youtube.com", "https://www.youtube-nocookie.com"],
-      objectSrc: ["'none'"],
-      upgradeInsecureRequests: isProd ? [] : null,
-    },
-  },
-  crossOriginEmbedderPolicy: false,
-}));
+// CORS enabled
 app.use(cors(corsOptions));
 
-// Disable X-Powered-By header (defense in depth)
+// Disable X-Powered-By header (basic security)
 app.disable('x-powered-by');
 
 // Enable gzip/deflate compression
 app.use(compression());
-
-// Add HSTS in production (enforce HTTPS)
-if (isProd) {
-  app.use(helmet.hsts({ maxAge: 15552000 })); // 180 days
-}
 
 // Sessions with Postgres store
 app.set('trust proxy', 1)
