@@ -18,12 +18,14 @@
 
 1. Mở file `.env`
 2. Thay thế các giá trị:
+
    ```
    RECAPTCHA_SITE_KEY=your_site_key_here
    RECAPTCHA_SECRET_KEY=your_secret_key_here
    ```
-   
+
    Ví dụ:
+
    ```
    RECAPTCHA_SITE_KEY=6LcXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
    RECAPTCHA_SECRET_KEY=6LcYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY
@@ -59,6 +61,7 @@ npm run dev
 ## Troubleshooting
 
 Nếu CAPTCHA không hiển thị:
+
 1. Kiểm tra xem đã cấu hình đúng keys trong `.env` chưa
 2. Kiểm tra console browser có lỗi không
 3. Đảm bảo domain `localhost` đã được thêm vào reCAPTCHA admin

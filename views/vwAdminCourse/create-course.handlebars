@@ -8,13 +8,13 @@
 <script src="https://cdn.jsdelivr.net/npm/cleave.js@1.6.0/dist/cleave.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
 <script>
-    // --- SỬA LỖI: Sửa ID cho đúng ---
-    new Cleave('#currentPrice', { // <-- Sửa từ #txtPrice
+  // --- FIX: Correct IDs to the proper selectors ---
+  new Cleave('#currentPrice', { // <-- changed from #txtPrice
         numeral: true,
         numeralThousandsGroupStyle: 'thousand'
     });
 
-    new Cleave('#originalPrice', { // <-- Sửa từ #txtQuantity
+  new Cleave('#originalPrice', { // <-- changed from #txtQuantity
         numeral: true,
         numeralThousandsGroupStyle: 'thousand'
     });

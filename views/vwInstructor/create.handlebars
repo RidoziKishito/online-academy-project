@@ -2,93 +2,131 @@
 <link href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css" rel="stylesheet" />
 <link href="https://releases.transloadit.com/uppy/v5.1.5/uppy.min.css" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+    .image-preview {
+        max-height: 200px;
+        object-fit: cover;
+        border-radius: 4px;
+        border: 1px solid #dee2e6;
+    }
+
+    .required-field::after {
+        content: " *";
+        color: red;
+    }
+</style>
 {{/fillContent}}
 
 {{#fillContent 'js'}}
 <script src="https://cdn.jsdelivr.net/npm/cleave.js@1.6.0/dist/cleave.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
 <script>
-    // Initialize price formatting
-    new Cleave('#currentPrice', {
+    // --- FIX: Correct field IDs ---
+    new Cleave('#currentPrice', { // <-- Fixed from #txtPrice
         numeral: true,
         numeralThousandsGroupStyle: 'thousand'
     });
 
-    new Cleave('#originalPrice', {
+    new Cleave('#originalPrice', { // <-- Fixed from #txtQuantity
         numeral: true,
         numeralThousandsGroupStyle: 'thousand'
     });
+    // -------------------------------
 
-    // Initialize rich text editor
-    const quill = new Quill('#editor', {
+    const quillDescription = new Quill('#editor', {
         theme: 'snow',
-        placeholder: 'Write a detailed description of your course...',
-        modules: {
-            toolbar: [
-                ['bold', 'italic', 'underline', 'strike'],
-                ['blockquote', 'code-block'],
-                [{ 'header': 1 }, { 'header': 2 }],
-                [{ 'list': 'ordered' }, { 'list': 'bullet' }],
-                [{ 'script': 'sub' }, { 'script': 'super' }],
-                ['clean']
-            ]
-        }
+        placeholder: 'Write the full course description...'
     });
+
+    const quillRequirements = new Quill('#requirementsEditor', {
+        theme: 'snow',
+        placeholder: 'What are the requirements or prerequisites for this course?'
+    });
+
+    // Handle category selection changes
+    const parentCategorySelect = document.getElementById('parentCategory');
+    if (parentCategorySelect) {
+        parentCategorySelect.addEventListener('change', async function () {
+            const categoryId = this.value;
+            const container = document.getElementById('subcategoryContainer');
+            container.innerHTML = ''; // Clear current subcategories
+
+            if (!categoryId) return;
+
+            try {
+                const response = await fetch(`/instructor/api/categories/${categoryId}/subcategories`);
+                if (!response.ok) throw new Error('Failed to fetch subcategories');
+
+                const subcategories = await response.json();
+
+                if (subcategories && subcategories.length > 0) {
+                    const select = document.createElement('select');
+                    select.className = 'form-select';
+                    select.name = 'subcategory_id';
+                    select.id = 'subcategory';
+
+                    select.innerHTML = `
+                        <option value="">-- Select Sub Category --</option>
+                        ${subcategories.map(sub =>
+                        `<option value="${sub.category_id}">${sub.name}</option>`
+                    ).join('')}
+                    `;
+
+                    container.appendChild(select);
+                }
+            } catch (err) {
+                console.error('Error loading subcategories:', err);
+                container.innerHTML = '<div class="text-danger small">Failed to load subcategories</div>';
+            }
+        });
+    }
+
+    // Preview images when URLs change
+    function updateImagePreview(inputId, previewId) {
+        const input = document.getElementById(inputId);
+        const preview = document.getElementById(previewId);
+
+        input.addEventListener('input', function () {
+            const url = this.value.trim();
+            if (url) {
+                preview.src = url;
+            } else {
+                preview.src = previewId === 'imagePreview' ? '/img/course-placeholder.jpg' : '/img/cover-placeholder.jpg';
+            }
+        });
+    }
+
+    updateImagePreview('imageUrl', 'imagePreview');
+    updateImagePreview('largeImageUrl', 'largeImagePreview');
 
     // Handle form submission
     document.querySelector('#frmAddCourse').addEventListener('submit', function (e) {
         e.preventDefault();
 
-        // Validate required fields
-        const requiredFields = ['title', 'imageUrl'];
-        let isValid = true;
+        // Get content from editors
+        const descriptionHtml = quillDescription.root.innerHTML;
+        document.querySelector('#full_description').value = descriptionHtml;
 
-        requiredFields.forEach(field => {
-            const input = document.getElementById(field);
-            if (!input.value.trim()) {
-                input.classList.add('is-invalid');
-                isValid = false;
-            } else {
-                input.classList.remove('is-invalid');
-            }
-        });
+        const requirementsHtml = quillRequirements.root.innerHTML;
+        document.querySelector('#requirements').value = requirementsHtml;
 
-        // Validate description
-        const description = quill.root.innerHTML;
-        if (description === '<p><br></p>' || !description.trim()) {
-            document.querySelector('#editor').classList.add('is-invalid');
-            isValid = false;
+        // Validate form
+        if (this.checkValidity()) {
+            const saveType = e.submitter.value;
+            const status = saveType === 'draft' ? 'draft' : 'pending';
+
+            // Add status to form data
+            const statusInput = document.createElement('input');
+            statusInput.type = 'hidden';
+            statusInput.name = 'status';
+            statusInput.value = status;
+            this.appendChild(statusInput);
+
+            // Submit the form
+            this.submit();
         } else {
-            document.querySelector('#editor').classList.remove('is-invalid');
+            this.reportValidity();
         }
-
-        if (!isValid) {
-            return;
-        }
-
-        // Copy quill html to hidden input
-        document.querySelector('#full_description').value = description;
-
-        // Submit form
-        this.submit();
-    });
-
-    // Image URL preview
-    const imageUrlInput = document.getElementById('imageUrl');
-    const imagePreview = document.getElementById('imagePreview');
-
-    imageUrlInput.addEventListener('input', function () {
-        const url = this.value;
-        if (url) {
-            imagePreview.src = url;
-            imagePreview.style.display = 'block';
-        } else {
-            imagePreview.style.display = 'none';
-        }
-    });
-
-    imagePreview.addEventListener('error', function () {
-        this.src = '/images/placeholder-course.png';
     });
 </script>
 {{/fillContent}}
@@ -103,179 +141,136 @@
                     </div>
                 </div>
                 <div class="card-body">
-                    <form id="frmAddCourse" method="post" action="/instructor/create" enctype="multipart/form-data">
-                        {{#if errorMessages}}
-                        <div class="alert alert-danger">
-                            <i class="fas fa-exclamation-circle me-2"></i>
-                            Please check the fields below and try again.
+                    <form id="frmAddCourse" action="/instructor/create" method="POST">
+                        {{#if flash}}
+                        <div
+                            class="alert {{#if flash.success}}alert-success{{else}}alert-danger{{/if}} alert-dismissible fade show">
+                            {{#if flash.success}}{{flash.success}}{{else}}{{flash.error}}{{/if}}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                         </div>
                         {{/if}}
 
-                        <div class="row mb-4">
-                            <div class="col-md-8">
-                                <div class="mb-3">
-                                    <label class="form-label">Course Title <span class="text-danger">*</span></label>
-                                    <input type="text" id="title" name="title" class="form-control" required
-                                        placeholder="e.g. Complete Web Development Bootcamp" value="{{oldData.title}}">
-                                    {{#if errorMessages.title}}
-                                    <div class="invalid-feedback d-block">{{errorMessages.title.[0]}}</div>
-                                    {{/if}}
-                                </div>
-
-                                <div class="mb-3">
-                                    <label class="form-label">Course Description <span
-                                            class="text-danger">*</span></label>
-                                    <div id="editor" class="{{#if errorMessages.description}}is-invalid{{/if}}">
-                                        {{{oldData.full_description}}}</div>
-                                    <input type="hidden" id="full_description" name="full_description" />
-                                    {{#if errorMessages.description}}
-                                    <div class="invalid-feedback d-block">{{errorMessages.description.[0]}}</div>
-                                    {{/if}}
-                                </div>
-                            </div>
-
-                            <div class="col-md-4">
-                                <div class="mb-3">
-                                    <label class="form-label d-block">Course Image <span
-                                            class="text-danger">*</span></label>
-                                    <img id="imagePreview" class="img-fluid mb-2 rounded"
-                                        style="max-height: 200px; display: none;">
-                                    <input type="url" id="imageUrl" name="image_url" class="form-control" required
-                                        placeholder="Enter image URL or upload below" value="{{oldData.image_url}}">
-                                    {{#if errorMessages.image_url}}
-                                    <div class="invalid-feedback d-block">{{errorMessages.image_url.[0]}}</div>
-                                    {{/if}}
-                                </div>
-
-                                <div class="mb-3">
-                                    <label class="form-label">Category <span class="text-danger">*</span></label>
-                                    <select name="category_id" class="form-select" required>
-                                        <option value="">Select a category</option>
-                                        {{#each categories}}
-                                        <option value="{{this.id}}" {{#if (eq ../oldData.category_id
-                                            this.id)}}selected{{/if}}>
-                                            {{this.name}}
-                                        </option>
-                                        {{/each}}
-                                    </select>
-                                    {{#if errorMessages.category_id}}
-                                    <div class="invalid-feedback d-block">{{errorMessages.category_id.[0]}}</div>
-                                    {{/if}}
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Rating</label>
-                                <input type="text" id="rating" name="rating" class="form-control" placeholder="4.5"
-                                    value="{{oldData.rating}}">
-                                {{#if errorMessages.rating}}<div class="text-danger small">{{errorMessages.rating.[0]}}
-                                </div>{{/if}}
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Total Reviews</label>
-                                <input type="text" id="totalReviews" name="total_reviews" class="form-control"
-                                    placeholder="150" value="{{oldData.total_reviews}}">
-                                {{#if errorMessages.total_reviews}}<div class="text-danger small">
-                                    {{errorMessages.total_reviews.[0]}}</div>{{/if}}
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Total Hours</label>
-                                <input type="text" id="totalHours" name="total_hours" class="form-control"
-                                    placeholder="10.5" value="{{oldData.total_hours}}">
-                                {{#if errorMessages.total_hours}}<div class="text-danger small">
-                                    {{errorMessages.total_hours.[0]}}</div>{{/if}}
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Total Lectures</label>
-                                <input type="text" id="totalLectures" name="total_lectures" class="form-control"
-                                    placeholder="45" value="{{oldData.total_lectures}}">
-                                {{#if errorMessages.total_lectures}}<div class="text-danger small">
-                                    {{errorMessages.total_lectures.[0]}}</div>{{/if}}
-                            </div>
+                        <div class="mb-3">
+                            <label class="form-label required-field">Course Title</label>
+                            <input type="text" name="title" class="form-control" required maxlength="500"
+                                value="{{oldData.title}}" placeholder="Enter an engaging course title">
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label">Course Level</label>
-                            <select id="level" name="level" class="form-select">
-                                <option value="">-- Select Level --</option>
-                                <option value="Beginner" {{#if (eq oldData.level "Beginner" )}}selected{{/if}}>Beginner
-                                </option>
-                                <option value="Intermediate" {{#if (eq oldData.level "Intermediate" )}}selected{{/if}}>
-                                    Intermediate</option>
-                                <option value="Advanced" {{#if (eq oldData.level "Advanced" )}}selected{{/if}}>Advanced
-                                </option>
-                                <option value="All Levels" {{#if (eq oldData.level "All Levels" )}}selected{{/if}}>All
-                                    Levels</option>
-                            </select>
-                            {{#if errorMessages.level}}<div class="text-danger small">{{errorMessages.level.[0]}}</div>
-                            {{/if}}
+                            <label class="form-label required-field">Brief Summary</label>
+                            <input type="text" name="short_description" class="form-control" required
+                                value="{{oldData.short_description}}"
+                                placeholder="Write a compelling summary of your course (1-2 sentences)">
+                            <small class="text-muted">This will appear in course cards and search results</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label required-field">Full Description</label>
+                            <div id="editor" style="min-height: 200px">{{{oldData.full_description}}}</div>
+                            <input type="hidden" id="full_description" name="full_description" />
+                            <small class="text-muted">Describe what students will learn, course content, requirements,
+                                etc.</small>
+                        </div>
+
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label required-field">Course Image</label>
+                                <input type="url" id="imageUrl" name="image_url" class="form-control mb-2" required
+                                    value="{{oldData.image_url}}" placeholder="URL of course thumbnail image">
+                                <img id="imagePreview"
+                                    src="{{#if oldData.image_url}}{{oldData.image_url}}{{else}}/img/course-placeholder.jpg{{/if}}"
+                                    alt="Course thumbnail preview" class="image-preview w-100">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Large Cover Image</label>
+                                <input type="url" id="largeImageUrl" name="large_image_url" class="form-control mb-2"
+                                    value="{{oldData.large_image_url}}"
+                                    placeholder="URL of course cover image (optional)">
+                                <img id="largeImagePreview"
+                                    src="{{#if oldData.large_image_url}}{{oldData.large_image_url}}{{else}}/img/cover-placeholder.jpg{{/if}}"
+                                    alt="Course cover preview" class="image-preview w-100">
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label required-field">Category</label>
+                                <select name="category_id" class="form-select" id="parentCategory" required>
+                                    <option value="">-- Select Main Category --</option>
+                                    {{#each parentCategories}}
+                                    <option value="{{category_id}}" {{#if (eq ../oldData.category_id
+                                        category_id)}}selected{{/if}}>
+                                        {{name}}
+                                    </option>
+                                    {{/each}}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Subcategory</label>
+                                <div id="subcategoryContainer">
+                                    {{#if subcategories.length}}
+                                    <select name="subcategory_id" class="form-select" id="subcategory">
+                                        <option value="">-- Select Sub Category --</option>
+                                        {{#each subcategories}}
+                                        <option value="{{category_id}}" {{#if (eq ../oldData.subcategory_id
+                                            category_id)}}selected{{/if}}>
+                                            {{name}}
+                                        </option>
+                                        {{/each}}
+                                    </select>
+                                    {{/if}}
+                                </div>
+                            </div>
                         </div>
 
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label class="form-label">Current Price (VND) <span class="text-danger">*</span></label>
+                                <label class="form-label">Original Price (VND)</label>
                                 <div class="input-group">
                                     <span class="input-group-text">₫</span>
-                                    <input type="text" id="currentPrice" name="current_price" class="form-control"
-                                        required placeholder="279,000" value="{{oldData.current_price}}">
-                                    <div class="input-group-text bg-light">VND</div>
+                                    <input type="text" id="originalPrice" name="price" class="form-control"
+                                        placeholder="399,000" value="{{oldData.original_price}}">
                                 </div>
-                                {{#if errorMessages.current_price}}
-                                <div class="invalid-feedback d-block">{{errorMessages.current_price.[0]}}</div>
-                                {{/if}}
+                                {{#if errorMessages.original_price}}<div class="text-danger small">
+                                    {{errorMessages.original_price.[0]}}</div>{{/if}}
                             </div>
+
                             <div class="col-md-6 mb-3">
-                                <label class="form-label">Original Price (VND) <span
-                                        class="text-danger">*</span></label>
+                                <label class="form-label">Current Price (VND)</label>
                                 <div class="input-group">
                                     <span class="input-group-text">₫</span>
-                                    <input type="text" id="originalPrice" name="original_price" class="form-control"
-                                        required placeholder="399,000" value="{{oldData.original_price}}">
-                                    <div class="input-group-text bg-light">VND</div>
+                                    <input type="text" id="currentPrice" name="sale_price" class="form-control"
+                                        placeholder="279,000" value="{{oldData.current_price}}">
                                 </div>
-                                {{#if errorMessages.original_price}}
-                                <div class="invalid-feedback d-block">{{errorMessages.original_price.[0]}}</div>
-                                {{/if}}
-                                <div class="form-text">Set this higher than current price to show discount</div>
+                                {{#if errorMessages.current_price}}<div class="text-danger small">
+                                    {{errorMessages.current_price.[0]}}</div>{{/if}}
                             </div>
+
                         </div>
 
-                        <div class="row mb-4">
-                            <div class="col-12">
-                                <div class="card bg-light">
-                                    <div class="card-body">
-                                        <h6 class="card-title"><i class="fas fa-tags me-2"></i>Course Features</h6>
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" id="isBestseller"
-                                                name="is_bestseller" value="true" {{#if
-                                                oldData.is_bestseller}}checked{{/if}}>
-                                            <label class="form-check-label" for="isBestseller">
-                                                <i class="fa fa-crown text-warning me-1"></i> Mark as Bestseller
-                                            </label>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                        <div class="form-check mb-4">
+                            <input class="form-check-input" type="checkbox" id="isBestseller" name="is_bestseller"
+                                value="true" {{#if oldData.is_bestseller}}checked{{/if}}>
+                            <label class="form-check-label" for="isBestseller"><i
+                                    class="fa fa-crown text-warning me-1"></i> Mark as Bestseller</label>
                         </div>
 
-                        <div class="d-flex justify-content-between">
-                            <a href="/instructor" class="btn btn-outline-secondary">
-                                <i class="fas fa-arrow-left me-1"></i> Back to Dashboard
-                            </a>
-                            <div class="btn-group">
-                                <button type="reset" class="btn btn-light">
-                                    <i class="fas fa-undo me-1"></i> Reset
-                                </button>
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-save me-1"></i> Create Course
-                                </button>
-                            </div>
+                        <div class="mb-3">
+                            <label class="form-label">Course Requirements</label>
+                            <div id="requirementsEditor">{{{oldData.requirements}}}</div>
+                            <input type="hidden" id="requirements" name="requirements" />
+                            {{#if errorMessages.requirements}}<div class="text-danger small">
+                                {{errorMessages.requirements.[0]}}</div>{{/if}}
+                            <small class="text-muted">Enter course prerequisites, required skills, or materials
+                                needed</small>
                         </div>
 
+                        <div class="d-flex justify-content-end gap-2">
+                            <a href="/instructor" class="btn btn-outline-secondary">Back</a>
+                            <button type="reset" class="btn btn-secondary">Reset</button>
+                            <button type="submit" class="btn btn-primary"><i class="fa fa-save me-1"></i> Create
+                                Course</button>
+                        </div>
                     </form>
                 </div>
             </div>

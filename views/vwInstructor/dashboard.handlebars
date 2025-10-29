@@ -10,7 +10,7 @@
         <table class="table table-hover align-middle mb-0">
             <thead class="table-light">
                 <tr>
-                    <th scope="col" class="text-center">#</th>
+                    <th scope="col" class="text-center">ID</th>
                     <th scope="col">Course</th>
                     <th scope="col">Category</th>
                     <th scope="col" class="text-center">Students</th>
@@ -28,8 +28,11 @@
                             <img src="{{image_url}}" alt="{{title}}" class="rounded me-2" width="60" height="40"
                                 style="object-fit: cover;">
                             {{/if}}
-                            <div>
+                            <div>                        
                                 <strong>{{title}}</strong>
+                                {{#ifEq2 this.status 'hidden'}}
+                                <span class="badge bg-secondary">Hidden</span>
+                                {{/ifEq2}}
                                 <div class="text-muted small">
                                     {{#if sale_price}}
                                     <span class="text-decoration-line-through">${{price}}</span>

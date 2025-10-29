@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import * as userModel from '../models/user.model.js';
 import crypto from 'crypto';
 import bcrypt from 'bcrypt';
+import logger from './logger.js';
 
 dotenv.config();
 
@@ -85,8 +86,7 @@ if (GOOGLE_ENABLED) {
   }));
 } else {
   // Warn at startup so dev knows why Google strategy isn't available
-  // eslint-disable-next-line no-console
-  console.warn('[Auth] Google OAuth not configured: set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in .env');
+  logger.warn('[Auth] Google OAuth not configured: set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in .env');
 }
 
 export default passport;

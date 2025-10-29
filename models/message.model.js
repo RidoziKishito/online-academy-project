@@ -1,5 +1,6 @@
 import db from '../utils/db.js';
 import { v4 as uuidv4 } from 'uuid';
+import logger from '../utils/logger.js';
 
 const Message = {
     // Add a message to a conversation
@@ -57,7 +58,7 @@ const Message = {
             return newMessage;
         } catch (error) {
             await trx.rollback();
-            console.error('Error adding message:', error);
+            logger.error({ err: error, conversationId, senderId }, 'Error adding message');
             throw error;
         }
     },

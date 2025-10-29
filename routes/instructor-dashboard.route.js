@@ -5,29 +5,30 @@ import * as progressModel from '../models/progress.model.js';
 import * as enrollmentModel from '../models/enrollment.model.js';
 import * as categoryModel from '../models/category.model.js';
 import ChatService from '../services/chat.service.js';
+import logger from '../utils/logger.js';
 
 const router = express.Router();
 
-// Tất cả route trong đây yêu cầu đăng nhập VÀ phải là instructor
+// All routes in this file require authentication AND instructor role
 router.use(restrict, isInstructor);
 
-// Trang chính: danh sách các khóa học của tôi
+// Main page: list of my courses
 router.get('/', async (req, res) => {
     const instructorId = req.session.authUser.user_id;
     const courses = await courseModel.findByInstructor(instructorId);
     res.render('vwInstructor/dashboard', { courses });
 });
 
-// Trang quản lý chi tiết 1 khóa học (thêm/sửa chương, bài giảng)
+// Manage a specific course (add/edit chapters, lessons)
 router.get('/manage-course/:id', async (req, res) => {
     const instructorId = req.session.authUser.user_id;
     const courseId = req.params.id;
 
-    // Lấy thông tin cơ bản của khóa học
+    // Get basic course info
     const course = await courseModel.findDetail(courseId, instructorId);
     if (!course) return res.status(404).render('404');
 
-    // Lấy danh sách học viên và tính progress
+    // Fetch students and compute progress
     const enrollments = await enrollmentModel.findStudentsByCourse(courseId);
     const totalLessons = await progressModel.countLessonsByCourse(courseId);
 
@@ -36,23 +37,23 @@ router.get('/manage-course/:id', async (req, res) => {
         enrollment.progress_percent = totalLessons === 0 ? 0 : Math.round((completedLessons / totalLessons) * 100);
     }
 
-    // Lấy categories cho dropdown
+    // Fetch categories for dropdown
     const parentCategories = await categoryModel.findParentCategories();
 
-    // Nếu course đã có category, lấy thông tin đầy đủ của nó
+    // If the course has a category, get its full info
     let currentCategory = null;
     if (course.category_id) {
         currentCategory = await categoryModel.findByIdWithParent(course.category_id);
     }
 
-    // Lấy subcategories dựa trên parent category
+    // Fetch subcategories based on parent category
     const currentParentId = currentCategory?.parent_category_id || course.category_id || parentCategories[0]?.category_id;
     const subcategories = currentParentId ? await categoryModel.findSubcategories(currentParentId) : [];
 
-    // Lấy chapters và lessons cho tab content
+    // Fetch chapters and lessons for tab content
     const chapters = await (await import('../models/chapter.model.js')).findChaptersWithLessonsByCourseId(courseId);
 
-    // Render với đầy đủ data
+    // Render with full data
     res.render('vwInstructor/manage-course', {
         course,
         students: enrollments,
@@ -83,7 +84,7 @@ router.get('/students-chat/:courseId', async (req, res) => {
             students: students
         });
     } catch (error) {
-        console.error('Error loading students chat page:', error);
+        logger.error({ err: error, courseId: req.params?.courseId, instructorId: req.session?.authUser?.user_id }, 'Error loading students chat page');
         res.status(500).render('500');
     }
 });
@@ -92,15 +93,15 @@ router.get('/student-progress/:courseId/:userId', async (req, res) => {
     const instructorId = req.session.authUser.user_id;
     const { courseId, userId } = req.params;
 
-    // Kiểm tra quyền instructor
+    // Check instructor permission
     const course = await courseModel.findDetail(courseId, instructorId);
     if (!course) return res.status(403).render('403');
 
-    // Lấy thông tin học viên (từ model enrollment)
+    // Get student information (via enrollment model)
     const student = await enrollmentModel.findStudentDetail(courseId, userId);
     if (!student) return res.status(404).render('404');
 
-    // Lấy danh sách bài học & trạng thái hoàn thành
+    // Get list of lessons and completion status
     const lessons = await progressModel.findLessonProgressOfUser(courseId, userId);
 
     res.render('vwInstructor/student-progress', {
@@ -125,13 +126,12 @@ router.get('/api/courses/:courseId/content', async (req, res) => {
 
         res.json({ chapters });
     } catch (err) {
-        console.error('Error fetching course content:', err);
+        logger.error({ err, courseId: req.params?.courseId, instructorId: req.session?.authUser?.user_id }, 'Error fetching course content');
         res.status(500).json({ error: 'Internal server error' });
     }
 });
 
 router.post('/api/courses/:courseId/content', async (req, res) => {
-    const trx = await db.transaction();
     try {
         const instructorId = req.session.authUser.user_id;
         const courseId = req.params.courseId;
@@ -141,61 +141,16 @@ router.post('/api/courses/:courseId/content', async (req, res) => {
         const course = await courseModel.findDetail(courseId, instructorId);
         if (!course) return res.status(403).json({ error: 'Not authorized' });
 
-        const chapterModel = await import('../models/chapter.model.js');
-        const lessonModel = await import('../models/lesson.model.js');
+    // Delegate DB logic to model layer
+        await courseModel.updateCourseContent(courseId, chapters);
 
-        // Process each chapter
-        for (const chapter of chapters) {
-            if (chapter.chapter_id) {
-                // Update existing chapter
-                await chapterModel.patch(chapter.chapter_id, {
-                    title: chapter.title,
-                    order_index: chapter.order_index
-                });
-            } else {
-                // Insert new chapter
-                const [newChapterId] = await chapterModel.add({
-                    course_id: courseId,
-                    title: chapter.title,
-                    order_index: chapter.order_index
-                });
-                chapter.chapter_id = newChapterId;
-            }
-
-            // Process lessons for this chapter
-            if (Array.isArray(chapter.lessons)) {
-                for (const lesson of chapter.lessons) {
-                    const lessonData = {
-                        title: lesson.title,
-                        video_url: lesson.video_url,
-                        duration_seconds: lesson.duration_seconds,
-                        is_previewable: lesson.is_previewable,
-                        order_index: lesson.order_index,
-                        content: lesson.content
-                    };
-
-                    if (lesson.lesson_id) {
-                        // Update existing lesson
-                        await lessonModel.patch(lesson.lesson_id, lessonData);
-                    } else {
-                        // Insert new lesson
-                        await lessonModel.add({
-                            ...lessonData,
-                            chapter_id: chapter.chapter_id
-                        });
-                    }
-                }
-            }
-        }
-
-        await trx.commit();
         res.json({ success: true });
     } catch (err) {
-        await trx.rollback();
-        console.error('Error saving course content:', err);
+        logger.error({ err, courseId: req.params?.courseId, instructorId: req.session?.authUser?.user_id }, 'Error saving course content');
         res.status(500).json({ error: 'Internal server error' });
     }
-});// Delete chapter endpoint
+});
+
 router.delete('/api/courses/:courseId/chapters/:chapterId', async (req, res) => {
     try {
         const { courseId, chapterId } = req.params;
@@ -220,16 +175,38 @@ router.delete('/api/courses/:courseId/chapters/:chapterId', async (req, res) => 
 
         res.json({ success: true });
     } catch (err) {
-        console.error('Error deleting chapter:', err);
+        logger.error({ err, courseId: req.params?.courseId, chapterId: req.params?.chapterId, instructorId: req.session?.authUser?.user_id }, 'Error deleting chapter');
         res.status(500).json({ error: 'Internal server error' });
     }
 });
 
 router.get('/create', async (req, res) => {
-    const instructorId = req.session.authUser.user_id
-    const categories = await categoryModel.findAll();
-    // pass empty oldData and categories so the select can render
-    res.render('vwInstructor/create', { categories, oldData: {} })
+    try {
+        const instructorId = req.session.authUser.user_id;
+        // Fetch parent categories and subcategories
+        const parentCategories = await categoryModel.findParentCategories();
+        let subcategories = [];
+
+        // If there are parent categories, fetch subcategories of the first parent
+        if (parentCategories.length > 0) {
+            subcategories = await categoryModel.findSubcategories(parentCategories[0].category_id);
+        }
+
+        res.render('vwInstructor/create', {
+            parentCategories,
+            subcategories,
+            oldData: {},
+            // Helper text for instructor
+            helpText: {
+                draft: 'Save as draft to continue editing later',
+                submit: 'Submit for review to make your course available after approval'
+            }
+        });
+    } catch (err) {
+        logger.error({ err, instructorId: req.session?.authUser?.user_id }, 'Error loading create course page');
+        req.session.flash = { error: 'Failed to load create course page' };
+        res.redirect('/instructor/create');
+    }
 })
 
 // Handle create course by instructor
@@ -237,41 +214,67 @@ router.post('/create', async (req, res) => {
     try {
         const instructorId = req.session.authUser.user_id;
 
-        // Basic mapping from form fields to course model fields
         const {
             title,
+            short_description,
             full_description,
             image_url,
             large_image_url,
             requirements,
             category_id,
-            current_price,
-            original_price,
-            is_bestseller
+            subcategory_id, // Add subcategory_id
+            price,
+            sale_price,
+            save_type
         } = req.body;
 
+        // Validate subcategory belongs to the selected parent category
+        if (subcategory_id) {
+            const subcategory = await categoryModel.findById(subcategory_id);
+            if (!subcategory || subcategory.parent_category_id !== parseInt(category_id)) {
+                throw new Error('Invalid subcategory selection');
+            }
+        }
+
+        // Validate required fields
+        if (!title || !short_description || !full_description || !image_url || !category_id || !price) {
+            throw new Error('Missing required fields');
+        }
+
         // normalize numeric fields (remove commas)
-        const sale_price = current_price && String(current_price).trim() !== '' ? parseFloat(String(current_price).replace(/,/g, '')) : null;
-        const price = original_price && String(original_price).trim() !== '' ? parseFloat(String(original_price).replace(/,/g, '')) : 0;
+        const normalizedPrice = parseFloat(String(price).replace(/,/g, ''));
+        const normalizedSalePrice = sale_price ? parseFloat(String(sale_price).replace(/,/g, '')) : null;
+
+        // Validate price logic
+        if (normalizedSalePrice && normalizedSalePrice >= normalizedPrice) {
+            throw new Error('Sale price must be less than regular price');
+        }
 
         const newCourse = {
-            title,
+            title: title.trim(),
+            short_description: short_description.trim(),
             full_description,
             image_url,
             large_image_url: large_image_url || null,
             requirements: requirements || null,
-            category_id: category_id ? parseInt(category_id) : null,
+            category_id: parseInt(category_id),
             instructor_id: instructorId,
-            price,
-            sale_price,
-            is_bestseller: is_bestseller === 'true' || is_bestseller === 'on' || is_bestseller === '1'
+            price: normalizedPrice,
+            sale_price: normalizedSalePrice,
+            status: save_type === 'draft' ? 'draft' : 'pending',
+            is_complete: false,
+            is_bestseller: false, // Only admin can set bestseller status
+            view_count: 0,
+            enrollment_count: 0,
+            rating_avg: 0,
+            rating_count: 0
         };
 
         await courseModel.add(newCourse);
         req.session.flash = { success: 'Course created.' };
-        res.redirect('/instructor');
+        res.redirect('/instructor/create');
     } catch (err) {
-        console.error(err);
+        logger.error({ err, instructorId: req.session?.authUser?.user_id }, 'Instructor create course error');
         const categories = await categoryModel.findAll();
         return res.status(400).render('vwInstructor/create', { errorMessages: { general: ['Invalid data'] }, oldData: req.body, categories });
     }
@@ -347,7 +350,7 @@ router.post('/update-course/:id', async (req, res) => {
     res.redirect(`/instructor/manage-course/${courseId}`);
 });
 
-// API endpoint để lấy subcategories
+// API endpoint to fetch subcategories
 router.get('/api/categories/:categoryId/subcategories', async (req, res) => {
     try {
         const categoryId = parseInt(req.params.categoryId, 10);
@@ -355,26 +358,65 @@ router.get('/api/categories/:categoryId/subcategories', async (req, res) => {
             return res.status(400).json({ error: 'Invalid Category ID' });
         }
 
-        console.log('Fetching subcategories for category:', categoryId); // Debug log
-
-        // Kiểm tra xem category có tồn tại không
+        // Check if the category exists
         const category = await categoryModel.findById(categoryId);
         if (!category) {
             return res.status(404).json({ error: 'Category not found' });
         }
 
         const subcategories = await categoryModel.findSubcategories(categoryId);
-        console.log('Found subcategories:', subcategories); // Debug log
 
-        // Luôn trả về một mảng, ngay cả khi không có subcategories
+        // Always return an array, even if there are no subcategories
         res.json(subcategories || []);
     } catch (err) {
-        console.error('Error fetching subcategories:', err);
+            logger.error({ err, categoryId }, 'Error fetching subcategories');
         res.status(500).json({
             error: 'Internal server error',
             details: err.message
         });
     }
+});
+
+router.post('/courses/hide', isInstructor, async (req, res) => {
+  try {
+    const { course_id } = req.body;
+    if (!course_id) return res.status(400).json({ ok:false, message: 'Missing course_id' });
+
+    const instructorId = req.session.authUser.user_id;
+
+        // If the model provides a permission-aware method (recommended)
+    if (typeof courseModel.hideCourseByInstructor === 'function') {
+      const updated = await courseModel.hideCourseByInstructor(course_id, instructorId);
+            if (!updated) return res.status(403).json({ ok:false, message: 'Course not found or you do not have permission.' });
+    } else {
+            // Fallback: use simpler method (ensure permission is enforced elsewhere)
+      const updated = await courseModel.hideCourse(course_id);
+            if (!updated) return res.status(404).json({ ok:false, message: 'Unable to update course.' });
+    }
+
+        return res.json({ ok:true, message: 'Course has been hidden successfully.' });
+    } catch (err) {
+        logger.error({ err, body: req.body, instructorId: req.session?.authUser?.user_id }, 'POST /instructor/courses/hide error');
+    return res.status(500).json({ ok:false, message: 'Server error' });
+  }
+});
+
+
+
+router.post('/courses/show', isInstructor, async (req, res) => {
+  try {
+    const { course_id } = req.body;
+    if (!course_id) return res.status(400).json({ success:false, message:'Missing course_id' });
+
+    const userId = req.session.authUser.user_id;
+    const updated = await courseModel.showCourseByInstructor(course_id, userId);
+        if (!updated) return res.status(403).json({ success:false, message:'Course not found or you do not have permission.' });
+
+        return res.json({ success:true, message:'Course is now visible.' });
+  } catch (err) {
+        logger.error({ err, body: req.body, instructorId: req.session?.authUser?.user_id }, 'POST /instructor/courses/show error');
+    return res.status(500).json({ success:false, message:'Server error' });
+  }
 });
 
 export default router;

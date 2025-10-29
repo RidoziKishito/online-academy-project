@@ -1,5 +1,6 @@
 import express from 'express';
 import contactModel from '../models/contact.model.js';
+import logger from '../utils/logger.js';
 
 const router = express.Router();
 
@@ -22,7 +23,7 @@ router.post('/', async (req, res) => {
     // otherwise render the page with success
     res.render('contact', { layout: 'main', success: true, name, email });
   } catch (err) {
-    console.error('Error saving contact message:', err);
+    logger.error({ err, body: req.body }, 'Error saving contact message');
     if (req.headers.accept && req.headers.accept.indexOf('application/json') !== -1) {
       return res.status(500).json({ success: false, error: 'Internal error' });
     }

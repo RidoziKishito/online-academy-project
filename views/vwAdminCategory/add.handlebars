@@ -3,8 +3,10 @@
 <script>
     (function () {
         const input = document.getElementById('txtCatName');
+        const select = document.getElementById('ddlParentCat');
         const btn = document.getElementById('btnSave');
         if (!input || !btn) return;
+
         const toggle = () => {
             const hasValue = input.value && input.value.trim().length > 0;
             btn.disabled = !hasValue;
@@ -34,17 +36,30 @@
 </script>
 {{/fillContent}}
 
-
 <form id="frmAddCategory" method="post">
     <div class="card">
         <div class="card-header">New Category</div>
         <div class="card-body">
             <div class="mb-3">
                 <label for="txtCatName" class="form-label">Category</label>
-                <input type="text" class="form-control" id="txtCatName" name="catname" autofocus value="{{old.catname}}"
-                    required>
+                <input type="text" class="form-control" id="txtCatName" name="catname"
+                       value="{{old.catname}}" required autofocus>
+            </div>
+
+            <div class="mb-3">
+                <label for="ddlParentCat" class="form-label">Parent Category</label>
+                <select class="form-select" id="ddlParentCat" name="parent_id">
+                    <option value="">None</option>
+                    {{#each categories}}
+                    <option value="{{this.category_id}}"
+                        {{#ifEq this.category_id ../old.parent_id}}selected{{/ifEq}}>
+                        {{this.name}}
+                    </option>
+                    {{/each}}
+                </select>
             </div>
         </div>
+
         <div class="card-footer text-muted">
             <a class="btn btn-outline-success" href="/admin/categories" role="button">
                 <i class="bi bi-arrow-left"></i>

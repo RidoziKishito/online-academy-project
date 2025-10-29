@@ -24,7 +24,7 @@
     <table class="table table-hover">
         <thead>
             <tr>
-                <th scope="col" class="text-center">#</th>
+                <th scope="col" class="text-center">ID</th>
                 <th scope="col">Category</th>
                 <th scope="col" class="text-end">Action</th>
             </tr>
@@ -33,9 +33,14 @@
             {{#each categories}}
             <tr>
                 <th scope="row" class="text-center">{{catid}}</th>
-                <td>{{catname}}</td>
+                <td>
+                    {{catname}} 
+                    {{#unless parent_category_id}}
+                        <span class="badge bg-danger ms-2">Parent</span>
+                    {{/unless}}
+                </td>
                 <td class="text-end">
-                    <a name="" id="" class="btn btn-outline-primary btn-sm" href="/admin/categories/edit?id={{catid}}" role="button">
+                    <a name="" id="" class="btn btn-outline-primary btn-sm" href="/admin/categories/edit/{{catid}}" role="button">
                         <i class="bi bi-pencil-square"></i>
                     </a>
                 </td>

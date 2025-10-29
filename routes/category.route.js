@@ -1,5 +1,6 @@
 import express from 'express';
 import * as categoryModel from '../models/category.model.js';
+import logger from '../utils/logger.js';
 
 const router = express.Router();
 
@@ -12,51 +13,101 @@ router.get('/', async (req, res) => {
   });
 });
 
-router.get('/add', (req, res) => {
-  res.render('vwAdminCategory/add');
+
+router.get('/add', async (req, res) => {
+  try {
+    // Fetch all parent categories (parent_category_id IS NULL)
+    const parentCategories = await categoryModel.findParentCategories();
+
+    // Render view and pass parent categories
+    res.render('vwAdminCategory/add', {
+      categories: parentCategories
+    });
+  } catch (err) {
+    logger.error({ err }, 'Error fetching parent categories');
+    res.status(500).render('vwAdminCategory/add', {
+      error: 'Failed to load parent categories.'
+    });
+  }
 });
 
 router.post('/add', async (req, res) => {
-  const rawName = (req.body.catname || '').trim();
+  const name = (req.body.catname || '').trim();
+  const parentId = req.body.parent_id || null;
 
-  // Basic validation
-  if (!rawName) {
+  // Validate empty name
+  if (!name) {
+    const parentCategories = await categoryModel.findParentCategories();
     return res.status(400).render('vwAdminCategory/add', {
       error: 'Category name cannot be empty.',
-      old: { catname: '' }
+      old: { catname: '', parent_id: parentId },
+      categories: parentCategories
     });
   }
 
-  // Duplicate check (case-insensitive)
-  const existed = await categoryModel.existsByName(rawName);
+  // Check for duplicate name
+  const existed = await categoryModel.existsByName(name);
   if (existed) {
+    const parentCategories = await categoryModel.findParentCategories();
     return res.status(400).render('vwAdminCategory/add', {
       error: 'Category already exists, please choose a different name.',
-      old: { catname: rawName }
+      old: { catname: name, parent_id: parentId },
+      categories: parentCategories
     });
   }
 
-  await categoryModel.add({ name: rawName });
-  res.render('vwAdminCategory/add', { success: true });
+  // Insert; DB will auto-increment category_id
+  await categoryModel.add({
+    name,
+    parent_category_id: parentId || null,
+    created_at: new Date() // or new Date().toISOString() depending on DB
+  });
+
+  const parentCategories = await categoryModel.findParentCategories();
+  res.render('vwAdminCategory/add', { success: true, categories: parentCategories });
 });
 
-router.get('/edit', async (req, res) => {
-  const id = req.query.id || 0;
-  const category = await categoryModel.findById(id);
-  if (!category) return res.redirect('/admin/categories');
-  // provide legacy keys for templates
-  res.render('vwAdminCategory/edit', { category: { ...category, catid: category.category_id, catname: category.name } });
+
+// 🟩 GET /admin/categories/edit/:id
+router.get('/edit/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+    const category = await categoryModel.findById(id);
+
+    if (!category) {
+      return res.redirect('/admin/categories');
+    }
+
+    // Get parent categories (exclude itself to avoid loops)
+    const parentCategories = await categoryModel.findParentCategories();
+    const parentOptions = parentCategories.filter(c => c.category_id !== Number(id));
+
+    res.render('vwAdminCategory/edit', {
+      category: {
+        ...category,
+        catid: category.category_id,
+        catname: category.name
+      },
+      categories: parentOptions
+    });
+  } catch (err) {
+    logger.error({ err, id: req.params?.id }, 'Error fetching category for edit');
+    res.status(500).render('vwAdminCategory/edit', {
+      error: 'Failed to load category for editing.'
+    });
+  }
 });
+
 
 router.post('/del', async (req, res) => {
   // Accept legacy form field 'catid' as well
   const id = req.body.category_id || req.body.catid;
   
-  // Kiểm tra xem category có khóa học nào không
+  // Check if the category has any courses
   const hasCourses = await categoryModel.hasCourse(id);
   
   if (hasCourses) {
-    // Nếu có khóa học, không cho phép xóa - render lại trang edit với thông báo lỗi
+    // If it has courses, do not allow deletion - render edit page with error
     const category = await categoryModel.findById(id);
     return res.render('vwAdminCategory/edit', {
       category: { ...category, catid: category.category_id, catname: category.name },
@@ -64,12 +115,12 @@ router.post('/del', async (req, res) => {
     });
   }
   
-  // Nếu không có khóa học, cho phép xóa
+  // If no courses, allow deletion
   try {
     await categoryModel.del(id);
     return res.redirect('/admin/categories');
   } catch (err) {
-    // Phòng trường hợp vẫn dính ràng buộc FK (an toàn kép)
+    // Safety net in case of lingering FK constraints
     const category = await categoryModel.findById(id);
     const isFkViolation = err && (err.code === '23503' || String(err.message).includes('foreign key'));
     return res.status(400).render('vwAdminCategory/edit', {
@@ -83,31 +134,43 @@ router.post('/del', async (req, res) => {
 
 router.post('/patch', async (req, res) => {
   const id = req.body.category_id || req.body.catid;
-  const rawName = (req.body.name || req.body.catname || '').trim();
+  const name = (req.body.catname || req.body.name || '').trim();
+  const parentId = req.body.parent_id || null;
 
-  // Ensure category exists
+  // 1️⃣ Check if the category exists
   const existing = await categoryModel.findById(id);
   if (!existing) return res.redirect('/admin/categories');
 
-  // Validate not empty
-  if (!rawName) {
+  // 2️⃣ Validate empty name
+  if (!name) {
+    const parentCategories = await categoryModel.findParentCategories();
     return res.status(400).render('vwAdminCategory/edit', {
-      category: { ...existing, catid: existing.category_id, catname: '' },
+      category: { ...existing, catid: id, catname: '', parent_id: parentId },
+      categories: parentCategories,
       error: 'Category name cannot be empty.'
     });
   }
 
-  // Duplicate check excluding current id
-  const duplicated = await categoryModel.existsByNameExceptId(rawName, id);
+  // 3️⃣ Check for duplicate name (excluding itself)
+  const duplicated = await categoryModel.existsByNameExceptId(name, id);
   if (duplicated) {
+    const parentCategories = await categoryModel.findParentCategories();
     return res.status(400).render('vwAdminCategory/edit', {
-      category: { ...existing, catid: existing.category_id, catname: rawName },
+      category: { ...existing, catid: id, catname: name, parent_id: parentId },
+      categories: parentCategories,
       error: 'Category already exists, please choose a different name.'
     });
   }
 
-  await categoryModel.patch(id, { name: rawName });
+  // 4️⃣ Update category (do not change created_at)
+  await categoryModel.patch(id, {
+    name,
+    parent_category_id: parentId || null
+  });
+
+  // 5️⃣ Redirect back to the list
   res.redirect('/admin/categories?updated=true');
 });
+
 
 export default router;

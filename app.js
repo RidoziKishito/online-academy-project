@@ -2,10 +2,17 @@ import express from 'express';
 import { engine } from 'express-handlebars';
 import hsb_sections from 'express-handlebars-sections';
 import session from 'express-session';
+import connectPgSimple from 'connect-pg-simple';
+import pg from 'pg';
+import helmet from 'helmet';
+import cors from 'cors';
+import pinoHttp from 'pino-http';
+import compression from 'compression';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import Handlebars from 'handlebars';
 import dotenv from 'dotenv';
+import NodeCache from 'node-cache';
 
 // Load environment variables first
 dotenv.config();
@@ -13,26 +20,104 @@ dotenv.config();
 import { testEmailConfig } from './utils/mailer.js';
 testEmailConfig();
 // Import Middlewares
-import { restrict, isAdmin, isInstructor } from './middlewares/auth.mdw.js';
+import { restrict, isAdmin, isInstructor, isStudent } from './middlewares/auth.mdw.js';
 // Import Models (chỉ cần cho middleware)
 import * as categoryModel from './models/category.model.js';
 import * as viewModel from './models/views.model.js';
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Security & logging middleware
+const isProd = process.env.NODE_ENV === 'production';
+
+// Request logging with request-id
+import logger from './utils/logger.js';
+app.use(pinoHttp({
+  logger,
+  genReqId: (req) => req.headers['x-request-id'] || undefined,
+  autoLogging: true,
+}));
+
+// CORS: allowlist via env (comma-separated)
+let corsOptions = { origin: true, credentials: true };
+if (process.env.CORS_ALLOWED_ORIGINS) {
+  const origins = process.env.CORS_ALLOWED_ORIGINS.split(',').map(s => s.trim()).filter(Boolean);
+  corsOptions = { origin: origins, credentials: true };
+} else if (isProd) {
+  logger.warn('CORS_ALLOWED_ORIGINS not set in production; CORS is currently permissive');
+}
+
+// Security headers with relaxed CSP for web app functionality
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+  scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdn.jsdelivr.net", "https://www.google.com", "https://www.gstatic.com", "https://www.youtube.com", "https://www.recaptcha.net"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com", "https://cdn.jsdelivr.net", "data:"],
+      imgSrc: ["'self'", "data:", "https:", "http:"],
+      mediaSrc: ["'self'", "https:", "http:", "data:", "blob:"],
+  connectSrc: ["'self'", "https://www.google.com", "https://www.recaptcha.net", "https:", "http:"],
+  frameSrc: ["'self'", "https://www.google.com", "https://www.recaptcha.net", "https://www.youtube.com", "https://www.youtube-nocookie.com"],
+      objectSrc: ["'none'"],
+      upgradeInsecureRequests: isProd ? [] : null,
+    },
+  },
+  crossOriginEmbedderPolicy: false,
+}));
+app.use(cors(corsOptions));
+
+// Disable X-Powered-By header (defense in depth)
+app.disable('x-powered-by');
+
+// Enable gzip/deflate compression
+app.use(compression());
+
+// Add HSTS in production (enforce HTTPS)
+if (isProd) {
+  app.use(helmet.hsts({ maxAge: 15552000 })); // 180 days
+}
+
+// Sessions with Postgres store
 app.set('trust proxy', 1)
+const PgStore = connectPgSimple(session);
+
+// Use a dedicated, tiny pg Pool for the session store to avoid exhausting Supabase pooler
+const { Pool } = pg;
+const sessionPgPool = new Pool({
+  host: process.env.DB_HOST || process.env.HOST,
+  port: Number(process.env.DB_PORT || process.env.PORT) || 5432,
+  user: process.env.DB_USER || process.env.USER,
+  password: process.env.DB_PASSWORD || process.env.PASSWORD,
+  database: process.env.DB_NAME || 'postgres',
+  max: 2,                 // keep very small
+  idleTimeoutMillis: 10000,
+  connectionTimeoutMillis: 10000,
+});
+
+sessionPgPool.on('error', (err) => {
+  logger.error({ err }, 'pg session pool error');
+});
+
+const sessionStore = new PgStore({
+  pool: sessionPgPool,
+  createTableIfMissing: true,
+});
+
 app.use(session({
+  store: sessionStore,
   secret: process.env.SESSION_SECRET || 'fallback-secret-please-set-SESSION_SECRET-in-env',
   resave: false,
-  saveUninitialized: true,
-  cookie: { 
-    secure: process.env.NODE_ENV === 'production', // true in production with HTTPS
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
-    maxAge: 1000 * 60 * 60 * 24 // 24 hours
+    maxAge: 1000 * 60 * 60 * 24,
+    sameSite: process.env.NODE_ENV === 'production' ? 'lax' : 'lax'
   }
 }));
 
@@ -46,8 +131,7 @@ app.set('views', './views');
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json()); // Thêm dòng này để xử lý JSON body cho các API
-app.use('/static', express.static('static'));
-app.use(express.static('public')); // Add this line to serve files from public directory
+app.use(express.static('static')); // Serve all static files from /static folder
 
 // Import Routers
 import accountRouter from './routes/account.route.js';
@@ -60,6 +144,7 @@ import instructorAdminRouter from './routes/instructor.route.js';
 import courseAdminRouter from './routes/course-admin.route.js';
 import adminDashboardRouter from './routes/admin-dashboard.route.js';
 import adminAccountsRouter from './routes/admin-accounts.route.js';
+import adminContactRouter from './routes/admin-contact.route.js';
 import contactRouter from './routes/contact.route.js';
 import sitemapRouter from './routes/sitemap.route.js';
 import instructorsRouter from './routes/instructors.route.js';
@@ -70,6 +155,7 @@ import passport from './utils/passport.js';
 import authRouter from './routes/auth.route.js';
 import rateLimit from 'express-rate-limit';
 import paymentRouter from './routes/payment.route.js';
+// logger already imported above for pino-http
 
 app.engine('handlebars', engine({
   defaultLayout: 'main',
@@ -117,6 +203,18 @@ app.engine('handlebars', engine({
       }
       return options.inverse(this);
     },
+    or(a, b) {
+      return a || b;
+    },
+    not(a) {
+      return !a;
+    },
+    ifEq2(a, b, options) {
+      if (a == b) {
+        return options.fn(this);
+      }
+      return options.inverse(this);
+    },
 
     render_stars(rating) {
       const fullStars = Math.floor(rating || 0);
@@ -139,12 +237,6 @@ app.engine('handlebars', engine({
       }
 
       return new Handlebars.SafeString(stars);
-    },
-
-    format_date: function (timestamp) {
-      if (!timestamp) return '';
-      const date = new Date(timestamp);
-      return date.toLocaleDateString('vi-VN');
     },
 
     // Trả về danh sách category con của một category cha
@@ -250,27 +342,59 @@ app.engine('handlebars', engine({
         }
         
         return url;
+    },
+    isStudent(options) {
+      const user = options.data.root.authUser; // lấy từ res.locals.authUser
+      if (!user) return false;
+      return user.role === 'student';
     }
+
 
   }
 }));
 
 
 // ================= MIDDLEWARES TOÀN CỤC =================
+// Simple in-memory cache for global data
+const cache = new NodeCache({ stdTTL: 300, checkperiod: 60 }); // 5 minutes TTL
+async function getOrSet(key, fetcher) {
+  const cached = cache.get(key);
+  if (cached) return cached;
+  const data = await fetcher();
+  cache.set(key, data);
+  return data;
+}
+
 // Middleware cung cấp thông tin đăng nhập cho tất cả các view
 app.use(async function (req, res, next) {
   res.locals.isAuthenticated = req.session.isAuthenticated || false;
   res.locals.authUser = req.session.authUser || null;
-  res.locals.top3WeekCourses = await viewModel.findTop3WeekCourses();
-  res.locals.topCategories = await viewModel.findTopCategories();
+  res.locals.topWeekCourses = await getOrSet('topWeekCourses', () => viewModel.findTopWeekCourses());
+  res.locals.topCategories = await getOrSet('topCategories', () => viewModel.findTopCategories());
   res.locals.categoryIcons = {
     "Development": "bi bi-code-slash",
     "Design": "bi bi-palette",
     "Data Science": "bi bi-bar-chart-line",
-    "Digital Marketing": "bi bi-megaphone"
-  },
-  res.locals.newestCourses = await viewModel.findNewestCourses();
-  res.locals.mostViewCourses = await viewModel.findMostViewCourses();
+    "Digital Marketing": "bi bi-megaphone",
+    "Frontend Development": "bi bi-laptop",
+    "Backend Development": "bi bi-server",
+    "UI Design": "bi bi-palette-fill",
+    "UX Design": "bi bi-people",
+    "Data Analysis": "bi bi-graph-up",
+    "Machine Learning": "bi bi-cpu",
+    "Social Media Marketing": "bi bi-share",
+    "Content Marketing": "bi bi-journal-text",
+    "SEO": "bi bi-search",
+    "Mobile Development": "bi bi-phone",
+    "DevOps": "bi bi-tools",
+    "Cloud Computing": "bi bi-cloud",
+    "Cyber Security": "bi bi-shield-lock",
+    "Business": "bi bi-briefcase",
+    "Photography": "bi bi-camera",
+    "Music": "bi bi-music-note-beamed"
+  };
+  res.locals.newestCourses = await getOrSet('newestCourses', () => viewModel.findNewestCourses());
+  res.locals.mostViewCourses = await getOrSet('mostViewCourses', () => viewModel.findMostViewCourses());
   next();
 });
 
@@ -282,6 +406,11 @@ app.use(function (req, res, next) {
 //Provide isInstructor flag to templates
 app.use(function (req, res, next) {
   res.locals.isInstructor = !!(req.session && req.session.authUser && req.session.authUser.role === 'instructor');
+  next();
+});
+// Provide isStudent flag to templates
+app.use(function (req, res, next) {
+  res.locals.isStudent = !!(req.session && req.session.authUser && req.session.authUser.role === 'student');
   next();
 });
 // Provide current year to templates
@@ -299,7 +428,7 @@ app.use(function (req, res, next) {
 
 // Middleware cung cấp danh sách lĩnh vực cho layout
 app.use(async function (req, res, next) {
-  const list = await categoryModel.findAll();
+  const list = await getOrSet('globalCategories', () => categoryModel.findAll());
   // Provide both the DB row and legacy keys used by older templates
   res.locals.globalCategories = list.map(cat => ({
     ...cat,
@@ -320,31 +449,86 @@ app.use(function (req, res, next) {
 
 // ================= ROUTERS =================
 // -- Routes công khai (ai cũng xem được) --
-app.get('/', (req, res) => {
-  if (!req.session.isAuthenticated) {
-    res.render('home', {
-      layout: 'home-main'
-    });
+app.get('/', async (req, res) => {
+  const user = req.session.authUser;
+
+  if (!req.session.isAuthenticated || !user) {
+    // chưa đăng nhập
+    return res.render('home', { layout: 'home-main' });
   }
-  else {
-    res.render('home-authen', {
-      layout: 'main'
-    });
+
+  // đã đăng nhập
+  if (user.role === 'student') {
+    try {
+      // Load courses data for authenticated student home
+      const coursesModel = await import('./models/courses.model.js');
+      
+      // Get top courses (limit 6 for featured section)
+      const topWeekCourses = await coursesModel.getAllWithBadge({ 
+        limit: 6, 
+        offset: 0,
+        order: 'views_count' // or 'avg_rating'
+      });
+      
+      // Get most viewed courses
+      const mostViewedCourses = await coursesModel.getAllWithBadge({ 
+        limit: 8, 
+        offset: 0,
+        order: 'views_count'
+      });
+      
+      // Get newest courses
+      const newestCourses = await coursesModel.getAllWithBadge({ 
+        limit: 8, 
+        offset: 0,
+        order: 'created_at'
+      });
+      
+      return res.render('home-authen', { 
+        layout: 'main',
+        topWeekCourses: topWeekCourses || [],
+        mostViewedCourses: mostViewedCourses || [],
+        newestCourses: newestCourses || []
+      });
+    } catch (error) {
+      logger.error({ err: error }, 'Error loading home page data');
+      // Fallback to render without data
+      return res.render('home-authen', { 
+        layout: 'main',
+        topWeekCourses: [],
+        mostViewedCourses: [],
+        newestCourses: []
+      });
+    }
   }
+
+  if (user.role === 'instructor') {
+    return res.redirect('/instructor');
+  }
+
+  if (user.role === 'admin') {
+    return res.redirect('/admin/dashboard');
+  }
+
+  // fallback
+  res.render('home', { layout: 'home-main' });
 });
+
 app.use('/account', accountRouter);
 app.use('/courses', courseRouter);
 app.use('/auth', authRouter);
 app.use('/payment', paymentRouter); 
 
 // -- Routes của học viên (cần đăng nhập) --
-app.use('/student', restrict, studentRouter);
-app.use('/learn', restrict, learnRouter);
+// Student-only areas
+app.use('/student', restrict, isStudent, studentRouter);
+app.use('/learn', restrict, isStudent, learnRouter);
 
 // Public instructors profiles
 app.use('/instructors', instructorsRouter);
 
-app.use('/review', restrict, reviewRoute);
+// Only students should create reviews
+app.use('/review', restrict, isStudent, reviewRoute);
 // -- Routes của giảng viên (cần đăng nhập và là instructor) --
 app.use('/instructor', restrict, isInstructor, instructorDashboardRouter);
 
@@ -354,6 +538,7 @@ app.use('/admin/instructors', restrict, isAdmin, instructorAdminRouter);
 app.use('/admin/courses', restrict, isAdmin, courseAdminRouter);
 app.use('/admin/dashboard', restrict, isAdmin, adminDashboardRouter);
 app.use('/admin/accounts', restrict, isAdmin, adminAccountsRouter);
+app.use('/admin/contact', restrict, isAdmin, adminContactRouter);
 app.use('/contact', contactRouter);
 app.use('/sitemap', sitemapRouter);
 
@@ -385,15 +570,46 @@ app.use('/test', restrict, testChatRouter);
 
 
 // ================= XỬ LÝ LỖI =================
+// Health check
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok', time: new Date().toISOString() });
+});
+
 app.use((req, res) => {
   res.status(404).render('404');
 });
 
 app.use((err, req, res, next) => {
-  console.error(err.stack);
+  logger.error({ err }, 'Unhandled error middleware');
   res.status(500).render('500');
 });
 // =======================================================
-app.listen(PORT, () => {
-  console.log('Application listening on port ' + PORT + ' | http://localhost:' + PORT);
+// Graceful shutdown & error observers
+process.on('unhandledRejection', (reason) => {
+  logger.error({ err: reason }, 'Unhandled Promise Rejection');
 });
+
+process.on('uncaughtException', (err) => {
+  logger.error({ err }, 'Uncaught Exception');
+});
+
+const server = app.listen(PORT, () => {
+  logger.info({ port: PORT }, `Application listening on port ${PORT}`);
+});
+
+function shutdown() {
+  logger.info('Shutting down gracefully...');
+  try {
+    server.close(() => {
+      logger.info('HTTP server closed');
+      try { sessionPgPool.end(); } catch (e) { logger.warn({ err: e }, 'Error closing session pool'); }
+      process.exit(0);
+    });
+  } catch (e) {
+    logger.error({ err: e }, 'Error during shutdown');
+    process.exit(1);
+  }
+}
+
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);

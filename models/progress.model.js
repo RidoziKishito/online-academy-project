@@ -1,42 +1,48 @@
 import db from '../utils/db.js';
+import logger from '../utils/logger.js';
 
-const TABLE_NAME = 'user_lesson_progress'; // Sử dụng thống nhất 1 tên bảng
+const TABLE_NAME = 'user_lesson_progress'; // Use a single consistent table name
 
-// Đánh dấu bài học đã hoàn thành
+// Mark a lesson as completed
+// progress.model.js
+// Assume `db` is a Knex instance and TABLE_NAME is the table name (e.g., 'user_lesson_progress')
 export async function markAsCompleted(userId, lessonId) {
+  // Use DB timestamp to avoid timezone issues between server and DB
+  const now = db.fn.now();
+
   try {
-    await db(TABLE_NAME)
-      .insert({ 
-        user_id: userId, 
-        lesson_id: lessonId,
-        completed_at: new Date()
-      })
-      .onDuplicateUpdate({
-        completed_at: new Date()
-      });
-    
-    return true;
-  } catch (error) {
-    console.error('markAsCompleted error:', error);
-    
-    // Fallback: dùng cách check-then-insert
-    const exists = await db(TABLE_NAME)
-      .where({ user_id: userId, lesson_id: lessonId })
-      .first();
-    
-    if (!exists) {
-      await db(TABLE_NAME).insert({
+    // Perform INSERT; on conflict (user_id, lesson_id) do MERGE (update) instead of creating a new row.
+    // This is atomic at the DB level — avoids race conditions vs. check-then-insert.
+    const rows = await db(TABLE_NAME)
+      .insert({
         user_id: userId,
         lesson_id: lessonId,
-        completed_at: new Date()
-      });
-    }
-    
-    return true;
+        // Mark as completed
+        is_completed: true,
+        // completed_at from DB
+        completed_at: now
+      })
+      // onConflict requires a unique constraint on (user_id, lesson_id)
+      .onConflict(['user_id', 'lesson_id'])
+      // merge: update columns if row already exists
+      .merge({
+        is_completed: true,
+        completed_at: now
+      })
+      // .returning(...) (Postgres) returns the inserted/updated row if needed
+      .returning(['progress_id', 'user_id', 'lesson_id', 'is_completed', 'completed_at']);
+
+    // rows is typically an array; return first row or true depending on app flow
+    return rows && rows[0] ? rows[0] : true;
+  } catch (error) {
+    // Log error for debugging
+    logger.error({ err: error, userId, lessonId }, 'markAsCompleted error');
+    // Depending on workflow: rethrow to let caller handle
+    throw error;
   }
 }
 
-// Lấy danh sách các bài học đã hoàn thành của user trong course (nếu có)
+// Get list of lessons completed by user in a course (if any)
 export function findCompletedLessonsByUser(userId, courseId = null) {
   let query = db(TABLE_NAME)
     .join('lessons', `${TABLE_NAME}.lesson_id`, '=', 'lessons.lesson_id')
@@ -50,7 +56,7 @@ export function findCompletedLessonsByUser(userId, courseId = null) {
   return query.select(`${TABLE_NAME}.lesson_id`);
 }
 
-// Đếm tổng số lesson trong 1 khóa học
+// Count total lessons in a course
 export async function countLessonsByCourse(courseId) {
   const result = await db('lessons')
     .join('chapters', 'lessons.chapter_id', 'chapters.chapter_id')
@@ -61,7 +67,7 @@ export async function countLessonsByCourse(courseId) {
   return parseInt(result?.total) || 0;
 }
 
-// Đếm số lesson mà user đã hoàn thành trong khóa học
+// Count lessons completed by user in a course
 export async function countCompletedLessons(courseId, userId) {
   const result = await db(TABLE_NAME)
     .join('lessons', `${TABLE_NAME}.lesson_id`, '=', 'lessons.lesson_id')
@@ -74,7 +80,7 @@ export async function countCompletedLessons(courseId, userId) {
   return parseInt(result?.completed) || 0;
 }
 
-// Lấy chi tiết tiến độ học của user trong một khóa học
+// Get detailed learning progress of a user in a course
 export function findLessonProgressOfUser(courseId, userId) {
   return db('lessons')
     .join('chapters', 'lessons.chapter_id', 'chapters.chapter_id')
@@ -93,7 +99,7 @@ export function findLessonProgressOfUser(courseId, userId) {
     .orderBy('lessons.lesson_id');
 }
 
-// Lấy tất cả bài học user đã hoàn thành (mọi khóa)
+// Get all lessons completed by user (across all courses)
 export async function findCompletedLessonsByUserAll(userId) {
   return db(TABLE_NAME)
     .where('user_id', userId)

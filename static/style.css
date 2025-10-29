@@ -55,6 +55,10 @@ footer {
     color: var(--green-primary) !important;
 }
 
+.dropdown-menu {
+  z-index: 2000 !important;
+}
+
 .btn-outline-primary {
     color: var(--green-dark);
     border-color: var(--green-primary);

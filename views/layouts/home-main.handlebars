@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VietEdu Academy - Nền tảng học trực tuyến</title>
+    <title>VietEdu Academy - Online learning platform</title>
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
 
@@ -19,15 +19,18 @@
 
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
 
+    <!-- Mobile Responsive CSS -->
+    <link rel="stylesheet" href="/mobile.css">
+
     <style>
         :root {
-            /* Định nghĩa lại màu sắc của Bootstrap để hợp với thương hiệu */
+            /* Redefine Bootstrap colors to match the brand */
             --bs-primary: #46935f;
             --bs-primary-rgb: 70, 147, 95;
-            --bs-primary-dark: #347571; /* Màu này dùng cho h2, h1... */
+            --bs-primary-dark: #347571; /* Used for headings like h2, h1... */
 
-            --bs-secondary: #ECF8E5; /* Nền xanh lá nhạt */
-            --bs-light: #f7fbf5;     /* Nền trắng-xanh */
+            --bs-secondary: #ECF8E5; /* Light green background */
+            --bs-light: #f7fbf5;     /* Light white-green */
             
             --bs-font-sans-serif: 'Cabin', sans-serif;
             --bs-body-color: #2c3e50;
@@ -37,7 +40,7 @@
 
 
         body {
-            /* Cần thiết cho scrollspy */
+            /* Required for scrollspy */
             position: relative; 
         }
 
@@ -52,7 +55,7 @@
             position: relative;
         }
 
-        /* Hiệu ứng gạch chân cho tiêu đề h2 */
+        /* Underline effect for h2 titles */
         h2::after {
             content: '';
             display: block;
@@ -84,13 +87,13 @@
             border-top-right-radius: 16px !important;
         }
         
-        /* Đảm bảo navbar không che mất nội dung */
+        /* Ensure navbar doesn't cover content */
         section {
             padding-top: 80px;
             padding-bottom: 80px;
         }
         #hero {
-            padding-top: 160px; /* Hero cần nhiều khoảng trống hơn */
+            padding-top: 160px; /* Hero needs more spacing */
             padding-bottom: 120px;
         }
 
@@ -115,7 +118,7 @@
             padding-left: 5px;
         }
         
-        /* Tùy chỉnh nút Swiper */
+        /* Customize Swiper buttons */
         .courses-swiper .swiper-button-prev,
         .courses-swiper .swiper-button-next {
             background: var(--bs-white);
@@ -140,18 +143,18 @@
             background: var(--bs-primary) !important;
         }
         
-        /* Tùy chỉnh nút Bootstrap Carousel (cho Testimonials) */
+        /* Customize Bootstrap Carousel buttons (for Testimonials) */
         #testimonial-swiper .carousel-control-prev-icon,
         #testimonial-swiper .carousel-control-next-icon {
-             /* Dùng filter để đổi màu icon SVG mặc định */
+             /* Use filter to change default SVG icon color */
             filter: invert(0.5) sepia(1) saturate(5) hue-rotate(90deg);
         }
 
         .star-rating i {
-            display: inline-block; /* đảm bảo không xuống dòng */
-            margin-right: 2px;     /* khoảng cách nhỏ giữa các sao */
-            font-size: 1rem;       /* có thể tùy chỉnh */
-            line-height: 1;        /* tránh lệch dọc */
+            display: inline-block; /* ensure no line break */
+            margin-right: 2px;     /* small spacing between stars */
+            font-size: 1rem;       /* customizable */
+            line-height: 1;        /* avoid vertical misalignment */
         }
 
     </style>
@@ -181,10 +184,10 @@
             <a href="https://www.google.com/maps/place/Tr%C6%B0%E1%BB%9Dng+%C4%90%E1%BA%A1i+h%E1%BB%8Dc+S%C6%B0+ph%E1%BA%A1m+K%E1%BB%B9+thu%E1%BA%ADt+Th%C3%A0nh+ph%E1%BB%91+H%E1%BB%93+Ch%C3%AD+Minh/"
             target="_blank"
             class="text-decoration-none"
-            style="color: var(--bs-secondary)">Số 1 Võ Văn Ngân, Thủ Đức, TP. HCM</a>
+            style="color: var(--bs-secondary)">No. 1 Vo Van Ngan Street, Thu Duc, Ho Chi Minh City</a>
         </p>
         <p class="mb-1"><a href="/sitemap" class="text-decoration-none" style="color: var(--bs-secondary)">Where do you want to go?</a></p>
-        <p class="text-muted small mb-0">© {{currentYear}} VietEdu Academy</p>
+    <p class="text-muted small mb-0">© {{currentYear}} VietEdu Academy</p>
         </div>
     </div>
     </div>

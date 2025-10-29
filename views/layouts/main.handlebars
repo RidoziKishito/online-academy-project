@@ -22,10 +22,13 @@
   {{{_sections.css}}}
 
   <!-- Local style (optional) -->
-  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/style.css">
+  
+  <!-- Mobile Responsive CSS -->
+  <link rel="stylesheet" href="/mobile.css">
   
   <!-- Chat System CSS -->
-  <link rel="stylesheet" href="/static/chat.css">
+  <link rel="stylesheet" href="/chat.css">
 
   <style>
     /* Sticky footer layout */
@@ -61,6 +64,30 @@
       font-size: 1rem;
     }
 
+  /* Dropdown menu displays outside the navbar on desktop */
+    @media (min-width: 992px) {
+      .navbar .nav-item.dropdown {
+        position: static;
+      }
+      
+      .navbar .dropdown-menu {
+        position: absolute !important;
+        top: 100%;
+        right: 1rem;
+        transform: none !important;
+        margin-top: 0.5rem;
+      }
+    }
+
+  /* Mobile: dropdown stays inside the navbar as usual */
+    @media (max-width: 991.98px) {
+      .navbar .dropdown-menu {
+        position: static !important;
+        transform: none !important;
+        border: none;
+        box-shadow: none;
+      }
+    }
     
   </style>
 </head>
@@ -69,57 +96,62 @@
   <!-- Navbar -->
   <nav class="navbar navbar-expand-lg bg-body-tertiary shadow">
     <div class="container-fluid px-4">
+
+      <!-- ===== Brand ===== -->
       <a class="navbar-brand text-primary fw-bold d-flex align-items-center" href="/">
         <i class="bi bi-mortarboard-fill text-success me-2 fs-4"></i>
-        <b>VietEdu Academy</b>
+  <b>VietEdu Academy</b>
       </a>
 
+      <!-- ===== Toggle Button (Mobile) ===== -->
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent"
         aria-controls="navbarContent" aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>
       </button>
 
+      <!-- ===== Navbar Content ===== -->
       <div class="collapse navbar-collapse" id="navbarContent">
+
+        {{#if (or (isStudent) (not isAuthenticated))}}
+        <!-- ===== Left: Student Menus ===== -->
         <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-
-          <li class="nav-item">
-            <a class="nav-link" href="/courses"><b>Courses</b></a>
-          </li>
-
-          <li class="nav-item">
-            <a class="nav-link" href="/courses/allCat"><b>Category</b></a>
-          </li>
-
-          <li class="nav-item">
-            <a class="nav-link" href="/instructors"><b>Instructor</b></a>
-          </li>
-
-
+          <li class="nav-item"><a class="nav-link" href="/courses"><b>Courses</b></a></li>
+          <li class="nav-item"><a class="nav-link" href="/courses/allCat"><b>Category</b></a></li>
+          <li class="nav-item"><a class="nav-link" href="/instructors"><b>Instructor</b></a></li>
         </ul>
+        {{/if}}
 
-        
-        <form class="d-flex me-4" role="search" method="get" action="/courses/search">
-          <input class="form-control me-2" type="search" placeholder="Search" aria-label="Search" name="q" />
+        <!-- ===== Center/Right: Search ===== -->
+        <form class="d-flex ms-auto me-3" role="search" method="get" action="/courses/search">
+          <input class="form-control me-2" type="search" name="q" placeholder="Search" aria-label="Search" />
           <button class="btn btn-sm btn-outline-success" type="submit">
             <i class="bi bi-search"></i>
           </button>
         </form>
 
+        <!-- ===== Right: Auth Menu ===== -->
         <ul class="navbar-nav mb-2 mb-lg-0">
+
           {{#if isAuthenticated}}
+
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle fw-semibold" href="#" role="button" data-bs-toggle="dropdown"
               aria-expanded="false">
               Welcome,
               {{#if authUser.full_name}}{{authUser.full_name}}{{else}}{{authUser.email}}{{/if}}
             </a>
+
             <ul class="dropdown-menu dropdown-menu-end">
               <li><a class="dropdown-item" href="/account/profile"><i class="bi bi-person me-2"></i>Profile</a></li>
-              <li><a class="dropdown-item" href="/account/change-pwd"><i class="bi bi-lock me-2"></i>Change Password</a>
-              </li>
+              <li><a class="dropdown-item" href="/account/change-pwd"><i class="bi bi-lock me-2"></i>Change Password</a></li>
+              {{#if (isStudent)}}
+              <li><a class="dropdown-item" href="/contact">
+                <i class="bi bi-person-video2 me-2"></i> 
+                Become an Instructor
+                </li>
+              {{/if}}
               {{#if isAdmin}}
-              <li><a class="dropdown-item" href="/admin/dashboard"><i class="bi bi-speedometer2 me-2"></i>Admin
-                  Dashboard</a></li>
+              <li><a class="dropdown-item" href="/admin/dashboard"><i class="bi bi-speedometer2 me-2"></i>Admin Dashboard</a></li>
               {{/if}}
               <li><hr class="dropdown-divider" /></li>
               <li>
@@ -129,8 +161,11 @@
               </li>
             </ul>
           </li>
+
           <form id="frmSignout" action="/account/signout" method="post"></form>
+
           {{else}}
+
           <li class="nav-item">
             <a class="nav-link" href="/account/signup">
               <i class="bi bi-person-plus me-1"></i>Sign Up
@@ -141,11 +176,13 @@
               <i class="bi bi-box-arrow-in-right me-1"></i>Sign In
             </a>
           </li>
+
           {{/if}}
         </ul>
       </div>
     </div>
   </nav>
+
 
   <!-- Page Layout -->
   <div class="site-wrapper">
@@ -154,6 +191,7 @@
         <div class="row">
           <!-- Sidebar -->
           <aside class="col-lg-3 col-md-4 col-sm-6 mb-4 sidebar-categories">
+            {{#if (or (isStudent) (not isAuthenticated))}}
             <!-- Categories Card -->
             <div class="card mb-3" style="overflow: hidden;">
               <h5 class="card-header">Categories</h5>
@@ -188,12 +226,13 @@
                 {{/each}}
               </div>
             </div>
+            {{/if}}
 
             <!-- Featured / Tools Card -->
             <div class="card mb-3">
               <h5 class="card-header">
                 {{#if isAuthenticated}}
-                  {{#if (eq authUser.role 'instructor')}}Instructor Tools{{else}}My Learning{{/if}}
+                  {{#if (eq authUser.role 'instructor')}}Instructor Tools{{/if}}{{#if isAdmin}}Admin Navigation{{/if}}{{#if (isStudent)}}My Learning{{/if}}
                 {{else}}
                   Hi there!
                 {{/if}}
@@ -215,7 +254,25 @@
                         <i class="bi bi-eye"></i> View Public Profile
                       </a>
                     </div>
-                  {{else}}
+                  {{/if}}
+                  {{#if isAdmin}}
+                    <div class="d-grid gap-2 mb-3">
+                        <a href="/admin/categories" class="btn btn-outline-primary btn-sm">
+                          <i class="bi bi-tags gap-2"></i> Category
+                        </a>
+                        <a href="/admin/courses" class="btn btn-outline-danger btn-sm">
+                          <i class="bi bi-journal-text gap-2"></i> Courses
+                          <span class="badge bg-secondary">{{wishlistCount}}</span>
+                        </a>
+                        <a href="/admin/accounts" class="btn btn-outline-primary btn-sm">
+                          <i class="bi bi-people gap-2"></i> User
+                        </a>
+                        <a href="/admin/contact" class="btn btn-outline-warning btn-sm">
+                          <i class="bi bi-phone gap-2"></i> Contact
+                        </a>
+                    </div>
+                  {{/if}}
+                  {{#if (isStudent)}}
                     <div class="d-grid gap-2 mb-3">
                       <a href="/student/my-courses" class="btn btn-outline-primary btn-sm">
                         <i class="bi bi-book"></i> My Courses
@@ -236,7 +293,6 @@
                 {{/if}}
               </div>
             </div>
-
             <!-- Additional Featured Card -->
           </aside>
 
@@ -268,7 +324,7 @@
             <p class="mb-1 text-muted small">
               Address:
               <a href="https://www.google.com/maps/place/Tr%C6%B0%E1%BB%9Dng+%C4%90%E1%BA%A1i+h%E1%BB%8Dc+S%C6%B0+ph%E1%BA%A1m+K%E1%BB%B9+thu%E1%BA%ADt+Th%C3%A0nh+ph%E1%BB%91+H%E1%BB%93+Ch%C3%AD+Minh/"
-                target="_blank">Số 1 Võ Văn Ngân, Thủ Đức, TP. HCM</a>
+                target="_blank">No. 1 Vo Van Ngan Street, Thu Duc, Ho Chi Minh City</a>
             </p>
             <p class="mb-1"><a href="/sitemap" class="text-decoration-none">Where do you want to go?</a></p>
             <p class="text-muted small mb-0">© {{currentYear}} VietEdu Academy</p>
@@ -334,7 +390,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   
   <!-- Chat System JS -->
-  <script src="/static/chat.js"></script>
+  <script src="/chat.js"></script>
 
   {{{_sections.js}}}
   
@@ -357,6 +413,13 @@
     
     // Initialize Chat System
     document.addEventListener('DOMContentLoaded', function() {
+      // Ensure Bootstrap dropdowns work reliably
+      if (window.bootstrap) {
+        document.querySelectorAll('.dropdown-toggle').forEach(function (el) {
+          try { new bootstrap.Dropdown(el); } catch (e) { /* ignore */ }
+        });
+      }
+
       if (typeof ChatSystem !== 'undefined' && window.authUser) {
         window.chatSystem = new ChatSystem();
         console.log('Chat system initialized for user:', window.authUser.full_name);

@@ -6,12 +6,13 @@ import * as courseModel from '../models/courses.model.js';
 import * as instructorModel from '../models/instructors.model.js';
 import * as categoryModel from '../models/category.model.js';
 import * as enrollmentModel from '../models/enrollment.model.js';
-import { z } from 'zod'; // <-- THÊM: Import Zod
+import { z } from 'zod'; // Add: Import Zod
+import logger from '../utils/logger.js';
 
 const router = express.Router();
 
-// --- THÊM: Định nghĩa Schema (khuôn mẫu) cho dữ liệu course ---
-// Schema này sẽ tự động ép kiểu (string -> number) và kiểm tra dữ liệu
+// Define Zod schema for course data
+// This schema coerces types (string -> number) and validates input
 const courseSchema = z.object({
   title: z.string().min(1, "Course title is required"),
   short_description: z.string().min(1, "Short description is required"),
@@ -24,7 +25,7 @@ const courseSchema = z.object({
   category_id: z.string().min(1, "Please select a category")
     .pipe(z.coerce.number().int()),
 
-  // Sử dụng .pipe() để validate là string không rỗng, SAU ĐÓ mới ép kiểu
+  // Use .pipe() to validate non-empty string BEFORE coercing to number
   instructor_id: z.string().min(1, "Please select an instructor")
     .pipe(z.coerce.number().int()),
 
@@ -33,7 +34,7 @@ const courseSchema = z.object({
   view_count: z.coerce.number().int().min(0, "View count must be a positive integer").optional().default(0),
   enrollment_count: z.coerce.number().int().min(0, "Enrollment count must be a positive integer").optional().default(0),
 
-  // Dùng preprocess để xóa dấu phẩy (,) trong giá tiền trước khi ép kiểu
+  // Use preprocess to remove commas from price strings before coercion
   current_price: z.preprocess(
     (val) => String(val || '0').replace(/,/g, ''),
     z.coerce.number().min(0).optional().default(0)
@@ -43,7 +44,7 @@ const courseSchema = z.object({
     z.coerce.number().min(0).optional().default(0)
   ),
 
-  // Xử lý checkbox: nếu được check (value="true") -> true, nếu không (undefined) -> false
+  // Checkbox handling: if checked (value="true") -> true, otherwise (undefined) -> false
   is_bestseller: z.preprocess(
     (val) => val === 'true',
     z.boolean()
@@ -118,9 +119,9 @@ router.post('/create', async (req, res) => {
     // Validate and parse the request body using Zod schema
     const courseData = courseSchema.parse(req.body);
 
-    // Map form fields to database fields:
-    // original_price (form) -> price (database - giá gốc)
-    // current_price (form) -> sale_price (database - giá sale)
+  // Map form fields to database fields:
+  // original_price (form) -> price (database - original price)
+  // current_price (form) -> sale_price (database - sale price)
     const price = courseData.original_price || 0;
     let salePrice = courseData.current_price || null;
     
@@ -164,7 +165,7 @@ router.post('/create', async (req, res) => {
         instructors
       });
     }
-    console.error(error);
+    logger.error({ err: error }, 'Create course error');
     res.status(500).send('Server error');
   }
 });
@@ -176,7 +177,7 @@ router.post('/approve/:id', async (req, res) => {
     await courseModel.approveCourse(courseId);
     res.redirect('/admin/courses?action=approved');
   } catch (error) {
-    console.error(error);
+    logger.error({ err: error, courseId }, 'Approve course error');
     res.redirect('/admin/courses?error=approve_failed');
   }
 });
@@ -188,7 +189,7 @@ router.post('/hide/:id', async (req, res) => {
     await courseModel.hideCourse(courseId);
     res.redirect('/admin/courses?action=hidden');
   } catch (error) {
-    console.error(error);
+    logger.error({ err: error, courseId }, 'Hide course error');
     res.redirect('/admin/courses?error=hide_failed');
   }
 });
@@ -200,7 +201,7 @@ router.post('/show/:id', async (req, res) => {
     await courseModel.showCourse(courseId);
     res.redirect('/admin/courses?action=shown');
   } catch (error) {
-    console.error(error);
+    logger.error({ err: error, courseId }, 'Show course error');
     res.redirect('/admin/courses?error=show_failed');
   }
 });
@@ -219,7 +220,7 @@ router.post('/delete/:id', async (req, res) => {
     await courseModel.del(courseId);
     res.redirect('/admin/courses?action=deleted');
   } catch (error) {
-    console.error(error);
+    logger.error({ err: error, courseId }, 'Delete course error');
     res.redirect('/admin/courses?error=delete_failed');
   }
 });

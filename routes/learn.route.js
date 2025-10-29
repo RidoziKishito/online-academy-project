@@ -6,10 +6,11 @@ import * as courseModel from '../models/courses.model.js';
 import * as chapterModel from '../models/chapter.model.js';
 import * as lessonModel from '../models/lesson.model.js';
 import * as progressModel from '../models/progress.model.js';
+import logger from '../utils/logger.js';
 
 const router = express.Router();
 
-// Tất cả các route trong đây đều yêu cầu đăng nhập
+// All routes below require authentication
 router.use(restrict);
 
 // Route course overview -> redirect to first lesson
@@ -54,12 +55,12 @@ router.get('/:courseId', async (req, res) => {
       return res.redirect(`/courses/detail/${courseId}`);
     }
   } catch (err) {
-    console.error('learn.index error:', err);
+    logger.error({ err, courseId: req.params?.courseId }, 'learn.index error');
     return res.status(500).render('500', { message: 'Server error' });
   }
 });
 
-// Trang xem bài giảng
+// Lesson watch page
 router.get('/:courseId/lesson/:lessonId', async (req, res) => {
   try {
     const userId = req.session.authUser.user_id;
@@ -82,7 +83,7 @@ router.get('/:courseId/lesson/:lessonId', async (req, res) => {
       return res.redirect('/student/my-courses');
     }
 
-    // Đánh dấu bài học đã hoàn thành
+  // Mark lesson completed state
     const completedLessonIds = new Set(completedLessons.map(l => l.lesson_id));
     currentLesson.is_completed = completedLessonIds.has(currentLesson.lesson_id);
 
@@ -92,7 +93,7 @@ router.get('/:courseId/lesson/:lessonId', async (req, res) => {
       });
     });
 
-    // Tính toán previous/next lesson (flatten)
+  // Compute previous/next lesson (flatten)
     const allLessons = [];
     allChapters.forEach(chapter => {
       chapter.lessons.forEach(lesson => allLessons.push(lesson));
@@ -111,12 +112,12 @@ router.get('/:courseId/lesson/:lessonId', async (req, res) => {
       isEnrolled
     });
   } catch (err) {
-    console.error('learn.watch error:', err);
+    logger.error({ err, courseId: req.params?.courseId, lessonId: req.params?.lessonId }, 'learn.watch error');
     return res.status(500).render('500', { message: 'Server error' });
   }
 });
 
-// API để đánh dấu bài học đã hoàn thành
+// API to mark a lesson as completed
 router.post('/mark-complete', async (req, res) => {
   try {
     const userId = req.session.authUser.user_id;
@@ -152,12 +153,12 @@ router.post('/mark-complete', async (req, res) => {
       nextLesson: nextLesson ? `/learn/${courseId}/lesson/${nextLesson.lesson_id}` : null
     });
   } catch (err) {
-    console.error('mark-complete error:', err);
+    logger.error({ err, body: req.body }, 'mark-complete error');
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });
 
-// API lưu thời gian xem video
+// API to save video watch time
 router.post('/progress', async (req, res) => {
   try {
     const userId = req.session.authUser.user_id;
@@ -167,13 +168,13 @@ router.post('/progress', async (req, res) => {
       try {
         await progressModel.updateWatchTime(userId, lessonId, watchTime);
       } catch (e) {
-        console.warn('updateWatchTime warning:', e);
+        logger.warn({ err: e, lessonId, watchTime }, 'updateWatchTime warning');
       }
     }
 
     res.json({ success: true });
   } catch (error) {
-    console.error('Progress save error:', error);
+    logger.error({ err: error, body: req.body }, 'Progress save error');
     res.status(500).json({ success: false });
   }
 });
