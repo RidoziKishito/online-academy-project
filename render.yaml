@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: vietedu
+    name: online-academy-project
     runtime: node
     plan: free
     buildCommand: npm install

@@ -408,7 +408,7 @@ export function showCourse(courseId) {
 
 /* Enrollment & view counters */
 export function countEnrollmentsByCourse(courseId) {
-  return db('enrollments')
+  return db('user_enrollments')
     .where('course_id', courseId)
     .count('enrollment_id as count')
     .first()

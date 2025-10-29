@@ -107,7 +107,7 @@ export async function sendVerifyEmail(email, token, fullName = 'User') {
   const mailOptions = {
     from: `"${process.env.APP_NAME || 'Online Academy'}" <${process.env.EMAIL_USER}>`,
     to: email,
-    subject: 'Verify your VietEdu account',
+    subject: `Verify your ${process.env.APP_NAME || 'Online Academy'} account`,
     html: `
       <!DOCTYPE html>
       <html>
