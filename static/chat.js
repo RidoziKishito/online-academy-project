@@ -762,9 +762,8 @@ class ChatSystem {
     // Public method to open chat with specific user
     async openChatWithUser(otherUserId, otherUserName = null) {
         try {
-            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-                console.log('Opening chat with user:', otherUserId);
-            }
+            console.log('ChatSystem.openChatWithUser called with:', otherUserId, otherUserName);
+            
             // Create or get conversation
             const response = await fetch('/api/chat/conversations', {
                 method: 'POST',
@@ -776,19 +775,22 @@ class ChatSystem {
                 })
             });
 
+            console.log('API response status:', response.status);
             const data = await response.json();
-            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-                console.log('Create conversation response:', data);
-            }
+            console.log('Create conversation response:', data);
 
             if (data.success) {
+                console.log('Opening chat box and conversation...');
                 this.openChatBox();
                 this.openConversation(data.data.id, otherUserId, otherUserName);
             } else {
+                console.error('Failed to create conversation:', data.message);
+                alert('Failed to create conversation: ' + data.message);
                 this.showError('Failed to create conversation: ' + data.message);
             }
         } catch (error) {
             console.error('Error opening chat with user:', error);
+            alert('Error opening chat: ' + error.message);
             this.showError('Error opening chat: ' + error.message);
         }
     }
@@ -808,10 +810,26 @@ class ChatSystem {
 window.openChat = function(srcId, destId) {
     if (window.chatSystem) {
         window.chatSystem.openChatWithUser(destId);
+    } else {
+        console.error('Chat system not initialized');
     }
 };
 
-// Initialize chat system when DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-    window.chatSystem = new ChatSystem();
-});
+// Wrapper specifically for course detail button
+window.openChatWithInstructor = function(instructorId, instructorName) {
+    console.log('openChatWithInstructor called with:', instructorId, instructorName);
+    
+    if (!window.authUser) {
+        console.error('User not authenticated');
+        alert('Please sign in to chat with the instructor');
+        return;
+    }
+    
+    if (window.chatSystem) {
+        console.log('Opening chat with instructor...');
+        window.chatSystem.openChatWithUser(instructorId, instructorName);
+    } else {
+        console.error('Chat system not initialized');
+        alert('Chat system is not available. Please refresh the page.');
+    }
+};
