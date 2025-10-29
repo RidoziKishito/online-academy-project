@@ -390,6 +390,13 @@
     
     // Initialize Chat System
     document.addEventListener('DOMContentLoaded', function() {
+      // Ensure Bootstrap dropdowns work reliably
+      if (window.bootstrap) {
+        document.querySelectorAll('.dropdown-toggle').forEach(function (el) {
+          try { new bootstrap.Dropdown(el); } catch (e) { /* ignore */ }
+        });
+      }
+
       if (typeof ChatSystem !== 'undefined' && window.authUser) {
         window.chatSystem = new ChatSystem();
         console.log('Chat system initialized for user:', window.authUser.full_name);
