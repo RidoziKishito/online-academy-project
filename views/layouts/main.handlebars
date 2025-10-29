@@ -270,6 +270,33 @@
               </div>
             </div>
 
+            <!-- Account Quick Actions (always visible when logged in) -->
+            {{#if isAuthenticated}}
+            <div class="card mb-3">
+              <h5 class="card-header">Account</h5>
+              <div class="card-body">
+                <div class="d-grid gap-2">
+                  <a href="/account/profile" class="btn btn-outline-primary btn-sm">
+                    <i class="bi bi-person"></i> Profile
+                  </a>
+                  <a href="/account/change-pwd" class="btn btn-outline-warning btn-sm">
+                    <i class="bi bi-lock"></i> Change Password
+                  </a>
+                  {{#if (isStudent)}}
+                  <a href="/contact" class="btn btn-outline-success btn-sm">
+                    <i class="bi bi-person-video2"></i> Become an Instructor
+                  </a>
+                  {{/if}}
+                  <form id="frmSignoutSidebar" action="/account/signout" method="post"></form>
+                  <button type="button" class="btn btn-outline-danger btn-sm"
+                          onclick="document.getElementById('frmSignoutSidebar').submit();">
+                    <i class="bi bi-box-arrow-right"></i> Sign Out
+                  </button>
+                </div>
+              </div>
+            </div>
+            {{/if}}
+
             <!-- Additional Featured Card -->
           </aside>
 
