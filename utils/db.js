@@ -5,15 +5,21 @@ dotenv.config();
 const db = knex({
     client: 'pg',
     connection: {
-        host: process.env.HOST,
-        port: process.env.PORT,
-        user: process.env.USER,
-        password: process.env.PASSWORD,
-        database: 'postgres',
+        host: process.env.DB_HOST,
+        port: process.env.DB_PORT,
+        user: process.env.DB_USER,
+        password: process.env.DB_PASSWORD,
+        database: process.env.DB_NAME || 'postgres',
     },
-    pool: { 
-        min: 2,  // Minimum connections to maintain
-        max: 15  // Maximum connections allowed
+    // Keep a very small pool to avoid exhausting Supabase pooler limits
+    // (Render free + Supabase pooler often caps concurrent clients)
+    pool: {
+        min: 0,
+        max: 3,
+        // Tarn (knex) pool options to fail fast and free idle clients
+        acquireTimeoutMillis: 10000,
+        idleTimeoutMillis: 10000,
+        reapIntervalMillis: 3000,
     },
 });
 

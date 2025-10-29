@@ -99,6 +99,97 @@
         });
     }
 </script>
+
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  document.body.addEventListener('click', async function (e) {
+    const btn = e.target.closest('.btn-hide-course');
+    if (!btn) return;
+
+    e.preventDefault();
+
+    const courseId = btn.dataset.courseId;
+    // Prefer data-status attribute; fallback to button text
+    let status = (btn.dataset.status || '').toString().trim().toLowerCase();
+    if (!status) {
+      status = btn.textContent.trim().toLowerCase() === 'show' ? 'hide' : 'active';
+      // note: fallback guess — better to provide data-status in template
+    }
+
+    // If status indicates hidden, action is 'show', otherwise action is 'hide'
+    const action = (status === 'hide' || status === 'hidden') ? 'show' : 'hide';
+    const confirmTitle = action === 'hide' ? 'Ẩn khóa học?' : 'Hiện khóa học?';
+    const confirmText = action === 'hide'
+      ? 'Khóa học sẽ bị ẩn khỏi trang học viên (không xóa dữ liệu).'
+      : 'Khóa học sẽ được đưa về trạng thái hiển thị cho học viên.';
+
+    const result = await Swal.fire({
+      title: confirmTitle,
+      text: confirmText,
+      icon: action === 'hide' ? 'warning' : 'question',
+      showCancelButton: true,
+      confirmButtonText: action === 'hide' ? 'Có, ẩn' : 'Có, hiện',
+      cancelButtonText: 'Hủy'
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      // disable button while processing
+      btn.disabled = true;
+
+      const headers = { 'Content-Type': 'application/json' };
+      const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+      if (csrfMeta) headers['CSRF-Token'] = csrfMeta.content;
+
+      const resp = await fetch(`/instructor/courses/${action}`, {
+        method: 'POST',
+        headers,
+        credentials: 'include',
+        body: JSON.stringify({ course_id: courseId })
+      });
+
+      let payload = null;
+      try { payload = await resp.json(); } catch (err) { payload = null; }
+
+      if (!resp.ok) {
+        const msg = (payload && payload.message) || `HTTP ${resp.status}`;
+        throw new Error(msg);
+      }
+
+      // Success: update button UI (no full reload)
+      const successMsg = (payload && payload.message) || (action === 'hide' ? 'Đã ẩn khóa học.' : 'Đã hiện khóa học.');
+      await Swal.fire({ icon: 'success', title: 'Thành công', text: successMsg, timer: 1100, showConfirmButton: false });
+
+      // Update data-status and text on button
+      if (action === 'hide') {
+        btn.dataset.status = 'hide';     // or 'hidden' if you prefer
+        btn.textContent = 'Show';
+        // optional: change style to indicate hidden (you can adjust classes)
+        btn.classList.remove('btn-warning');
+        btn.classList.add('btn-success');
+      } else {
+        btn.dataset.status = 'approved'; // or 'active'
+        btn.textContent = 'Hide';
+        btn.classList.remove('btn-success');
+        btn.classList.add('btn-warning');
+      }
+
+      // optionally reload the page instead of toggling UI:
+      // window.location.reload();
+    } catch (err) {
+      console.error('Hide/Show error', err);
+      Swal.fire({ icon: 'error', title: 'Lỗi', text: err.message || 'Có lỗi xảy ra.' });
+    } finally {
+      btn.disabled = false;
+    }
+  });
+});
+</script>
+
+
+
 {{/fillContent}}
 <div class="container mt-4">
     <h4 class="mb-3">Manage Course: {{course.title}}</h4>
@@ -202,8 +293,19 @@
                                 <button type="submit" name="status" value="incomplete" class="btn btn-secondary"
                                     {{#unless course.is_complete}}disabled{{/unless}}>Mark Incomplete</button>
                             </div>
+                            <span>
                             <button type="submit" class="btn btn-primary">Save Changes</button>
-                            <a href="/instructor/delete-course/{{course.course_id}}" class="btn btn-danger">Delete</a>
+                            <button type="button"
+                                    class="btn btn-warning btn-hide-course"
+                                    data-course-id="{{course.course_id}}"
+                                    data-status="{{course.status}}">
+                            {{#ifEq2 course.status 'hidden'}}
+                                Show
+                            {{else}}
+                                Hide
+                            {{/ifEq2}}
+                            </button>
+                            </span>
                         </div>
                     </form>
                 </div>

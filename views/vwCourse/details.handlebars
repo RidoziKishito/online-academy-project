@@ -10,7 +10,7 @@
 
         {{#if categories.parent.id}}
         <li class="breadcrumb-item">
-          <a href="/category/{{categories.parent.id}}" class="text-light fw-semibold text-decoration-none">
+          <a href="/courses/by-category/{{categories.parent.id}}" class="text-light fw-semibold text-decoration-none">
             {{categories.parent.name}}
           </a>
         </li>
@@ -18,7 +18,7 @@
 
         {{#if categories.child.id}}
         <li class="breadcrumb-item">
-          <a href="/category/{{categories.child.id}}" class="text-light fw-semibold text-decoration-none">
+          <a href="/courses/by-category/{{categories.child.id}}" class="text-light fw-semibold text-decoration-none">
             {{categories.child.name}}
           </a>
         </li>
@@ -59,6 +59,7 @@
         {{#if course.is_bestseller}}
         <span class="badge bg-warning text-dark rounded-pill px-3 py-2 me-1">🔥 Bestseller</span>
         {{/if}}
+        {{#if (not is_complete)}}  <span class="badge bg-light text-secondary ms-2">⏳ In progress</span>{{/if}}
 
         <!-- Instructor -->
         <div class="mt-4 d-flex align-items-center">
@@ -200,7 +201,7 @@
                         {{#if this.is_previewable}}
                           <a href="javascript:void(0)"
                             class="preview-btn text-decoration-none text-dark me-2"
-                            data-video="{{this.video_url}}">
+                            data-video="{{getYouTubeEmbedUrl this.video_url}}">
                             {{this.order_index}}. {{this.title}}
                             <span class="badge bg-success ms-2 small">Preview</span>
                           </a>
@@ -350,7 +351,7 @@
       <h4 class="fw-bold mb-3"><i class="bi bi-book text-success me-2"></i>Related Courses</h4>
       <div class="row row-cols-1 row-cols-md-4 g-4">
         {{#each related_courses}}
-          <a class="col text-decoration-none" href="/courses/detail/{{this.id}}">
+          <a class="col text-decoration-none" href="/courses/detail/{{this.course_id}}">
             <div class="card border-0 shadow-sm rounded-4 h-100">
               <img src="{{this.image_url}}" class="card-img-top" height="180" alt="{{this.title}}">
               <div class="card-body">
@@ -692,7 +693,7 @@ document.addEventListener('DOMContentLoaded', function () {
           <input type="hidden" name="price" value="{{#if course.sale_price}}{{course.sale_price}}{{else}}{{course.price}}{{/if}}">
 
           <div class="my-3">
-            <img src="/static/qr.jpg" alt="QR Payment" class="img-fluid" style="max-width:320px; width:100%; height:auto;" />
+            <img src="/qr.jpg" alt="QR Payment" class="img-fluid" style="max-width:320px; width:100%; height:auto;" />
           </div>
 
           <p class="small text-muted mb-3">Sau khi quét và thanh toán, nhấn nút bên dưới để xác nhận.</p>

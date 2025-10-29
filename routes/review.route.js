@@ -3,6 +3,7 @@ import * as reviewModel from '../models/review.model.js';
 import * as enrollmentModel from '../models/enrollment.model.js';
 import * as courseModel from '../models/courses.model.js';
 import { restrict } from '../middlewares/auth.mdw.js';
+import logger from '../utils/logger.js';
 
 const router = express.Router();
 
@@ -64,7 +65,7 @@ router.post('/course/:courseId', async (req, res) => {
       rating_count: count,
     });
   } catch (error) {
-    console.error('Review error:', error);
+    logger.error({ err: error, userId: req.session?.authUser?.user_id, courseId: req.params?.courseId }, 'Review error');
     res.status(500).json({ success: false, message: 'Lỗi server!' });
   }
 });
@@ -98,7 +99,7 @@ router.delete('/course/:courseId', async (req, res) => {
       rating_count: count,
     });
   } catch (error) {
-    console.error('Delete review error:', error);
+    logger.error({ err: error, userId: req.session?.authUser?.user_id, courseId: req.params?.courseId }, 'Delete review error');
     res.status(500).json({ success: false, message: 'Lỗi server!' });
   }
 });

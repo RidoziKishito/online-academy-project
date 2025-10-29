@@ -1,5 +1,6 @@
 import db from '../utils/db.js';
 import { findByCourseId } from './chapter.model.js';
+import logger from '../utils/logger.js';
 
 const TABLE_NAME = 'categories';
 
@@ -25,7 +26,7 @@ export async function findSubcategories(parentId) {
       .orderBy('name', 'asc');
     return results;
   } catch (err) {
-    console.error('Error in findSubcategories:', err);
+    logger.error({ err, parentId }, 'Error in findSubcategories');
     throw err;
   }
 }
@@ -123,6 +124,68 @@ export async function existsByNameExceptId(name, excludeId) {
     .andWhereNot('category_id', excludeId)
     .first('category_id');
   return !!row;
+}
+
+// Lấy danh sách category theo cấp bậc
+export async function getCategoryHierarchy() {
+  // Lấy tất cả categories
+  const allCategories = await db(TABLE_NAME)
+    .select('*')
+    .orderBy('name', 'asc');
+
+  // Tạo map để tìm kiếm nhanh
+  const categoryMap = new Map();
+  allCategories.forEach(cat => {
+    categoryMap.set(cat.category_id, {
+      ...cat,
+      subcategories: []
+    });
+  });
+
+  // Xây dựng cây phân cấp
+  const rootCategories = [];
+  allCategories.forEach(cat => {
+    if (!cat.parent_category_id) {
+      rootCategories.push(categoryMap.get(cat.category_id));
+    } else {
+      const parent = categoryMap.get(cat.parent_category_id);
+      if (parent) {
+        parent.subcategories.push(categoryMap.get(cat.category_id));
+      }
+    }
+  });
+
+  return rootCategories;
+}
+
+// Kiểm tra xem một category có phải là subcategory của một category khác không
+export async function isSubcategoryOf(subcategoryId, parentId) {
+  const category = await db(TABLE_NAME)
+    .where({
+      category_id: subcategoryId,
+      parent_category_id: parentId
+    })
+    .first();
+  return !!category;
+}
+
+// Lấy toàn bộ path của một category (từ root đến category hiện tại)
+export async function getCategoryPath(categoryId) {
+  const path = [];
+  let currentId = categoryId;
+
+  while (currentId) {
+    const category = await db(TABLE_NAME)
+      .where('category_id', currentId)
+      .first();
+
+    if (!category) break;
+
+    path.unshift(category);
+    currentId = category.parent_category_id;
+  }
+
+  return path;
 }
 
 export async function getAllWithChildren() {

@@ -10,6 +10,7 @@ import * as reviewModel from '../models/review.model.js';
 import * as wishlistModel from '../models/wishlist.model.js';
 import { restrict } from '../middlewares/auth.mdw.js';
 import session from 'express-session';
+import logger from '../utils/logger.js';
 
 const router = express.Router();
 
@@ -27,18 +28,27 @@ router.get('/', async (req, res, next) => {
     const order = req.query.order === 'asc' ? 'asc' : 'desc';
 
     // ----- filters from query (extend if needed) -----
-    const filters = {
-      categoryId: req.query.categoryId || null,
-      status: req.query.status || null,
-      instructorId: req.query.instructorId || null,
-      sortBy,
-      order,
-      limit,
-      offset,
-    };
+    const categoryId = req.query.categoryId || null;
+    const status = req.query.status || null;
+    const instructorId = req.query.instructorId || null;
 
-    // ----- count total with filters -----
-    const totalCourses = await courseModel.countAllWithCategoryFiltered(filters);
+    // ----- decide whether to use badge-mode (no filters) -----
+    const noFilters = !categoryId && !status && !instructorId;
+
+    let totalCourses = 0;
+    let courses = [];
+
+    if (noFilters) {
+      // Use badge-mode: bestseller first + is_new flag
+      totalCourses = await courseModel.countAll();
+      courses = await courseModel.getAllWithBadge({ limit, offset, sortBy, order, newDays: 7 });
+    } else {
+      // Filter-aware
+      const filters = { categoryId, status, instructorId, sortBy, order, limit, offset };
+      totalCourses = await courseModel.countAllWithCategoryFiltered(filters);
+      courses = await courseModel.findAllWithCategoryFiltered(filters);
+    }
+
     const totalPagesRaw = Math.ceil((totalCourses || 0) / limit);
     const totalPages = Math.max(0, totalPagesRaw);
 
@@ -48,19 +58,16 @@ router.get('/', async (req, res, next) => {
     const baseQuery = qs.toString();
     const baseUrl = baseQuery ? `?${baseQuery}&` : '?';
 
-    // ----- fetch paged & sorted courses (model handles sort & pagination) -----
-    const courses = await courseModel.findAllWithCategoryFiltered(filters);
+    // ----- get chapters & lessons for these courses -----
     const courseIds = courses.map(c => c.course_id);
-
-    // ----- get chapters & lessons for these courses (current approach) -----
     const allChapters = (await Promise.all(
       courseIds.map(id => chapterModel.findByCourseId(id))
     )).flat();
 
     const chapterIds = allChapters.map(ch => ch.chapter_id);
-    const allLessons = (await Promise.all(
+    const allLessons = (chapterIds.length ? (await Promise.all(
       chapterIds.map(id => lessonModel.findByChapterIds([id]))
-    )).flat();
+    )).flat() : []);
 
     // ----- group lessons by course_id -----
     const lessonsByCourse = {};
@@ -84,6 +91,17 @@ router.get('/', async (req, res, next) => {
       });
     }
 
+    // ----- get categories (only for the current page courses) -----
+    const categoryIds = [...new Set(courses.map(c => c.category_id).filter(Boolean))];
+    let categoriesMap = {};
+    if (categoryIds.length) {
+      const categories = await Promise.all(categoryIds.map(id => categoryModel.findById(id)));
+      categories.forEach(cat => {
+        if (!cat) return;
+        categoriesMap[cat.category_id] = cat.category_name || cat.name || 'Uncategorized';
+      });
+    }
+
     // ----- assemble courseList for view -----
     const courseList = courses.map(c => {
       const lessons = lessonsByCourse[c.course_id] || [];
@@ -93,8 +111,8 @@ router.get('/', async (req, res, next) => {
 
       return {
         ...c,
-        // prefer instructor_name from joined query if available, else from instructorsMap
         instructor_name: c.instructor_name || instructorsMap[c.instructor_id] || 'Unknown',
+        category_name: categoriesMap[c.category_id] || 'Uncategorized',
         description: c.full_description || c.short_description || '',
         image_url: c.image_url || c.large_image_url || null,
         current_price: (c.sale_price != null && c.sale_price > 0) ? c.sale_price : c.price,
@@ -104,6 +122,9 @@ router.get('/', async (req, res, next) => {
         rating_count: c.rating_count || c.total_reviews || 0,
         total_hours: totalHours,
         total_lectures: totalLectures,
+        is_new: !!c.is_new,
+        is_bestseller: !!c.is_bestseller,
+        is_complete: !!c.is_complete
       };
     });
 
@@ -130,7 +151,7 @@ router.get('/', async (req, res, next) => {
     res.render('vwCourse/list', {
       courses: courseList,
       pagination,
-      query: { sortBy, order },
+      query: { sortBy, order, categoryId: categoryId || '', status: status || '', instructorId: instructorId || '' },
       layout: 'main',
     });
   } catch (err) {
@@ -185,7 +206,7 @@ router.get('/search', async (req, res) =>
           categoryFilter = [fuzzy.category_id, ...findSubCategoryIds(fuzzy.category_id)];
         }
       } catch (err) {
-        console.error('Error in fuzzy category lookup', err);
+        logger.error({ err, rawCategory }, 'Error in fuzzy category lookup');
       }
     }
   }
@@ -388,7 +409,7 @@ router.get('/detail/:id', async (req, res) => {
     });
 
   } catch (err) {
-    console.error('❌ Error loading course details:', err);
+    logger.error({ err, courseId: req.params?.id }, 'Error loading course details');
     res.redirect('/courses');
   }
 });
@@ -436,8 +457,8 @@ router.post('/wishlist/toggle', restrict, async (req, res) => {
                 message: 'Đã thêm vào danh sách yêu thích!' 
             });
         }
-    } catch (error) {
-        console.error('Wishlist toggle error:', error);
+  } catch (error) {
+    logger.error({ err: error, userId: req.session?.authUser?.user_id, courseId: req.body?.courseId }, 'Wishlist toggle error');
         res.status(500).json({ success: false, message: 'Lỗi server' });
     }
 });
@@ -535,7 +556,7 @@ router.get('/by-category/:id', async (req, res) => {
       query: { sortBy, order }
     });
   } catch (err) {
-    console.error(err);
+    logger.error({ err, categoryId }, 'Error loading courses by category');
     res.status(500).send('Internal server error');
   }
 });
@@ -550,7 +571,7 @@ router.get('/allCat', async (req, res) => {
       session: req.session,
     });
   } catch (err) {
-    console.error('❌ Error loading categories:', err);
+    logger.error({ err }, 'Error loading categories');
     res.status(500).render('vwError/500', { layout: 'main' });
   }
 });

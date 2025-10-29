@@ -1,19 +1,29 @@
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
+import logger from './logger.js';
 
 dotenv.config();
-// Create transporter using Gmail SMTP with explicit configuration
+
+// Create transporter using Gmail SMTP with enhanced configuration for production
 const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
-  port: 465,
-  secure: true, // use SSL
+  port: 587, // Use port 587 with STARTTLS (more reliable on hosting services)
+  secure: false, // false for port 587, true for 465
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS
   },
   tls: {
-    rejectUnauthorized: false
-  }
+    rejectUnauthorized: false,
+    ciphers: 'SSLv3'
+  },
+  connectionTimeout: 10000, // 10 seconds timeout
+  greetingTimeout: 10000,
+  socketTimeout: 10000,
+  pool: true, // Use connection pooling
+  maxConnections: 5,
+  maxMessages: 100,
+  rateLimit: 10 // Max 10 messages per second
 });
 
 /**
@@ -78,10 +88,10 @@ export async function sendResetEmail(email, token, fullName = 'User') {
 
   try {
     await transporter.sendMail(mailOptions);
-    console.log(`Password reset email sent to ${email}`);
+    logger.info({ email }, 'Password reset email sent');
     return true;
   } catch (error) {
-    console.error('Error sending reset email:', error);
+    logger.error({ err: error, email }, 'Error sending reset email');
     throw new Error('Failed to send reset email');
   }
 }
@@ -141,24 +151,30 @@ export async function sendVerifyEmail(email, token, fullName = 'User') {
 
   try {
     await transporter.sendMail(mailOptions);
-    console.log(`Verification email sent to ${email}`);
+    logger.info({ email }, 'Verification email sent');
     return true;
   } catch (error) {
-    console.error('Error sending verification email:', error);
+    logger.error({ err: error, email }, 'Error sending verification email');
     throw new Error('Failed to send verification email');
   }
 }
 
 /**
- * Test email configuration
+ * Test email configuration (non-blocking)
  */
 export async function testEmailConfig() {
+  // Only test in development, skip in production to avoid blocking app startup
+  if (process.env.NODE_ENV === 'production') {
+    logger.info('Email configuration test skipped in production');
+    return true;
+  }
+  
   try {
     await transporter.verify();
-    console.log('Email server is ready to send messages');
+    logger.info('Email server is ready to send messages');
     return true;
   } catch (error) {
-    console.error('Email configuration error:', error);
+    logger.warn({ err: error }, 'Email configuration test failed (app will continue)');
     return false;
   }
 }
