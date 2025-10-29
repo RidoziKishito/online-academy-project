@@ -11,17 +11,17 @@
 
             <div class="collapse navbar-collapse" id="navMenu">
                 <ul class="navbar-nav mx-auto mb-2 mb-lg-0 column-gap-3">
-                    <li class="nav-item"><a class="nav-link active" href="#hero">Trang chủ</a></li>
-                    <li class="nav-item"><a class="nav-link" href="#featured-courses">Nổi bật</a></li>
-                    <li class="nav-item"><a class="nav-link" href="#categories">Lĩnh vực</a></li>
-                    <li class="nav-item"><a class="nav-link" href="#newest-courses">Mới nhất</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="#hero">Home</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#featured-courses">Featured</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#categories">Categories</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#newest-courses">Newest</a></li>
                     <li class="nav-item"><a class="nav-link" href="#testimonials">Feedback</a></li>
-                    <li class="nav-item"><a class="nav-link" href="#contact">Liên hệ</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#contact">Contact</a></li>
                 </ul>
                 
                 <div class="d-flex gap-2">
-                    <a href="/account/signin" class="btn btn-outline-success rounded-pill">Đăng nhập</a>
-                    <a href="/account/signup" class="btn btn-success rounded-pill">Đăng ký</a>
+                    <a href="/account/signin" class="btn btn-outline-success rounded-pill">Sign In</a>
+                    <a href="/account/signup" class="btn btn-success rounded-pill">Sign Up</a>
                 </div>
             </div>
         </div>
@@ -34,25 +34,25 @@
             <div class="row align-items-center g-5">
                 <div class="col-lg-6" data-aos="fade-right">
                     <h1 class="display-3 fw-bold lh-1 mb-4">
-                        Khám phá tiềm năng,
+                        Unlock your potential,
                         <br>
-                        <span class="text-primary">Mở lối tương lai</span>
+                        <span class="text-primary">Shape your future</span>
                     </h1>
                     <p class="lead text-muted mb-4">
-                        VietAcademy là nền tảng học trực tuyến hàng đầu, cung cấp hàng ngàn khoá học chất lượng cao từ các chuyên gia đầu ngành.
+                        VietEdu Academy is a leading online learning platform, offering thousands of high-quality courses from industry experts.
                     </p>
-                    <a href="/courses" class="btn btn-success btn-lg rounded-pill px-4">Bắt đầu học ngay</a>
+                    <a href="/courses" class="btn btn-success btn-lg rounded-pill px-4">Start learning now</a>
                 </div>
                 
                 <div class="col-lg-6" data-aos="fade-left" data-aos-delay="200">
-                    <img src="https://images.unsplash.com/photo-1543269865-cbf427effbad?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80" alt="Học trực tuyến" class="img-fluid rounded-4 shadow-lg">
+                    <img src="https://images.unsplash.com/photo-1543269865-cbf427effbad?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80" alt="Online learning" class="img-fluid rounded-4 shadow-lg">
                 </div>
             </div>
         </div>
     </section>
     <section id="featured-courses" class="bg-white">
         <div class="container">
-            <h2 class="text-center mb-5" data-aos="fade-up">Nổi bật tuần qua</h2>
+            <h2 class="text-center mb-5" data-aos="fade-up">Featured this week</h2>
             
             <div class="row g-4">
 
@@ -75,7 +75,7 @@
                                     <img src={{this.instructor_avatar}} alt="Author" class="rounded-circle" width="30" height="30">
                                     <span class="ms-2 small text-muted">{{this.instructor_name}}</span>
                                 </div>
-                                <span class="fs-5 fw-bold text-primary">{{format_number this.sale_price}}đ</span>
+                                <span class="fs-5 fw-bold text-primary">₫{{format_number this.sale_price}}</span>
                             </div>
                         </div>
                     </div>
@@ -87,7 +87,7 @@
     </section>
     <section id="categories" class="bg-light">
         <div class="container">
-            <h2 class="text-center mb-5" data-aos="fade-up">Lĩnh vực hàng đầu</h2>
+            <h2 class="text-center mb-5" data-aos="fade-up">Top categories</h2>
             
             <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4">
                 
@@ -106,7 +106,7 @@
     </section>
     <section id="most-viewed" class="bg-white">
         <div class="container position-relative">
-            <h2 class="text-center mb-5" data-aos="fade-up">Xem nhiều nhất</h2>
+            <h2 class="text-center mb-5" data-aos="fade-up">Most viewed</h2>
             
             <div class="swiper courses-swiper" id="most-viewed-swiper" data-aos="fade-up">
                 <div class="swiper-wrapper pb-5">
@@ -130,7 +130,7 @@
                                         <img src={{this.avatar_url}} alt="Author" class="rounded-circle" width="30" height="30">
                                         <span class="ms-2 small text-muted">{{this.instructor_name}}</span>
                                     </div>
-                                    <span class="fs-5 fw-bold text-primary">{{format_number this.sale_price}}đ</span>
+                                    <span class="fs-5 fw-bold text-primary">₫{{format_number this.sale_price}}</span>
                                 </div>
                             </div>
                         </div>
@@ -149,7 +149,7 @@
     </section>
     <section id="newest-courses" class="bg-light">
         <div class="container position-relative">
-            <h2 class="text-center mb-5" data-aos="fade-up">Khoá học mới nhất</h2>
+            <h2 class="text-center mb-5" data-aos="fade-up">Newest courses</h2>
             
             <div class="swiper courses-swiper" id="newest-courses-swiper" data-aos="fade-up">
                 <div class="swiper-wrapper pb-5">
@@ -180,7 +180,7 @@
                                         <img src={{this.avatar_url}} alt="Author" class="rounded-circle" width="30" height="30">
                                         <span class="ms-2 small text-muted">{{this.instructor_name}}</span>
                                     </div>
-                                    <span class="fs-5 fw-bold text-primary">{{format_number this.sale_price}}đ</span>
+                                    <span class="fs-5 fw-bold text-primary">₫{{format_number this.sale_price}}</span>
                                 </div>
                             </div>
                         </div>
@@ -197,7 +197,7 @@
     </section>
     <section id="testimonials" class="bg-secondary" style="background-color: var(--bs-secondary) !important;">
         <div class="container" data-aos="fade-in">
-            <h2 class="text-center mb-5" style="color: var(--bs-primary-dark);">Học viên nói gì về VietAcademy</h2>
+            <h2 class="text-center mb-5" style="color: var(--bs-primary-dark);">What learners say about VietEdu Academy</h2>
             
             <div id="testimonial-swiper" class="carousel slide" data-bs-ride="carousel" data-bs-interval="5000">
                 <div class="carousel-inner">
@@ -205,34 +205,34 @@
                     <div class="carousel-item">
                         <div class="col-lg-8 col-md-10 mx-auto text-center p-4" style="width:700px; max-width:90%; height:350px;">
                             <img src="https://scontent.fsgn8-4.fna.fbcdn.net/v/t39.30808-6/561119543_2065094327230167_714847697422080790_n.jpg?_nc_cat=103&ccb=1-7&_nc_sid=6ee11a&_nc_ohc=Gxo0Ah8pTb8Q7kNvwGC8mZl&_nc_oc=AdlXnyOQh1oNRrcH9gpug4ZWG161BbkFtYz1gClL3q1tmLRvf5NnExz_A10Y1j0lHXXDETG_VRDq5WiqbTvYAiNu&_nc_zt=23&_nc_ht=scontent.fsgn8-4.fna&_nc_gid=gXl7WtnaYAe2-wmfM9ydPw&oh=00_Afcvzp1TKrr7bcRzHAi8hWq-XNi8CMx1VxzQSF4na7vBGQ&oe=6902DABA" 
-                            alt="Học viên" class="rounded-circle shadow-lg mx-auto mb-3 border border-3 border-white" 
+                            alt="Student" class="rounded-circle shadow-lg mx-auto mb-3 border border-3 border-white" 
                             style="width:100px;height:100px;object-fit:cover;">
                             <p class="fs-5 fst-italic my-4">
-                                "Khoá học bùng lổ 3636"
+                                "Breakthrough course 3636"
                             </p>
                             <h4 class="h5 fw-bold mb-1">Trac Van Ngoc Phuc</h4>
-                            <span class="text-muted">Frontend Developer tại ABC Corp</span>
+                            <span class="text-muted">Frontend Developer at ABC Corp</span>
                         </div>
                     </div>
                     
                     <div class="carousel-item active">
                         <div class="col-lg-8 col-md-10 mx-auto text-center p-4" style="width:700px; max-width:90%; height:350px;"> 
-                            <img src="https://images.unsplash.com/photo-1552058544-f2b08422138a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=100&h=100&q=80" alt="Học viên" class="rounded-circle shadow-lg mx-auto mb-3 border border-3 border-white">
+                            <img src="https://images.unsplash.com/photo-1552058544-f2b08422138a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=100&h=100&q=80" alt="Student" class="rounded-circle shadow-lg mx-auto mb-3 border border-3 border-white">
                             <p class="fs-5 fst-italic my-4">
-                                "Tôi đã học khoá 'Phân tích Dữ liệu' và thực sự ấn tượng. Kiến thức được hệ thống hoá rất logic, dễ hiểu ngay cả với người mới bắt đầu như tôi."
+                                "I took the 'Data Analysis' course and was truly impressed. The content is structured very logically and easy to understand even for beginners like me."
                             </p>
-                            <h4 class="h5 fw-bold mb-1">Trần Văn Minh</h4>
-                            <span class="text-muted">Sinh viên Đại học Bách Khoa</span>
+                            <h4 class="h5 fw-bold mb-1">Tran Van Minh</h4>
+                            <span class="text-muted">University of Technology student</span>
                         </div>
                     </div>
                     
                     <div class="carousel-item">
                         <div class="col-lg-8 col-md-10 mx-auto text-center p-4" style="width:700px; max-width:90%; height:350px;">
-                            <img src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=100&h=100&q=80" alt="Học viên" class="rounded-circle shadow-lg mx-auto mb-3 border border-3 border-white">
+                            <img src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=100&h=100&q=80" alt="Student" class="rounded-circle shadow-lg mx-auto mb-3 border border-3 border-white">
                             <p class="fs-5 fst-italic my-4">
-                                "Là một Marketer, tôi cần cập nhật xu hướng liên tục. Khoá 'Digital Marketing' của VietAcademy đã cung cấp cho tôi những công cụ và chiến lược mới nhất, rất hữu ích cho công việc."
+                                "As a marketer, I need to stay up-to-date with trends. The 'Digital Marketing' course at VietEdu Academy provided me with the latest tools and strategies, which are very useful for my work."
                             </p>
-                            <h4 class="h5 fw-bold mb-1">Lê Thị Bích Hảo</h4>
+                            <h4 class="h5 fw-bold mb-1">Le Thi Bich Hao</h4>
                             <span class="text-muted">Marketing Manager</span>
                         </div>
                     </div>
@@ -253,17 +253,17 @@
         <div class="container">
             <div class="col-lg-8 col-md-10 mx-auto text-center">
                 <h2 class="fw-bold display-5 mb-3 text-primary">
-                    Liên hệ với VietEdu Academy
+                    Contact VietEdu Academy
                 </h2>
     
                 <p class="text-muted mb-5 lead">
-                    Hỗ trợ từ 8:00 - 20:00 tất cả các ngày trong tuần
+                    Support from 8:00 - 20:00 every day of the week
                 </p>
     
                 <div class="mb-5">
                     <p class="fs-5 d-flex justify-content-center align-items-center flex-wrap mb-3">
                         <i class="fa-solid fa-location-dot text-primary fs-3 me-3" style="width: 30px;"></i>
-                        <span>01 Võ Văn Ngân, P. Linh Chiểu, TP. Thủ Đức, TP. HCM</span>
+                        <span>01 Vo Van Ngan, Linh Chieu Ward, Thu Duc City, Ho Chi Minh City</span>
                     </p>
                     <p class="fs-5 d-flex justify-content-center align-items-center flex-wrap mb-3">
                         <i class="fa-solid fa-envelope text-primary fs-3 me-3" style="width: 30px;"></i>
@@ -295,16 +295,16 @@
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         
-        // --- 1. KHỞI TẠO AOS (Animate on Scroll) ---
+        // --- 1. Initialize AOS (Animate on Scroll) ---
         AOS.init({
-            duration: 800, // Thời gian animation
-            once: true,     // Chỉ chạy 1 lần
-            offset: 100,    // Kích hoạt khi cuộn qua 100px
+            duration: 800, // Animation duration
+            once: true,     // Run only once
+            offset: 100,    // Trigger when scrolled 100px
         });
 
-        // --- 2. KHỞI TẠO SWIPER (Carousels) ---
+        // --- 2. Initialize Swiper (Carousels) ---
         
-        // Carousel cho "Most Viewed"
+        // Carousel for "Most Viewed"
         var mostViewedSwiper = new Swiper('#most-viewed-swiper', {
             loop: false,
             autoplay: {
@@ -333,7 +333,7 @@
             }
         });
 
-        // Carousel cho "Newest Courses"
+        // Carousel for "Newest Courses"
         var newestCoursesSwiper = new Swiper('#newest-courses-swiper', {
             loop: false, 
             autoplay: {
@@ -362,16 +362,16 @@
             }
         });
 
-        // --- 3. KÍCH HOẠT BOOTSTRAP SCROLLSPY ---
-        // (Đã kích hoạt bằng data-attributes, nhưng có thể thêm code JS nếu cần)
-        // Tự động cập nhật nav-link 'active' khi cuộn
+        // --- 3. Activate Bootstrap ScrollSpy ---
+        // (Already enabled via data-attributes; JS shown here for reference)
+        // Automatically updates 'active' nav-link on scroll
         var scrollSpy = new bootstrap.ScrollSpy(document.body, {
             target: '#mainNavbar',
-            offset: 100 // Tinh chỉnh offset cho khớp
+            offset: 100 // Adjust offset for better alignment
         });
 
-        // --- 4. TÙY CHỈNH NAVBAR SCROLL ---
-        // Thêm/bớt shadow cho navbar khi cuộn
+        // --- 4. Navbar scroll behavior customization ---
+        // Add/remove shadow for navbar while scrolling
         const mainNavbar = document.getElementById('mainNavbar');
         if (mainNavbar) {
             window.addEventListener('scroll', () => {

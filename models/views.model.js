@@ -1,7 +1,7 @@
 import db from '../utils/db.js';
 
 export async function findTopWeekCourses() {
-  // View nên chỉ đọc → dùng select *
+    // Views are read-only → use select *
   return await db('top_week_courses').select('*');
 }
 

@@ -30,7 +30,7 @@ export function del(id) {
   return db(TABLE_NAME).where('lesson_id', id).del();
 }
 
-// Thêm 
+// Helper: find lessons by multiple chapter IDs
 export function findByChapterIds(chapterIds = []) {
   if (!chapterIds || chapterIds.length === 0) return Promise.resolve([]);
   return db(TABLE_NAME)
@@ -38,14 +38,14 @@ export function findByChapterIds(chapterIds = []) {
     .orderBy(['chapter_id', 'order_index']);
 }
 
-// Lấy lesson theo chapter_id + lesson_id
+// Get lesson by chapter_id + lesson_id
 export function findByChapterAndLesson(chapterId, lessonId) {
   return db(TABLE_NAME)
     .where({ chapter_id: chapterId, lesson_id: lessonId })
     .first();
 }
 
-// can chinh
+// Utilities
 export function del_lesson(id) {
   return db(TABLE_NAME)
     .where('lesson_id', id)

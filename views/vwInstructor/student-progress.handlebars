@@ -5,19 +5,19 @@
       <small>{{student.email}}</small>
     </div>
     <a href="/instructor/manage-course/{{course.course_id}}" class="btn btn-sm btn-outline-secondary">
-      ← Quay lại khóa học
+      ← Back to course
     </a>
   </div>
 
   <div class="card-body">
-    <h6>Tiến độ học tập</h6>
+  <h6>Learning Progress</h6>
     <table class="table table-striped">
       <thead>
         <tr>
-          <th>Chương</th>
-          <th>Bài học</th>
-          <th>Trạng thái</th>
-          <th>Ngày hoàn thành</th>
+          <th>Chapter</th>
+          <th>Lesson</th>
+          <th>Status</th>
+          <th>Completed at</th>
         </tr>
       </thead>
       <tbody>
@@ -27,9 +27,9 @@
           <td>{{lesson_title}}</td>
           <td>
             {{#if is_completed}}
-              <span class="badge bg-success">Đã hoàn thành</span>
+              <span class="badge bg-success">Completed</span>
             {{else}}
-              <span class="badge bg-secondary">Chưa hoàn thành</span>
+              <span class="badge bg-secondary">Not completed</span>
             {{/if}}
           </td>
           <td>{{#if completed_at}}{{formatDate completed_at}}{{else}}—{{/if}}</td>

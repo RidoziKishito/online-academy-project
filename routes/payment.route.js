@@ -6,10 +6,10 @@ import logger from '../utils/logger.js';
 
 const router = express.Router();
 
-// Bảo đảm user đã đăng nhập
+// Ensure the user is signed in
 router.use(restrict);
 
-// POST confirm payment -> ghi enrollment và redirect về /learn/:courseId
+// POST confirm payment -> create enrollment and redirect to learning page
 router.post('/confirm', async (req, res) => {
   try {
     const user = req.session?.authUser;
@@ -18,26 +18,26 @@ router.post('/confirm', async (req, res) => {
     const courseId = parseInt(req.body.course_id, 10);
     if (!courseId) return res.status(400).send('Invalid course id');
 
-    // 1) kiểm tra đã ghi danh chưa (tránh duplicate)
+    // 1) Check if already enrolled (avoid duplicate)
     const exists = await enrollmentModel.checkEnrollment(user.user_id, courseId);
     if (exists) {
-      // Nếu đã có, chuyển thẳng tới trang học
+      // If already exists, go straight to learning page
       return res.redirect(`/student/my-courses`);
     }
 
-    // 2) tạo enrollment
+    // 2) Create enrollment
     await enrollmentModel.enroll({
       user_id: user.user_id,
       course_id: courseId,
       enrolled_at: new Date()
     });
 
-    // 3) redirect tới trang học hoặc course detail (tuỳ bạn)
+    // 3) Redirect to learning page or course detail
     return res.redirect(`/student/my-courses`);
   } catch (err) {
     logger.error({ err, userId: req.session?.authUser?.user_id, body: req.body }, 'payment.confirm error');
-    // Tùy app của bạn: render error page hoặc redirect back with flash
-    return res.status(500).render('500', { message: 'Có lỗi khi ghi danh' });
+    // Render error page or redirect back
+    return res.status(500).render('500', { message: 'An error occurred while enrolling' });
   }
 });
 

@@ -31,7 +31,7 @@ export async function findSubcategories(parentId) {
   }
 }
 
-// Thêm hàm để lấy thông tin category cùng với parent category
+// Get category along with its parent category
 export async function findByIdWithParent(id) {
   const category = await db(TABLE_NAME)
     .where('category_id', id)
@@ -72,15 +72,15 @@ export function patch(id, category) {
 }
 
 export async function findParentSon(id) {
-  // 🔹 Lấy thông tin category con
+  // 🔹 Get child category info
   const child = await db(TABLE_NAME)
     .select('category_id', 'name', 'parent_category_id')
     .where('category_id', id)
     .first();
 
-  if (!child) return null; // Không tồn tại category này
+  if (!child) return null; // Category does not exist
 
-  // 🔹 Lấy thông tin cha (nếu có)
+  // 🔹 Get parent info (if any)
   let parent = null;
   if (child.parent_category_id) {
     parent = await db(TABLE_NAME)
@@ -89,7 +89,7 @@ export async function findParentSon(id) {
       .first();
   }
 
-  // 🔹 Trả về cấu trúc gọn gàng
+  // 🔹 Return a clean structure
   return {
     parent: parent
       ? { id: parent.category_id, name: parent.name }
@@ -126,14 +126,14 @@ export async function existsByNameExceptId(name, excludeId) {
   return !!row;
 }
 
-// Lấy danh sách category theo cấp bậc
+// Get category hierarchy
 export async function getCategoryHierarchy() {
-  // Lấy tất cả categories
+  // Fetch all categories
   const allCategories = await db(TABLE_NAME)
     .select('*')
     .orderBy('name', 'asc');
 
-  // Tạo map để tìm kiếm nhanh
+  // Create a map for fast lookup
   const categoryMap = new Map();
   allCategories.forEach(cat => {
     categoryMap.set(cat.category_id, {
@@ -142,7 +142,7 @@ export async function getCategoryHierarchy() {
     });
   });
 
-  // Xây dựng cây phân cấp
+  // Build the tree
   const rootCategories = [];
   allCategories.forEach(cat => {
     if (!cat.parent_category_id) {
@@ -158,7 +158,7 @@ export async function getCategoryHierarchy() {
   return rootCategories;
 }
 
-// Kiểm tra xem một category có phải là subcategory của một category khác không
+// Check if a category is a subcategory of another
 export async function isSubcategoryOf(subcategoryId, parentId) {
   const category = await db(TABLE_NAME)
     .where({
@@ -169,7 +169,7 @@ export async function isSubcategoryOf(subcategoryId, parentId) {
   return !!category;
 }
 
-// Lấy toàn bộ path của một category (từ root đến category hiện tại)
+// Get the full path of a category (from root to current category)
 export async function getCategoryPath(categoryId) {
   const path = [];
   let currentId = categoryId;
@@ -189,14 +189,14 @@ export async function getCategoryPath(categoryId) {
 }
 
 export async function getAllWithChildren() {
-  // Lấy tất cả categories
+  // Fetch all categories
   const categories = await db('categories').select('*').orderBy('category_id', 'asc');
 
-  // Gom nhóm theo parent
+  // Group by parent
   const parents = categories.filter(c => c.parent_category_id === null);
   const children = categories.filter(c => c.parent_category_id !== null);
 
-  // Gắn con vào cha
+  // Attach children to parents
   parents.forEach(parent => {
     parent.children = children.filter(ch => ch.parent_category_id === parent.category_id);
   });

@@ -1,48 +1,48 @@
 import db from '../utils/db.js';
 import logger from '../utils/logger.js';
 
-const TABLE_NAME = 'user_lesson_progress'; // Sử dụng thống nhất 1 tên bảng
+const TABLE_NAME = 'user_lesson_progress'; // Use a single consistent table name
 
-// Đánh dấu bài học đã hoàn thành
+// Mark a lesson as completed
 // progress.model.js
-// Giả sử `db` là instance Knex và TABLE_NAME là tên bảng (ví dụ 'user_lesson_progress')
+// Assume `db` is a Knex instance and TABLE_NAME is the table name (e.g., 'user_lesson_progress')
 export async function markAsCompleted(userId, lessonId) {
-  // Dùng timestamp của DB để tránh vấn đề timezone giữa server và DB
+  // Use DB timestamp to avoid timezone issues between server and DB
   const now = db.fn.now();
 
   try {
-    // Thực hiện INSERT; nếu có conflict trên (user_id, lesson_id) thì MERGE (update) thay vì tạo row mới.
-    // Điều này chạy nguyên tử ở phía DB — tránh race condition so với check-then-insert.
+    // Perform INSERT; on conflict (user_id, lesson_id) do MERGE (update) instead of creating a new row.
+    // This is atomic at the DB level — avoids race conditions vs. check-then-insert.
     const rows = await db(TABLE_NAME)
       .insert({
         user_id: userId,
         lesson_id: lessonId,
-        // Đánh dấu hoàn thành
+        // Mark as completed
         is_completed: true,
-        // completed_at lấy từ DB
+        // completed_at from DB
         completed_at: now
       })
-      // onConflict yêu cầu tồn tại unique constraint trên (user_id, lesson_id)
+      // onConflict requires a unique constraint on (user_id, lesson_id)
       .onConflict(['user_id', 'lesson_id'])
-      // merge: cập nhật các cột nếu đã tồn tại row
+      // merge: update columns if row already exists
       .merge({
         is_completed: true,
         completed_at: now
       })
-      // .returning(...) chỉ dùng trên Postgres để trả về row vừa insert/update (tùy cần)
+      // .returning(...) (Postgres) returns the inserted/updated row if needed
       .returning(['progress_id', 'user_id', 'lesson_id', 'is_completed', 'completed_at']);
 
-    // rows thường là mảng; trả về row đầu (inserted/updated) hoặc true tuỳ luồng app của bạn
+    // rows is typically an array; return first row or true depending on app flow
     return rows && rows[0] ? rows[0] : true;
   } catch (error) {
-    // Log lỗi để debug
+    // Log error for debugging
     logger.error({ err: error, userId, lessonId }, 'markAsCompleted error');
-    // Tùy workflow: ném lỗi lên caller hoặc trả false/true; ở đây mình rethrow để caller biết có vấn đề
+    // Depending on workflow: rethrow to let caller handle
     throw error;
   }
 }
 
-// Lấy danh sách các bài học đã hoàn thành của user trong course (nếu có)
+// Get list of lessons completed by user in a course (if any)
 export function findCompletedLessonsByUser(userId, courseId = null) {
   let query = db(TABLE_NAME)
     .join('lessons', `${TABLE_NAME}.lesson_id`, '=', 'lessons.lesson_id')
@@ -56,7 +56,7 @@ export function findCompletedLessonsByUser(userId, courseId = null) {
   return query.select(`${TABLE_NAME}.lesson_id`);
 }
 
-// Đếm tổng số lesson trong 1 khóa học
+// Count total lessons in a course
 export async function countLessonsByCourse(courseId) {
   const result = await db('lessons')
     .join('chapters', 'lessons.chapter_id', 'chapters.chapter_id')
@@ -67,7 +67,7 @@ export async function countLessonsByCourse(courseId) {
   return parseInt(result?.total) || 0;
 }
 
-// Đếm số lesson mà user đã hoàn thành trong khóa học
+// Count lessons completed by user in a course
 export async function countCompletedLessons(courseId, userId) {
   const result = await db(TABLE_NAME)
     .join('lessons', `${TABLE_NAME}.lesson_id`, '=', 'lessons.lesson_id')
@@ -80,7 +80,7 @@ export async function countCompletedLessons(courseId, userId) {
   return parseInt(result?.completed) || 0;
 }
 
-// Lấy chi tiết tiến độ học của user trong một khóa học
+// Get detailed learning progress of a user in a course
 export function findLessonProgressOfUser(courseId, userId) {
   return db('lessons')
     .join('chapters', 'lessons.chapter_id', 'chapters.chapter_id')
@@ -99,7 +99,7 @@ export function findLessonProgressOfUser(courseId, userId) {
     .orderBy('lessons.lesson_id');
 }
 
-// Lấy tất cả bài học user đã hoàn thành (mọi khóa)
+// Get all lessons completed by user (across all courses)
 export async function findCompletedLessonsByUserAll(userId) {
   return db(TABLE_NAME)
     .where('user_id', userId)

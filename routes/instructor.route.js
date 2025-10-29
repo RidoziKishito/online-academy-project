@@ -14,8 +14,8 @@ router.get('/add', (req, res) => {
 });
 
 router.post('/add', async (req, res) => {
-  // Khi admin tạo instructor, cần tạo mật khẩu cho họ
-  const raw_password = Math.random().toString(36).slice(-8); // Tạo pass ngẫu nhiên
+  // When admin creates an instructor, generate a password for them
+  const raw_password = Math.random().toString(36).slice(-8); // Generate random password
   const password_hash = bcrypt.hashSync(raw_password, 10);
 
   const instructor = {
@@ -23,15 +23,15 @@ router.post('/add', async (req, res) => {
     email: req.body.email,
     password_hash: password_hash,
     bio: req.body.bio || null
-    // role sẽ được model tự động thêm vào
+    // role will be added by the model automatically
   };
 
   await instructorModel.add(instructor);
-  // Nên có cơ chế thông báo mật khẩu cho instructor mới
+  // Consider notifying the new instructor of their password
   res.render('vwAdminInstructor/add', { success: true, new_pass: raw_password });
 });
 
-// Các route edit, patch, del có thể giữ nguyên vì model đã được sửa đúng
-// Chỉ cần đảm bảo form gửi lên đúng tên trường (user_id, full_name, email, bio...)
+// Edit, patch, and delete routes can remain the same as the model is correct
+// Ensure form fields use correct names (user_id, full_name, email, bio...)
 
 export default router;

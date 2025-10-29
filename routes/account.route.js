@@ -25,7 +25,7 @@ router.post('/signup', signupLimiter, recaptcha.middleware.verify, async (req, r
   const oldData = { fullName, email };
   const errorMessages = {};
 
-  // Kiểm tra CAPTCHA
+  // Check CAPTCHA
   if (req.recaptcha && req.recaptcha.error) {
     errorMessages._global = ['CAPTCHA verification failed. Please try again.'];
     return res.render('vwAccount/signup', { 
@@ -105,7 +105,7 @@ router.post('/signup', signupLimiter, recaptcha.middleware.verify, async (req, r
   }
 });
 
-// Route kiểm tra email đã tồn tại chưa
+// Route to check if email already exists
 router.get('/is-email-available', async (req, res) => {
   const email = req.query.email;
   const user = await userModel.findByEmail(email);
@@ -122,13 +122,13 @@ router.get('/signup', (req, res) => {
 });
 
 router.post('/signin', signinLimiter, async (req, res) => {
-  // Tìm user bằng email, không phải username
+  // Find user by email (not username)
   const user = await userModel.findByEmail(req.body.email);
   if (!user) {
     return res.render('vwAccount/signin', { error: true, oldData: { email: req.body.email } });
   }
 
-  // So sánh mật khẩu với password_hash
+  // Compare password with password_hash
   const password_match = bcrypt.compareSync(req.body.password, user.password_hash);
   if (password_match === false) {
     return res.render('vwAccount/signin', { error: true, oldData: { email: req.body.email } });
@@ -159,7 +159,7 @@ router.post('/signout', (req, res) => {
 });
 
 router.get('/profile', restrict, (req, res) => {
-  res.render('vwAccount/profile'); // user đã có trong res.locals từ middleware
+  res.render('vwAccount/profile'); // user is already in res.locals from middleware
 });
 
 // Change password routes
@@ -194,7 +194,7 @@ router.post('/change-pwd', restrict, async (req, res) => {
 router.post('/profile', restrict, async (req, res) => {
   const { user_id } = req.session.authUser;
   
-  // Dữ liệu cần cập nhật
+  // Data to update
   const updatedUser = {
     full_name: req.body.fullName,
     email: req.body.email,
@@ -202,7 +202,7 @@ router.post('/profile', restrict, async (req, res) => {
   };
   await userModel.patch(user_id, updatedUser);
 
-  // Cập nhật lại session
+  // Update session
   req.session.authUser.full_name = req.body.fullName;
   req.session.authUser.email = req.body.email;
 
@@ -326,7 +326,7 @@ router.post('/profile', restrict, async (req, res) => {
     }
   });
 
-// (Các route đổi mật khẩu có thể giữ nguyên logic, chỉ cần đảm bảo tên cột password_hash là đúng)
+// (Password change routes keep logic intact; ensure column name password_hash is correct)
 
 // Email verification pages
 router.get('/verify-email', (req, res) => {

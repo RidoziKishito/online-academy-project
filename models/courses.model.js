@@ -142,6 +142,9 @@ export async function search(keyword, options = {}) {
       'users.full_name as instructor_name'
     );
 
+  // Only return approved courses in search results
+  query = query.where('courses.status', 'approved');
+
   if (rawKeyword) {
     const useTrigram = String(process.env.PG_TRGM || '').toLowerCase() === 'true';
 
@@ -208,6 +211,9 @@ export async function countSearch(keyword, categoryId) {
   const raw = String(keyword || '').trim();
   const tokens = raw.split(/\s+/).filter(Boolean);
   let query = db(TABLE_NAME).count('course_id as total');
+
+  // Count only approved courses
+  query = query.where('status', 'approved');
 
   if (tokens.length) {
     // Use per-token FTS or title ILIKE to count broadly-matching rows (same logic as search())
@@ -315,7 +321,7 @@ export async function getAllWithBadge(opts = {}) {
   const order = opts.order === 'asc' ? 'asc' : 'desc';
   const newDays = Math.max(1, parseInt(opts.newDays || 7, 10));
 
-  // tính threshold date ở JS
+  // compute threshold date in JS
   const ms = newDays * 24 * 60 * 60 * 1000;
   const thresholdDate = new Date(Date.now() - ms);
 
@@ -476,10 +482,10 @@ export async function updateAverageRating(courseId) {
 
 
 /**
- * Lấy danh sách khóa học liên quan (cùng lĩnh vực hoặc cùng nhóm lĩnh vực cha)
+ * Get related courses (same category or same parent category group)
  */
 export async function findRelated(catId, courseId, numCourses = 4) {
-  // B1: Tìm parent của category hiện tại
+  // Step 1: Find parent of the current category
   const cat = await db('categories').where('category_id', catId).first();
 
   let relatedCatIds = [];
@@ -487,20 +493,20 @@ export async function findRelated(catId, courseId, numCourses = 4) {
   if (!cat) return [];
 
   if (cat.parent_category_id === null) {
-    // Lĩnh vực cha → lấy chính nó + tất cả con của nó
+    // Parent category → take itself + all its children
     const subcats = await db('categories')
       .where('parent_category_id', cat.category_id)
       .select('category_id');
     relatedCatIds = [cat.category_id, ...subcats.map(c => c.category_id)];
   } else {
-    // Lĩnh vực con → lấy tất cả cùng nhóm cha + cha
+    // Child category → take all siblings + the parent
     const siblings = await db('categories')
       .where('parent_category_id', cat.parent_category_id)
       .select('category_id');
     relatedCatIds = [cat.parent_category_id, ...siblings.map(c => c.category_id)];
   }
 
-  // B2: Query course liên quan
+  // Step 2: Query related courses
   return db('courses')
     .whereIn('category_id', relatedCatIds)
     .whereNot('course_id', courseId)
@@ -511,8 +517,8 @@ export async function findRelated(catId, courseId, numCourses = 4) {
 
 
 /**
- * Safe version: chỉ cho phép owner (instructor) ẩn
- * Trả về number of rows updated
+ * Safe version: only allow owner (instructor) to hide
+ * Returns number of rows updated
  */
 export async function hideCourseByInstructor(courseId, instructorId) {
   return await db('courses')
@@ -525,8 +531,8 @@ export async function hideCourseByInstructor(courseId, instructorId) {
 
 
 /**
- * Safe version: chỉ cho phép owner (instructor) ẩn
- * Trả về number of rows updated
+ * Safe version: only allow owner (instructor) to show
+ * Returns number of rows updated
  */
 export async function showCourseByInstructor(courseId, instructorId) {
   return await db('courses')

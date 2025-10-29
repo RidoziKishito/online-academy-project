@@ -143,11 +143,11 @@ router.get('/', async (req, res, next) => {
           number: i + 1,
           active: i + 1 === currentPage,
         })),
-        baseUrl, // dùng trong view để giữ các query params khi chuyển trang
+        baseUrl, // used in the view to preserve query params when changing pages
       };
     }
 
-    // ----- render view (truyền query để template show selected sort/order) -----
+    // ----- render view (pass query so template shows selected sort/order) -----
     res.render('vwCourse/list', {
       courses: courseList,
       pagination,
@@ -289,16 +289,16 @@ function formatDuration(seconds = 0) {
   return `${m}:${String(s).padStart(2,'0')}`;
 }
 
-// Route xem chi tiết một khóa học
+// Route: view course details
 router.get('/detail/:id', async (req, res) => {
   try {
     const courseId = req.params.id;
 
-    // 1️⃣ Lấy course
+    // 1️⃣ Fetch course
     const course = await courseModel.findById(courseId);
     if (!course) return res.redirect('/courses');
 
-    // 2️⃣ Lấy chapters, instructor, related, reviews, categories, rating stats
+    // 2️⃣ Fetch chapters, instructor, related, reviews, categories, rating stats
     const [
       chapters,
       instructor,
@@ -320,11 +320,11 @@ router.get('/detail/:id', async (req, res) => {
       child: { id: null, name: null }
     };
 
-    // 3️⃣ Lấy lessons cho từng chapter (nếu có)
+    // 3️⃣ Fetch lessons for each chapter (if any)
     const chapterIds = (chapters || []).map(ch => ch.chapter_id ?? ch.id).filter(Boolean);
     const lessons = chapterIds.length ? await lessonModel.findByChapterIds(chapterIds) : [];
 
-    // 4️⃣ Gộp lesson vào sections
+    // 4️⃣ Group lessons into sections
     const sections = (chapters || []).map(ch => {
       const chId = ch.chapter_id ?? ch.id;
       const chapterLessons = (lessons || [])
@@ -349,7 +349,7 @@ router.get('/detail/:id', async (req, res) => {
       };
     });
 
-    // 5️⃣ Kiểm tra trạng thái người dùng (nếu có đăng nhập)
+    // 5️⃣ Check user state (if logged in)
     let isEnrolled = false;
     let userReview = null;
     let isInWishlist = false;
@@ -362,7 +362,7 @@ router.get('/detail/:id', async (req, res) => {
       ]);
     }
 
-    // 6️⃣ Chuẩn hóa course để render
+    // 6️⃣ Normalize course for rendering
     const normalizedCourse = {
       id: course.course_id,
       title: course.title,
@@ -414,7 +414,7 @@ router.get('/detail/:id', async (req, res) => {
   }
 });
 
-// Route ghi danh (enroll)
+// Enroll route
 router.post('/detail/:id/enroll', restrict, async (req, res) =>
 {
   const courseId = req.params.id;
@@ -437,7 +437,7 @@ router.post('/wishlist/toggle', restrict, async (req, res) => {
             return res.status(400).json({ success: false, message: 'Missing courseId' });
         }
 
-        // Kiểm tra đã có trong wishlist chưa
+        // Check if already in wishlist
         const isInWishlist = await wishlistModel.checkWishlist(userId, courseId);
         
         if (isInWishlist) {
@@ -446,7 +446,7 @@ router.post('/wishlist/toggle', restrict, async (req, res) => {
             res.json({ 
                 success: true, 
                 action: 'removed',
-                message: 'Đã xóa khỏi danh sách yêu thích!' 
+                message: 'Removed from wishlist!' 
             });
         } else {
             // Add to wishlist
@@ -454,26 +454,25 @@ router.post('/wishlist/toggle', restrict, async (req, res) => {
             res.json({ 
                 success: true, 
                 action: 'added',
-                message: 'Đã thêm vào danh sách yêu thích!' 
+                message: 'Added to wishlist!' 
             });
         }
   } catch (error) {
     logger.error({ err: error, userId: req.session?.authUser?.user_id, courseId: req.body?.courseId }, 'Wishlist toggle error');
-        res.status(500).json({ success: false, message: 'Lỗi server' });
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 });
 
 
-
-// Route xem các khóa học theo lĩnh vực (category)
+// Route: view courses by category
 router.get('/by-category/:id', async (req, res) => {
   const categoryId = parseInt(req.params.id);
 
   try {
-    // Lấy tất cả danh mục
+    // Get all categories
     const allCategories = await categoryModel.findAll();
 
-    // Hàm đệ quy tìm toàn bộ ID con của category hiện tại
+    // Recursive function to find all child IDs of the current category
     const findSubCategoryIds = (id) => {
       const children = allCategories.filter(c => c.parent_category_id === id);
       let ids = children.map(c => c.category_id);
@@ -483,10 +482,10 @@ router.get('/by-category/:id', async (req, res) => {
       return ids;
     };
 
-    // Lấy tất cả ID cần tìm (bao gồm chính nó)
+    // Collect all target IDs (including itself)
     const allIds = [categoryId, ...findSubCategoryIds(categoryId)];
 
-    // Lấy category chính
+    // Get the main category
     const category = await categoryModel.findById(categoryId);
     if (!category) return res.redirect('/');
 

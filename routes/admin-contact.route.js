@@ -3,7 +3,7 @@ import ContactModel from '../models/contact.model.js';
 
 const router = express.Router();
 
-// Trang danh sách contact
+// Contact list page
 router.get('/', async (req, res) => {
   const contacts = await ContactModel.all();
   res.render('vwAdmin/contact', {
@@ -12,7 +12,7 @@ router.get('/', async (req, res) => {
   });
 });
 
-// API xem chi tiết (fetch dùng JS)
+// API: Get details (used by fetch on the client)
 router.get('/:id', async (req, res) => {
   const contact = await ContactModel.findById(req.params.id);
   if (!contact) return res.status(404).json({ message: 'Not found' });

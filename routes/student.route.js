@@ -8,10 +8,10 @@ import * as userModel from '../models/user.model.js';
 import logger from '../utils/logger.js';
 const router = express.Router();
 
-// Áp dụng middleware cho tất cả route trong file này
+// Apply middleware to all routes in this file
 router.use(restrict);
 
-// Trang "Các khóa học của tôi"
+// Page: My courses
 router.get('/my-courses', async (req, res) =>
 {
     const userId = req.session.authUser.user_id;
@@ -43,14 +43,14 @@ router.get('/my-courses', async (req, res) =>
     });
 });
 
-// Trang "Danh sách yêu thích"
+// Page: Wishlist
 router.get('/my-wishlist', async (req, res) => {
     const userId = req.session.authUser.user_id;
     const courses = await wishlistModel.findCoursesByUserId(userId);
     res.render('vwStudent/my-wishlist', { courses });
 });
 
-// API thêm vào wishlist (dùng với fetch API từ client)
+// API: Add to wishlist (used by client fetch)
 router.post('/wishlist/add', async (req, res) => {
     const userId = req.session.authUser.user_id;
     const { courseId } = req.body;
@@ -58,7 +58,7 @@ router.post('/wishlist/add', async (req, res) => {
     res.json({ success: true });
 });
 
-// API xóa khỏi wishlist
+// API: Remove from wishlist
 router.post('/wishlist/remove', async (req, res) => {
     const userId = req.session.authUser.user_id;
     const { courseId } = req.body;
@@ -70,14 +70,14 @@ router.get('/profile', restrict, async (req, res) => {
     try {
         const userId = req.session.authUser.user_id;
         
-        // Lấy thông tin cơ bản
+        // Get basic information
         const [enrolledCourses, wishlistCourses, completedLessons] = await Promise.all([
             enrollmentModel.findCoursesByUserId(userId),
             wishlistModel.findCoursesByUserId(userId),
             progressModel.findCompletedLessonsByUserAll(userId) // Use the new function
         ]);
 
-        // Tính toán thống kê
+        // Compute statistics
         const stats = {
             totalCourses: enrolledCourses.length,
             totalWishlist: wishlistCourses.length,
@@ -85,7 +85,7 @@ router.get('/profile', restrict, async (req, res) => {
             totalSpent: enrolledCourses.reduce((sum, course) => sum + (course.current_price || 0), 0)
         };
 
-        // Tính tiến độ từng khóa học
+        // Compute progress per course
         const coursesWithProgress = await Promise.all(
             enrolledCourses.map(async (course) => {
                 const [allLessons, completedInCourse] = await Promise.all([
@@ -104,7 +104,7 @@ router.get('/profile', restrict, async (req, res) => {
             })
         );
 
-        // Tính badges
+        // Calculate badges
         const badges = calculateBadges(stats, coursesWithProgress);
 
         res.render('vwStudent/profile', {
@@ -121,25 +121,25 @@ router.get('/profile', restrict, async (req, res) => {
     }
 });
 
-// Function tính badges
+// Badge calculation function
 function calculateBadges(stats, courses) {
     const badges = [];
     
-    // Badge đăng ký khóa học
+    // Enrollment badges
     if (stats.totalCourses >= 1) badges.push({ name: 'First Course', icon: '🎓', description: 'Enrolled in first course' });
     if (stats.totalCourses >= 5) badges.push({ name: 'Course Collector', icon: '📚', description: 'Enrolled in 5+ courses' });
     if (stats.totalCourses >= 10) badges.push({ name: 'Learning Addict', icon: '🏆', description: 'Enrolled in 10+ courses' });
     
-    // Badge hoàn thành bài học
+    // Lesson completion badges
     if (stats.totalCompletedLessons >= 10) badges.push({ name: 'Lesson Master', icon: '⭐', description: 'Completed 10+ lessons' });
     if (stats.totalCompletedLessons >= 50) badges.push({ name: 'Study Hero', icon: '💫', description: 'Completed 50+ lessons' });
     
-    // Badge hoàn thành khóa học
+    // Course completion badges
     const completedCourses = courses.filter(c => c.progress === 100).length;
     if (completedCourses >= 1) badges.push({ name: 'Course Finisher', icon: '🥇', description: 'Completed first course' });
     if (completedCourses >= 3) badges.push({ name: 'Dedicated Learner', icon: '🏅', description: 'Completed 3+ courses' });
     
-    // Badge chi tiêu
+    // Spending badges
     if (stats.totalSpent >= 500000) badges.push({ name: 'Big Spender', icon: '💰', description: 'Spent 500K+ VND' });
     if (stats.totalSpent >= 1000000) badges.push({ name: 'VIP Learner', icon: '👑', description: 'Spent 1M+ VND' });
     
@@ -155,7 +155,7 @@ router.get('/public-profile', async (req, res) => {
             return res.redirect('/');
         }
 
-        // Lấy thông tin user
+    // Fetch user info
         const user = await userModel.findById(userId);
         
         if (!user || user.role !== 'student') {
@@ -165,19 +165,19 @@ router.get('/public-profile', async (req, res) => {
             });
         }
 
-        // Lấy thông tin công khai
+        // Fetch public info
         const [enrolledCourses, completedLessons] = await Promise.all([
             enrollmentModel.findCoursesByUserId(userId),
             progressModel.findCompletedLessonsByUserAll(userId)
         ]);
 
-        // Tính toán thống kê công khai
+        // Compute public stats
         const stats = {
             totalCourses: enrolledCourses.length,
             totalCompletedLessons: completedLessons.length
         };
 
-        // Tính tiến độ từng khóa học
+        // Compute progress per course
         const coursesWithProgress = await Promise.all(
             enrolledCourses.map(async (course) => {
                 const [allLessons, completedInCourse] = await Promise.all([
@@ -196,12 +196,12 @@ router.get('/public-profile', async (req, res) => {
             })
         );
 
-        // Tính badges
+        // Calculate badges
         const badges = calculateBadges(stats, coursesWithProgress);
 
         res.render('vwStudent/public-profile', {
-            profileUser: user, // User được xem
-            currentUser: req.session.authUser, // User đang đăng nhập (nếu có)
+            profileUser: user, // The viewed user
+            currentUser: req.session.authUser, // Current logged-in user (if any)
             stats,
             coursesWithProgress,
             badges,

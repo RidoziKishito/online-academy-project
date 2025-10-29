@@ -10,7 +10,7 @@ import logger from '../utils/logger.js';
 
 const router = express.Router();
 
-// Tất cả các route trong đây đều yêu cầu đăng nhập
+// All routes below require authentication
 router.use(restrict);
 
 // Route course overview -> redirect to first lesson
@@ -60,7 +60,7 @@ router.get('/:courseId', async (req, res) => {
   }
 });
 
-// Trang xem bài giảng
+// Lesson watch page
 router.get('/:courseId/lesson/:lessonId', async (req, res) => {
   try {
     const userId = req.session.authUser.user_id;
@@ -83,7 +83,7 @@ router.get('/:courseId/lesson/:lessonId', async (req, res) => {
       return res.redirect('/student/my-courses');
     }
 
-    // Đánh dấu bài học đã hoàn thành
+  // Mark lesson completed state
     const completedLessonIds = new Set(completedLessons.map(l => l.lesson_id));
     currentLesson.is_completed = completedLessonIds.has(currentLesson.lesson_id);
 
@@ -93,7 +93,7 @@ router.get('/:courseId/lesson/:lessonId', async (req, res) => {
       });
     });
 
-    // Tính toán previous/next lesson (flatten)
+  // Compute previous/next lesson (flatten)
     const allLessons = [];
     allChapters.forEach(chapter => {
       chapter.lessons.forEach(lesson => allLessons.push(lesson));
@@ -117,7 +117,7 @@ router.get('/:courseId/lesson/:lessonId', async (req, res) => {
   }
 });
 
-// API để đánh dấu bài học đã hoàn thành
+// API to mark a lesson as completed
 router.post('/mark-complete', async (req, res) => {
   try {
     const userId = req.session.authUser.user_id;
@@ -158,7 +158,7 @@ router.post('/mark-complete', async (req, res) => {
   }
 });
 
-// API lưu thời gian xem video
+// API to save video watch time
 router.post('/progress', async (req, res) => {
   try {
     const userId = req.session.authUser.user_id;

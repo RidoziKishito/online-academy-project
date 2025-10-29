@@ -9,26 +9,26 @@ import logger from '../utils/logger.js';
 
 const router = express.Router();
 
-// Tất cả route trong đây yêu cầu đăng nhập VÀ phải là instructor
+// All routes in this file require authentication AND instructor role
 router.use(restrict, isInstructor);
 
-// Trang chính: danh sách các khóa học của tôi
+// Main page: list of my courses
 router.get('/', async (req, res) => {
     const instructorId = req.session.authUser.user_id;
     const courses = await courseModel.findByInstructor(instructorId);
     res.render('vwInstructor/dashboard', { courses });
 });
 
-// Trang quản lý chi tiết 1 khóa học (thêm/sửa chương, bài giảng)
+// Manage a specific course (add/edit chapters, lessons)
 router.get('/manage-course/:id', async (req, res) => {
     const instructorId = req.session.authUser.user_id;
     const courseId = req.params.id;
 
-    // Lấy thông tin cơ bản của khóa học
+    // Get basic course info
     const course = await courseModel.findDetail(courseId, instructorId);
     if (!course) return res.status(404).render('404');
 
-    // Lấy danh sách học viên và tính progress
+    // Fetch students and compute progress
     const enrollments = await enrollmentModel.findStudentsByCourse(courseId);
     const totalLessons = await progressModel.countLessonsByCourse(courseId);
 
@@ -37,23 +37,23 @@ router.get('/manage-course/:id', async (req, res) => {
         enrollment.progress_percent = totalLessons === 0 ? 0 : Math.round((completedLessons / totalLessons) * 100);
     }
 
-    // Lấy categories cho dropdown
+    // Fetch categories for dropdown
     const parentCategories = await categoryModel.findParentCategories();
 
-    // Nếu course đã có category, lấy thông tin đầy đủ của nó
+    // If the course has a category, get its full info
     let currentCategory = null;
     if (course.category_id) {
         currentCategory = await categoryModel.findByIdWithParent(course.category_id);
     }
 
-    // Lấy subcategories dựa trên parent category
+    // Fetch subcategories based on parent category
     const currentParentId = currentCategory?.parent_category_id || course.category_id || parentCategories[0]?.category_id;
     const subcategories = currentParentId ? await categoryModel.findSubcategories(currentParentId) : [];
 
-    // Lấy chapters và lessons cho tab content
+    // Fetch chapters and lessons for tab content
     const chapters = await (await import('../models/chapter.model.js')).findChaptersWithLessonsByCourseId(courseId);
 
-    // Render với đầy đủ data
+    // Render with full data
     res.render('vwInstructor/manage-course', {
         course,
         students: enrollments,
@@ -93,15 +93,15 @@ router.get('/student-progress/:courseId/:userId', async (req, res) => {
     const instructorId = req.session.authUser.user_id;
     const { courseId, userId } = req.params;
 
-    // Kiểm tra quyền instructor
+    // Check instructor permission
     const course = await courseModel.findDetail(courseId, instructorId);
     if (!course) return res.status(403).render('403');
 
-    // Lấy thông tin học viên (từ model enrollment)
+    // Get student information (via enrollment model)
     const student = await enrollmentModel.findStudentDetail(courseId, userId);
     if (!student) return res.status(404).render('404');
 
-    // Lấy danh sách bài học & trạng thái hoàn thành
+    // Get list of lessons and completion status
     const lessons = await progressModel.findLessonProgressOfUser(courseId, userId);
 
     res.render('vwInstructor/student-progress', {
@@ -141,7 +141,7 @@ router.post('/api/courses/:courseId/content', async (req, res) => {
         const course = await courseModel.findDetail(courseId, instructorId);
         if (!course) return res.status(403).json({ error: 'Not authorized' });
 
-        // Gọi model xử lý toàn bộ DB logic
+    // Delegate DB logic to model layer
         await courseModel.updateCourseContent(courseId, chapters);
 
         res.json({ success: true });
@@ -183,11 +183,11 @@ router.delete('/api/courses/:courseId/chapters/:chapterId', async (req, res) => 
 router.get('/create', async (req, res) => {
     try {
         const instructorId = req.session.authUser.user_id;
-        // Lấy danh sách parent categories và subcategories
+        // Fetch parent categories and subcategories
         const parentCategories = await categoryModel.findParentCategories();
         let subcategories = [];
 
-        // Nếu có parent categories, lấy subcategories của parent đầu tiên
+        // If there are parent categories, fetch subcategories of the first parent
         if (parentCategories.length > 0) {
             subcategories = await categoryModel.findSubcategories(parentCategories[0].category_id);
         }
@@ -196,7 +196,7 @@ router.get('/create', async (req, res) => {
             parentCategories,
             subcategories,
             oldData: {},
-            // Thêm helper text cho instructor
+            // Helper text for instructor
             helpText: {
                 draft: 'Save as draft to continue editing later',
                 submit: 'Submit for review to make your course available after approval'
@@ -222,13 +222,13 @@ router.post('/create', async (req, res) => {
             large_image_url,
             requirements,
             category_id,
-            subcategory_id, // Thêm subcategory_id
+            subcategory_id, // Add subcategory_id
             price,
             sale_price,
             save_type
         } = req.body;
 
-        // Kiểm tra subcategory có thuộc parent category không
+        // Validate subcategory belongs to the selected parent category
         if (subcategory_id) {
             const subcategory = await categoryModel.findById(subcategory_id);
             if (!subcategory || subcategory.parent_category_id !== parseInt(category_id)) {
@@ -350,7 +350,7 @@ router.post('/update-course/:id', async (req, res) => {
     res.redirect(`/instructor/manage-course/${courseId}`);
 });
 
-// API endpoint để lấy subcategories
+// API endpoint to fetch subcategories
 router.get('/api/categories/:categoryId/subcategories', async (req, res) => {
     try {
         const categoryId = parseInt(req.params.categoryId, 10);
@@ -358,7 +358,7 @@ router.get('/api/categories/:categoryId/subcategories', async (req, res) => {
             return res.status(400).json({ error: 'Invalid Category ID' });
         }
 
-        // Kiểm tra xem category có tồn tại không
+        // Check if the category exists
         const category = await categoryModel.findById(categoryId);
         if (!category) {
             return res.status(404).json({ error: 'Category not found' });
@@ -366,7 +366,7 @@ router.get('/api/categories/:categoryId/subcategories', async (req, res) => {
 
         const subcategories = await categoryModel.findSubcategories(categoryId);
 
-        // Luôn trả về một mảng, ngay cả khi không có subcategories
+        // Always return an array, even if there are no subcategories
         res.json(subcategories || []);
     } catch (err) {
             logger.error({ err, categoryId }, 'Error fetching subcategories');
@@ -384,17 +384,17 @@ router.post('/courses/hide', isInstructor, async (req, res) => {
 
     const instructorId = req.session.authUser.user_id;
 
-    // Nếu model có hàm kiểm tra quyền (recommended)
+        // If the model provides a permission-aware method (recommended)
     if (typeof courseModel.hideCourseByInstructor === 'function') {
       const updated = await courseModel.hideCourseByInstructor(course_id, instructorId);
-      if (!updated) return res.status(403).json({ ok:false, message: 'Không tìm thấy khóa học hoặc không có quyền.' });
+            if (!updated) return res.status(403).json({ ok:false, message: 'Course not found or you do not have permission.' });
     } else {
-      // Fallback: dùng hàm đơn giản (cần chắc server kiểm soát quyền khác)
+            // Fallback: use simpler method (ensure permission is enforced elsewhere)
       const updated = await courseModel.hideCourse(course_id);
-      if (!updated) return res.status(404).json({ ok:false, message: 'Không thể cập nhật khóa học.' });
+            if (!updated) return res.status(404).json({ ok:false, message: 'Unable to update course.' });
     }
 
-    return res.json({ ok:true, message: 'Khóa học đã được ẩn thành công.' });
+        return res.json({ ok:true, message: 'Course has been hidden successfully.' });
     } catch (err) {
         logger.error({ err, body: req.body, instructorId: req.session?.authUser?.user_id }, 'POST /instructor/courses/hide error');
     return res.status(500).json({ ok:false, message: 'Server error' });
@@ -410,9 +410,9 @@ router.post('/courses/show', isInstructor, async (req, res) => {
 
     const userId = req.session.authUser.user_id;
     const updated = await courseModel.showCourseByInstructor(course_id, userId);
-    if (!updated) return res.status(403).json({ success:false, message:'Không tìm thấy khóa học hoặc không có quyền.' });
+        if (!updated) return res.status(403).json({ success:false, message:'Course not found or you do not have permission.' });
 
-    return res.json({ success:true, message:'Khóa học đã được hiện.' });
+        return res.json({ success:true, message:'Course is now visible.' });
   } catch (err) {
         logger.error({ err, body: req.body, instructorId: req.session?.authUser?.user_id }, 'POST /instructor/courses/show error');
     return res.status(500).json({ success:false, message:'Server error' });

@@ -10,13 +10,13 @@
 <script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
 <script src="/js/course-content.js" defer></script>
 <script>
-    // --- SỬA LỖI: Sửa ID cho đúng ---
-    new Cleave('#currentPrice', { // <-- Sửa từ #txtPrice
+    // --- FIX: Correct field IDs ---
+    new Cleave('#currentPrice', { // <-- Fixed from #txtPrice
         numeral: true,
         numeralThousandsGroupStyle: 'thousand'
     });
 
-    new Cleave('#originalPrice', { // <-- Sửa từ #txtQuantity
+    new Cleave('#originalPrice', { // <-- Fixed from #txtQuantity
         numeral: true,
         numeralThousandsGroupStyle: 'thousand'
     });
@@ -119,18 +119,18 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // If status indicates hidden, action is 'show', otherwise action is 'hide'
     const action = (status === 'hide' || status === 'hidden') ? 'show' : 'hide';
-    const confirmTitle = action === 'hide' ? 'Ẩn khóa học?' : 'Hiện khóa học?';
-    const confirmText = action === 'hide'
-      ? 'Khóa học sẽ bị ẩn khỏi trang học viên (không xóa dữ liệu).'
-      : 'Khóa học sẽ được đưa về trạng thái hiển thị cho học viên.';
+        const confirmTitle = action === 'hide' ? 'Hide this course?' : 'Show this course?';
+        const confirmText = action === 'hide'
+            ? 'The course will be hidden from students (data will not be deleted).'
+            : 'The course will be changed to visible for students.';
 
     const result = await Swal.fire({
       title: confirmTitle,
       text: confirmText,
       icon: action === 'hide' ? 'warning' : 'question',
       showCancelButton: true,
-      confirmButtonText: action === 'hide' ? 'Có, ẩn' : 'Có, hiện',
-      cancelButtonText: 'Hủy'
+            confirmButtonText: action === 'hide' ? 'Yes, hide' : 'Yes, show',
+            cancelButtonText: 'Cancel'
     });
 
     if (!result.isConfirmed) return;
@@ -159,8 +159,8 @@ document.addEventListener('DOMContentLoaded', function () {
       }
 
       // Success: update button UI (no full reload)
-      const successMsg = (payload && payload.message) || (action === 'hide' ? 'Đã ẩn khóa học.' : 'Đã hiện khóa học.');
-      await Swal.fire({ icon: 'success', title: 'Thành công', text: successMsg, timer: 1100, showConfirmButton: false });
+    const successMsg = (payload && payload.message) || (action === 'hide' ? 'Course hidden.' : 'Course shown.');
+    await Swal.fire({ icon: 'success', title: 'Success', text: successMsg, timer: 1100, showConfirmButton: false });
 
       // Update data-status and text on button
       if (action === 'hide') {
@@ -180,7 +180,7 @@ document.addEventListener('DOMContentLoaded', function () {
       // window.location.reload();
     } catch (err) {
       console.error('Hide/Show error', err);
-      Swal.fire({ icon: 'error', title: 'Lỗi', text: err.message || 'Có lỗi xảy ra.' });
+    Swal.fire({ icon: 'error', title: 'Error', text: err.message || 'An error occurred.' });
     } finally {
       btn.disabled = false;
     }
@@ -295,16 +295,18 @@ document.addEventListener('DOMContentLoaded', function () {
                             </div>
                             <span>
                             <button type="submit" class="btn btn-primary">Save Changes</button>
-                            <button type="button"
-                                    class="btn btn-warning btn-hide-course"
-                                    data-course-id="{{course.course_id}}"
-                                    data-status="{{course.status}}">
-                            {{#ifEq2 course.status 'hidden'}}
-                                Show
-                            {{else}}
-                                Hide
-                            {{/ifEq2}}
-                            </button>
+                            {{#if (not (eq course.status 'pending'))}}
+                                <button type="button"
+                                        class="btn btn-warning btn-hide-course"
+                                        data-course-id="{{course.course_id}}"
+                                        data-status="{{course.status}}">
+                                {{#ifEq2 course.status 'hidden'}}
+                                    Show
+                                {{else}}
+                                    Hide
+                                {{/ifEq2}}
+                                </button>
+                            {{/if}}
                             </span>
                         </div>
                     </form>

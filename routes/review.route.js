@@ -9,19 +9,19 @@ const router = express.Router();
 
 router.use(restrict);
 
-// POST: Thêm hoặc cập nhật review
+// POST: Add or update a review
 router.post('/course/:courseId', async (req, res) => {
   try {
     const userId = req.session.authUser.user_id;
     const courseId = Number(req.params.courseId);
     const { rating, comment } = req.body;
 
-    // 1️⃣ Kiểm tra đã ghi danh chưa
+    // 1️⃣ Ensure the user is enrolled
     const isEnrolled = await enrollmentModel.checkEnrollment(userId, courseId);
     if (!isEnrolled) {
       return res.status(403).json({
         success: false,
-        message: 'Bạn phải ghi danh khóa học để có thể đánh giá.',
+        message: 'You must enroll in the course to leave a review.',
       });
     }
 
@@ -29,11 +29,11 @@ router.post('/course/:courseId', async (req, res) => {
     if (!rating || rating < 1 || rating > 5) {
       return res.status(400).json({
         success: false,
-        message: 'Rating phải từ 1 đến 5 sao.',
+        message: 'Rating must be between 1 and 5.',
       });
     }
 
-    // 3️⃣ Thêm hoặc cập nhật review
+    // 3️⃣ Insert or update review
     const existing = await reviewModel.getUserReview(userId, courseId);
     if (existing) {
       await reviewModel.updateReview(userId, courseId, rating, comment);
@@ -41,10 +41,10 @@ router.post('/course/:courseId', async (req, res) => {
       await reviewModel.addReview(userId, courseId, rating, comment);
     }
 
-    // 4️⃣ Sau khi lưu review → tính lại trung bình rating & số lượng
+    // 4️⃣ After saving, recalculate average rating and count
     const stats = await reviewModel.getCourseRatingStats(courseId);
 
-    // ✅ Đảm bảo giá trị hợp lệ (fix lỗi Empty .update())
+    // ✅ Ensure valid values (fix for empty .update())
     const avg = stats && stats.avg_rating !== undefined && stats.avg_rating !== null
       ? Number(stats.avg_rating)
       : 0;
@@ -52,25 +52,25 @@ router.post('/course/:courseId', async (req, res) => {
       ? Number(stats.total_reviews)
       : 0;
 
-    // 5️⃣ Cập nhật vào bảng courses
+    // 5️⃣ Update the courses table
     await courseModel.updateCourseRating(courseId, avg, count);
 
-    // 6️⃣ Trả kết quả JSON khớp với fetch ở frontend
+    // 6️⃣ Return JSON matching frontend expectations
     res.json({
       success: true,
       message: existing
-        ? 'Cập nhật đánh giá thành công!'
-        : 'Gửi đánh giá thành công!',
+        ? 'Review updated successfully!'
+        : 'Review submitted successfully!',
       rating_avg: avg,
       rating_count: count,
     });
   } catch (error) {
     logger.error({ err: error, userId: req.session?.authUser?.user_id, courseId: req.params?.courseId }, 'Review error');
-    res.status(500).json({ success: false, message: 'Lỗi server!' });
+    res.status(500).json({ success: false, message: 'Server error!' });
   }
 });
 
-// DELETE: Xóa review
+// DELETE: Delete a review
 router.delete('/course/:courseId', async (req, res) => {
   try {
     const userId = req.session.authUser.user_id;
@@ -78,10 +78,10 @@ router.delete('/course/:courseId', async (req, res) => {
 
     await reviewModel.deleteReview(userId, courseId);
 
-    // 1️⃣ Sau khi xóa, tính lại rating trung bình
+    // 1️⃣ After deletion, recalculate average rating
     const stats = await reviewModel.getCourseRatingStats(courseId);
 
-    // ✅ Fallback an toàn (fix lỗi tương tự)
+    // ✅ Safe fallback (same fix)
     const avg = stats && stats.avg_rating !== undefined && stats.avg_rating !== null
       ? Number(stats.avg_rating)
       : 0;
@@ -89,18 +89,18 @@ router.delete('/course/:courseId', async (req, res) => {
       ? Number(stats.total_reviews)
       : 0;
 
-    // 2️⃣ Cập nhật lại vào bảng courses
+    // 2️⃣ Update the courses table again
     await courseModel.updateCourseRating(courseId, avg, count);
 
     res.json({
       success: true,
-      message: 'Đã xóa đánh giá!',
+      message: 'Review deleted!',
       rating_avg: avg,
       rating_count: count,
     });
   } catch (error) {
     logger.error({ err: error, userId: req.session?.authUser?.user_id, courseId: req.params?.courseId }, 'Delete review error');
-    res.status(500).json({ success: false, message: 'Lỗi server!' });
+    res.status(500).json({ success: false, message: 'Server error!' });
   }
 });
 
