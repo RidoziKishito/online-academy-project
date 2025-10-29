@@ -326,12 +326,17 @@ export async function getAllWithBadge(opts = {}) {
   const thresholdDate = new Date(Date.now() - ms);
 
   const rows = await db
+    .from('courses as c')
+    .leftJoin('users as u', 'c.instructor_id', 'u.user_id')
+    .leftJoin('categories as cat', 'c.category_id', 'cat.category_id')
     .select(
-      'courses.*',
-      db.raw('(courses.created_at >= ?) as is_new', [thresholdDate])
+      'c.*',
+      'cat.name as category_name',
+      'u.full_name as instructor_name',
+      'u.avatar_url as instructor_avatar',
+      db.raw('(c.created_at >= ?) as is_new', [thresholdDate])
     )
-    .from(TABLE_NAME)
-    .orderBy([{ column: 'is_bestseller', order: 'desc' }, { column: sortBy, order }])
+    .orderBy([{ column: 'c.is_bestseller', order: 'desc' }, { column: `c.${sortBy}`, order }])
     .limit(limit)
     .offset(offset);
 
