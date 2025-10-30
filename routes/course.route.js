@@ -28,9 +28,27 @@ router.get('/', async (req, res, next) => {
     const order = req.query.order === 'asc' ? 'asc' : 'desc';
 
     // ----- filters from query (extend if needed) -----
-    const categoryId = req.query.categoryId || null;
+    let categoryId = req.query.categoryId || null;
     const status = req.query.status || null;
     const instructorId = req.query.instructorId || null;
+
+    // ----- If categoryId is provided, include subcategories -----
+    if (categoryId) {
+      const parsedCategoryId = parseInt(categoryId, 10);
+      if (!Number.isNaN(parsedCategoryId)) {
+        const allCategories = await categoryModel.findAll();
+        const findSubCategoryIds = (id) => {
+          const children = allCategories.filter(c => c.parent_category_id === id);
+          let ids = children.map(c => c.category_id);
+          for (const child of children) {
+            ids = ids.concat(findSubCategoryIds(child.category_id));
+          }
+          return ids;
+        };
+        const allIds = [parsedCategoryId, ...findSubCategoryIds(parsedCategoryId)];
+        categoryId = allIds; // Now categoryId is an array
+      }
+    }
 
     // ----- decide whether to use badge-mode (no filters) -----
     const noFilters = !categoryId && !status && !instructorId;
@@ -493,12 +511,14 @@ router.get('/by-category/:id', async (req, res) => {
     // Support sorting, pagination and mark "new" like search
     const page = parseInt(req.query.page, 10) || 1;
     const limit = parseInt(req.query.limit, 10) || 6;
-    const sortBy = req.query.sortBy || null; // rating | price | newest | bestseller
+    const offset = (page - 1) * limit;
+    const sortBy = req.query.sortBy || 'created_at'; // rating | price | newest | bestseller
     const order = req.query.order === 'asc' ? 'asc' : 'desc';
 
-    const options = { categoryId: allIds, sortBy, order, page, limit };
-    const rows = await courseModel.search('', options);
-    const total = await courseModel.countSearch('', allIds);
+    // Use findAllWithCategoryFiltered instead of search (since we have no keyword)
+    const filters = { categoryId: allIds, sortBy, order, limit, offset };
+    const rows = await courseModel.findAllWithCategoryFiltered(filters);
+    const total = await courseModel.countAllWithCategoryFiltered({ categoryId: allIds });
     const totalPages = Math.ceil((total || 0) / limit);
 
     const now = new Date();

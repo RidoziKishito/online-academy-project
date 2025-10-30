@@ -66,16 +66,34 @@ const PgStore = connectPgSimple(session);
 
 // Use a dedicated, tiny pg Pool for the session store to avoid exhausting Supabase pooler
 const { Pool } = pg;
-const sessionPgPool = new Pool({
-  host: process.env.DB_HOST || process.env.HOST,
-  port: Number(process.env.DB_PORT || process.env.PORT) || 5432,
-  user: process.env.DB_USER || process.env.USER,
-  password: process.env.DB_PASSWORD || process.env.PASSWORD,
-  database: process.env.DB_NAME || 'postgres',
-  max: 2,                 // keep very small
-  idleTimeoutMillis: 10000,
-  connectionTimeoutMillis: 10000,
-});
+
+// Configure session pool connection
+let sessionPoolConfig;
+if (process.env.DATABASE_URL) {
+  console.log('Session store using DATABASE_URL');
+  sessionPoolConfig = {
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false },
+    max: 2,
+    idleTimeoutMillis: 10000,
+    connectionTimeoutMillis: 10000,
+  };
+} else {
+  console.log('Session store using individual DB_* variables');
+  sessionPoolConfig = {
+    host: process.env.DB_HOST || process.env.HOST,
+    port: Number(process.env.DB_PORT || process.env.PORT) || 5432,
+    user: process.env.DB_USER || process.env.USER,
+    password: process.env.DB_PASSWORD || process.env.PASSWORD,
+    database: process.env.DB_NAME || 'postgres',
+    ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
+    max: 2,
+    idleTimeoutMillis: 10000,
+    connectionTimeoutMillis: 10000,
+  };
+}
+
+const sessionPgPool = new Pool(sessionPoolConfig);
 
 sessionPgPool.on('error', (err) => {
   logger.error({ err }, 'pg session pool error');

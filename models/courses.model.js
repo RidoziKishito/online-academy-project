@@ -129,82 +129,87 @@ export function findDetail(courseId, instructorId) {
  */
 export async function search(keyword, options = {}) {
   const { categoryId, sortBy, order = 'desc', page = 1, limit = 10 } = options;
-
   const rawKeyword = String(keyword || '').trim();
-  const keywords = rawKeyword.split(/\s+/).filter(Boolean).join(' & ');
+  const tokens = rawKeyword.split(/\s+/).filter(Boolean);
 
-  let query = db(TABLE_NAME)
-    .leftJoin('categories', 'courses.category_id', 'categories.category_id')
-    .leftJoin('users', 'courses.instructor_id', 'users.user_id')
-    .select(
-      'courses.*',
-      'categories.name as category_name',
-      'users.full_name as instructor_name'
-    );
+  // Nếu không có từ khóa thì trả về rỗng
+  if (!tokens.length) {
+    return [];
+  }
 
-  // Only return approved courses in search results
-  query = query.where('courses.status', 'approved');
+  // Tìm kết quả cho từng token, rồi union lại
+  let allResults = [];
+  for (const token of tokens) {
+    let query = db(TABLE_NAME)
+      .leftJoin('categories', 'courses.category_id', 'categories.category_id')
+      .leftJoin('users', 'courses.instructor_id', 'users.user_id')
+      .select(
+        'courses.*',
+        'categories.name as category_name',
+        'users.full_name as instructor_name'
+      )
+      .where('courses.status', 'approved');
 
-  if (rawKeyword) {
-    const useTrigram = String(process.env.PG_TRGM || '').toLowerCase() === 'true';
+    // FTS hoặc ILIKE cho từng token
+    query = query.where(function () {
+      this.whereRaw(`fts_document @@ plainto_tsquery('simple', unaccent(?))`, [token])
+        .orWhereRaw(`unaccent(lower(courses.title)) ILIKE unaccent(lower(?))`, [`%${token}%`]);
+    });
 
-    if (useTrigram) {
-      query = query.where(function () {
-        this.whereRaw(`fts_document @@ plainto_tsquery('simple', unaccent(?))`, [rawKeyword])
-          .orWhereRaw(`similarity(unaccent(lower(courses.title)), unaccent(lower(?))) > 0.28`, [rawKeyword])
-          .orWhereRaw(`unaccent(lower(courses.title)) ILIKE unaccent(lower(?))`, [`%${rawKeyword}%`]);
-      });
-    } else {
-      query = query.where(function () {
-        this.whereRaw(`fts_document @@ plainto_tsquery('simple', unaccent(?))`, [rawKeyword])
-          .orWhereRaw(`unaccent(lower(courses.title)) ILIKE unaccent(lower(?))`, [`%${rawKeyword}%`]);
-      });
+    // Thêm filter category nếu có
+    if (categoryId) {
+      if (Array.isArray(categoryId)) {
+        query = query.whereIn('courses.category_id', categoryId);
+      } else {
+        query = query.where('courses.category_id', categoryId);
+      }
     }
 
-    query = query.select(db.raw("ts_rank(fts_document, plainto_tsquery('simple', unaccent(?))) as rank", [rawKeyword]));
-    query = query.select(db.raw("ts_headline('simple', COALESCE(courses.short_description, courses.full_description, ''), plainto_tsquery('simple', unaccent(?)), 'MaxFragments=2, MinWords=5, MaxWords=20') as snippet", [rawKeyword]));
+    // Sắp xếp
+    const direction = order && String(order).toLowerCase() === 'asc' ? 'asc' : 'desc';
+    let effectiveSort = sortBy;
+    if (!effectiveSort) effectiveSort = 'relevance';
+    switch (effectiveSort) {
+      case 'rating':
+        query = query.orderBy('courses.rating_avg', direction);
+        break;
+      case 'price':
+        query = query.orderBy(db.raw('COALESCE(courses.sale_price, courses.price)'), direction === 'asc' ? 'asc' : 'desc');
+        break;
+      case 'newest':
+        query = query.orderBy('courses.created_at', direction);
+        break;
+      case 'bestseller':
+        query = query.orderBy('courses.is_bestseller', 'desc').orderBy('courses.enrollment_count', 'desc');
+        break;
+      case 'relevance':
+        // Không có rank vì mỗi token riêng biệt
+        query = query.orderBy('courses.is_bestseller', 'desc').orderBy('courses.rating_avg', 'desc');
+        break;
+      default:
+        query = query.orderBy('courses.is_bestseller', 'desc').orderBy('courses.rating_avg', 'desc').orderBy('courses.created_at', 'desc');
+    }
+
+    // Không phân trang từng token, chỉ phân trang sau khi union
+    const results = await query;
+    allResults = allResults.concat(results);
   }
 
-  if (categoryId) {
-    if (Array.isArray(categoryId)) {
-      query = query.whereIn('courses.category_id', categoryId);
-    } else {
-      query = query.where('courses.category_id', categoryId);
+  // Loại bỏ trùng lặp theo course_id
+  const uniqueResults = [];
+  const seen = new Set();
+  for (const course of allResults) {
+    if (!seen.has(course.course_id)) {
+      uniqueResults.push(course);
+      seen.add(course.course_id);
     }
   }
 
-  const direction = order && String(order).toLowerCase() === 'asc' ? 'asc' : 'desc';
-  let effectiveSort = sortBy;
-  if (!effectiveSort && rawKeyword) effectiveSort = 'relevance';
-
-  switch (effectiveSort) {
-    case 'rating':
-      query = query.orderBy('courses.rating_avg', direction);
-      break;
-    case 'price':
-      query = query.orderBy(db.raw('COALESCE(courses.sale_price, courses.price)'), direction === 'asc' ? 'asc' : 'desc');
-      break;
-    case 'newest':
-      query = query.orderBy('courses.created_at', direction);
-      break;
-    case 'bestseller':
-      query = query.orderBy('courses.is_bestseller', 'desc').orderBy('courses.enrollment_count', 'desc');
-      break;
-    case 'relevance':
-      query = query.orderByRaw('rank DESC NULLS LAST');
-      query = query.orderBy('courses.is_bestseller', 'desc').orderBy('courses.rating_avg', 'desc');
-      break;
-    default:
-      query = query.orderBy('courses.is_bestseller', 'desc').orderBy('courses.rating_avg', 'desc').orderBy('courses.created_at', 'desc');
-  }
-
+  // Phân trang kết quả cuối cùng
   const lim = parseInt(limit) || 10;
   const pg = Math.max(1, parseInt(page) || 1);
   const offset = (pg - 1) * lim;
-
-  query = query.limit(lim).offset(offset);
-
-  return query;
+  return uniqueResults.slice(offset, offset + lim);
 }
 
 export async function countSearch(keyword, categoryId) {
@@ -279,7 +284,14 @@ export function findAllWithCategoryFiltered(opts = {}) {
       'users.full_name as instructor_name'
     );
 
-  if (opts.categoryId) query = query.where('courses.category_id', opts.categoryId);
+  // Support both single categoryId and array of categoryIds (for subcategories)
+  if (opts.categoryId) {
+    if (Array.isArray(opts.categoryId)) {
+      query = query.whereIn('courses.category_id', opts.categoryId);
+    } else {
+      query = query.where('courses.category_id', opts.categoryId);
+    }
+  }
   if (opts.status) query = query.where('courses.status', opts.status);
   if (opts.instructorId) query = query.where('courses.instructor_id', opts.instructorId);
 
@@ -300,7 +312,14 @@ export async function countAllWithCategoryFiltered(opts = {}) {
     .leftJoin('categories', 'courses.category_id', 'categories.category_id')
     .leftJoin('users', 'courses.instructor_id', 'users.user_id');
 
-  if (opts.categoryId) query = query.where('courses.category_id', opts.categoryId);
+  // Support both single categoryId and array of categoryIds (for subcategories)
+  if (opts.categoryId) {
+    if (Array.isArray(opts.categoryId)) {
+      query = query.whereIn('courses.category_id', opts.categoryId);
+    } else {
+      query = query.where('courses.category_id', opts.categoryId);
+    }
+  }
   if (opts.status) query = query.where('courses.status', opts.status);
   if (opts.instructorId) query = query.where('courses.instructor_id', opts.instructorId);
 
