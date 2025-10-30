@@ -95,71 +95,82 @@
             <div class="flex-grow-1 d-flex flex-column justify-content-center text-center">
               <!-- Price -->
               <div class="mb-3">
-                {{#if course.sale_price}}
+                {{#unless (eq course.sale_price course.price)}}
                   <h3 class="text-danger fw-bold mb-0">{{format_number course.sale_price}} VND</h3>
                   <small class="text-muted text-decoration-line-through">{{format_number course.price}} VND</small>
                 {{else}}
-                  <h3 class="text-danger fw-bold mb-0">{{format_number course.price}} VND</h3>
-                {{/if}}
+                  <h3 class="fw-bold mb-0">{{format_number course.price}} VND</h3>
+                {{/unless}}
               </div>
 
+
+              {{#if (eq @root.session.authUser.role 'instructor')}}
+              <div class="text-center">
+                  <a class="btn btn-primary rounded-pill py-2 px-4 shadow-sm fw-semibold" href="/instructor/manage-course/{{course.id}}">
+                    <i class="bi bi-pencil me-2"></i>Edit Course
+                  </a>
+              </div>
+              {{/if}}
+                
+              {{#if (isStudent)}}
               <!-- Action buttons -->
-<div class="text-center">
-  {{#if isEnrolled}}
-    <a class="btn btn-primary rounded-pill py-2 px-4 shadow-sm fw-semibold" href="/learn/{{course.id}}">
-      <i class="bi bi-play-circle me-2"></i>Continue learning
-    </a>
-  {{else}}
-  <!-- Row 1: Add to Cart + Buy Now -->
-    <div class="d-flex justify-content-center align-items-center mb-3 flex-wrap">
+              <div class="text-center">
+                {{#if isEnrolled}}
+                  <a class="btn btn-primary rounded-pill py-2 px-4 shadow-sm fw-semibold" href="/learn/{{course.id}}">
+                    <i class="bi bi-play-circle me-2"></i>Continue learning
+                  </a>
+                {{else}}
+                <!-- Row 1: Buy Now -->
+                  <div class="d-flex justify-content-center align-items-center mb-3 flex-wrap">
 
-  {{!-- Replace existing Buy Now button with this block --}}
-      {{#if isEnrolled}}
-  <!-- User enrolled: show Learn button -->
-        <a href="/learn/{{course.course_id}}"
-          class="btn btn-success rounded-pill py-2 fw-semibold me-2">
-          <i class="bi bi-play-circle-fill me-2"></i>Learn
-        </a>
-      {{else}}
-        {{#if @root.session.authUser}}
-          <!-- Logged-in user but not enrolled: open payment modal -->
-          <button type="button"
-                  class="btn btn-outline-success rounded-pill py-2 fw-semibold me-2"
-                  data-bs-toggle="modal"
-                  data-bs-target="#paymentQrModal">
-            <i class="bi bi-lightning-charge-fill me-2"></i>Buy Now
-          </button>
-        {{else}}
-          <!-- User not logged in: redirect same as wishlist (with retUrl) -->
-          <a href="/account/signin?ret={{retUrl}}"
-            class="btn btn-outline-success rounded-pill py-2 fw-semibold me-2">
-            <i class="bi bi-lightning-charge-fill me-2"></i>Buy Now
-          </a>
-        {{/if}}
-      {{/if}}
+                {{!-- Replace existing Buy Now button with this block --}}
+                    {{#if isEnrolled}}
+                <!-- User enrolled: show Learn button -->
+                      <a href="/learn/{{course.course_id}}"
+                        class="btn btn-success rounded-pill py-2 fw-semibold me-2">
+                        <i class="bi bi-play-circle-fill me-2"></i>Learn
+                      </a>
+                    {{else}}
+                      {{#if @root.session.authUser}}
+                        <!-- Logged-in user but not enrolled: open payment modal -->
+                        <button type="button"
+                                class="btn btn-outline-success rounded-pill py-2 fw-semibold me-2"
+                                data-bs-toggle="modal"
+                                data-bs-target="#paymentQrModal">
+                          <i class="bi bi-lightning-charge-fill me-2"></i>Buy Now
+                        </button>
+                      {{else}}
+                        <!-- User not logged in: redirect same as wishlist (with retUrl) -->
+                        <a href="/account/signin?ret={{retUrl}}"
+                          class="btn btn-outline-success rounded-pill py-2 fw-semibold me-2">
+                          <i class="bi bi-lightning-charge-fill me-2"></i>Buy Now
+                        </a>
+                      {{/if}}
+                    {{/if}}
 
 
 
-      {{#if @root.session.authUser}}
-        {{#if isInWishlist}}
-          <button type="button" class="btn btn-danger rounded-pill py-2" id="wishlistBtn" data-course-id="{{course.id}}">
-            <i class="bi bi-heart-fill"></i>
-            <span id="wishlistText">Remove</span>
-          </button>
-        {{else}}
-          <button type="button" class="btn btn-outline-danger rounded-pill py-2" id="wishlistBtn" data-course-id="{{course.id}}">
-            <i class="bi bi-heart"></i>
-            <span id="wishlistText">Add to Wishlist</span>
-          </button>
-        {{/if}}
-      {{else}}
-      <a href="/account/signin?ret={{retUrl}}" class="btn btn-outline-danger rounded-pill py-2">
-          <i class="bi bi-heart"></i> Add to Wishlist
-        </a>
-      {{/if}}
-    </div>
-  {{/if}}
-</div>
+                    {{#if @root.session.authUser}}
+                      {{#if isInWishlist}}
+                        <button type="button" class="btn btn-danger rounded-pill py-2" id="wishlistBtn" data-course-id="{{course.id}}">
+                          <i class="bi bi-heart-fill"></i>
+                          <span id="wishlistText">Remove</span>
+                        </button>
+                      {{else}}
+                        <button type="button" class="btn btn-outline-danger rounded-pill py-2" id="wishlistBtn" data-course-id="{{course.id}}">
+                          <i class="bi bi-heart"></i>
+                          <span id="wishlistText">Add to Wishlist</span>
+                        </button>
+                      {{/if}}
+                    {{else}}
+                    <a href="/account/signin?ret={{retUrl}}" class="btn btn-outline-danger rounded-pill py-2">
+                        <i class="bi bi-heart"></i> Add to Wishlist
+                      </a>
+                    {{/if}}
+                  </div>
+                {{/if}}
+              </div>
+              {{/if}}
 
 
               {{!-- Enroll form for free course (optional) --}}
@@ -353,7 +364,8 @@
         {{#each related_courses}}
           <a class="col text-decoration-none" href="/courses/detail/{{this.course_id}}">
             <div class="card border-0 shadow-sm rounded-4 h-100">
-              <img src="{{this.image_url}}" class="card-img-top" height="180" alt="{{this.title}}">
+              <img src="{{this.image_url}}" class="card-img-top" alt="{{this.title}}"
+                   style="width: 100%; height: 180px; object-fit: cover; border-top-left-radius: 1rem; border-top-right-radius: 1rem;">
               <div class="card-body">
                 <h6 class="fw-semibold text-dark">{{this.title}}</h6>
                 <p class="text-muted small mb-1">{{this.instructor_name}}</p>

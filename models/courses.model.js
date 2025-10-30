@@ -534,6 +534,7 @@ export async function findRelated(catId, courseId, numCourses = 4) {
   return db('courses')
     .whereIn('category_id', relatedCatIds)
     .whereNot('course_id', courseId)
+    .where('status', 'approved') 
     .orderBy('rating_avg', 'desc')
     .orderBy('enrollment_count', 'desc')
     .limit(numCourses);

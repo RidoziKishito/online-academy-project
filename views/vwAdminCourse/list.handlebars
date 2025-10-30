@@ -74,7 +74,7 @@
             {{#each courses}}
             <tr>
                 <th scope="row" class="text-center">{{course_id}}</th>
-                <td>{{title}}</td>
+                <td><a href="/courses/detail/{{course_id}}" class="text-decoration-none text-success">{{title}}</a></td>
                 <td>
                     {{#if instructor_name}}
                     {{instructor_name}}
@@ -230,7 +230,12 @@ document.addEventListener('DOMContentLoaded', function() {
             const row = document.createElement('tr');
             row.innerHTML = `
                 <th scope="row" class="text-center">${course.course_id}</th>
-                <td>${course.title}</td>
+                <td>      
+                    <a href="/courses/detail/${course.course_id}" 
+                    class="text-decoration-none text-success fw-semibold">
+                    ${course.title}    
+                    </a>
+                </td>
                 <td>${course.instructor_name || '<span class="text-muted">N/A</span>'}</td>
                 <td>${course.category_name ? '<span class="badge bg-info">' + course.category_name + '</span>' : '<span class="badge bg-secondary">N/A</span>'}</td>
                 <td>${getStatusBadge(course.status)}</td>
