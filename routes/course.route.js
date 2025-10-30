@@ -28,9 +28,27 @@ router.get('/', async (req, res, next) => {
     const order = req.query.order === 'asc' ? 'asc' : 'desc';
 
     // ----- filters from query (extend if needed) -----
-    const categoryId = req.query.categoryId || null;
+    let categoryId = req.query.categoryId || null;
     const status = req.query.status || null;
     const instructorId = req.query.instructorId || null;
+
+    // ----- If categoryId is provided, include subcategories -----
+    if (categoryId) {
+      const parsedCategoryId = parseInt(categoryId, 10);
+      if (!Number.isNaN(parsedCategoryId)) {
+        const allCategories = await categoryModel.findAll();
+        const findSubCategoryIds = (id) => {
+          const children = allCategories.filter(c => c.parent_category_id === id);
+          let ids = children.map(c => c.category_id);
+          for (const child of children) {
+            ids = ids.concat(findSubCategoryIds(child.category_id));
+          }
+          return ids;
+        };
+        const allIds = [parsedCategoryId, ...findSubCategoryIds(parsedCategoryId)];
+        categoryId = allIds; // Now categoryId is an array
+      }
+    }
 
     // ----- decide whether to use badge-mode (no filters) -----
     const noFilters = !categoryId && !status && !instructorId;

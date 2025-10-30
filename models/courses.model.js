@@ -284,7 +284,14 @@ export function findAllWithCategoryFiltered(opts = {}) {
       'users.full_name as instructor_name'
     );
 
-  if (opts.categoryId) query = query.where('courses.category_id', opts.categoryId);
+  // Support both single categoryId and array of categoryIds (for subcategories)
+  if (opts.categoryId) {
+    if (Array.isArray(opts.categoryId)) {
+      query = query.whereIn('courses.category_id', opts.categoryId);
+    } else {
+      query = query.where('courses.category_id', opts.categoryId);
+    }
+  }
   if (opts.status) query = query.where('courses.status', opts.status);
   if (opts.instructorId) query = query.where('courses.instructor_id', opts.instructorId);
 
@@ -305,7 +312,14 @@ export async function countAllWithCategoryFiltered(opts = {}) {
     .leftJoin('categories', 'courses.category_id', 'categories.category_id')
     .leftJoin('users', 'courses.instructor_id', 'users.user_id');
 
-  if (opts.categoryId) query = query.where('courses.category_id', opts.categoryId);
+  // Support both single categoryId and array of categoryIds (for subcategories)
+  if (opts.categoryId) {
+    if (Array.isArray(opts.categoryId)) {
+      query = query.whereIn('courses.category_id', opts.categoryId);
+    } else {
+      query = query.where('courses.category_id', opts.categoryId);
+    }
+  }
   if (opts.status) query = query.where('courses.status', opts.status);
   if (opts.instructorId) query = query.where('courses.instructor_id', opts.instructorId);
 
