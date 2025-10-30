@@ -119,7 +119,7 @@
         const courseId = document.querySelector('[data-course-id]').dataset.courseId;
         const chapters = serializeContent();
 
-        const response = await fetch(`/api/courses/${courseId}/content`, {
+        const response = await fetch(`/instructor/api/courses/${courseId}/content`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
