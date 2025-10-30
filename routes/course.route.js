@@ -511,12 +511,14 @@ router.get('/by-category/:id', async (req, res) => {
     // Support sorting, pagination and mark "new" like search
     const page = parseInt(req.query.page, 10) || 1;
     const limit = parseInt(req.query.limit, 10) || 6;
-    const sortBy = req.query.sortBy || null; // rating | price | newest | bestseller
+    const offset = (page - 1) * limit;
+    const sortBy = req.query.sortBy || 'created_at'; // rating | price | newest | bestseller
     const order = req.query.order === 'asc' ? 'asc' : 'desc';
 
-    const options = { categoryId: allIds, sortBy, order, page, limit };
-    const rows = await courseModel.search('', options);
-    const total = await courseModel.countSearch('', allIds);
+    // Use findAllWithCategoryFiltered instead of search (since we have no keyword)
+    const filters = { categoryId: allIds, sortBy, order, limit, offset };
+    const rows = await courseModel.findAllWithCategoryFiltered(filters);
+    const total = await courseModel.countAllWithCategoryFiltered({ categoryId: allIds });
     const totalPages = Math.ceil((total || 0) / limit);
 
     const now = new Date();
