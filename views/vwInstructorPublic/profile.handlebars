@@ -35,6 +35,7 @@
         <h5>Courses by {{instructor.full_name}}</h5>
         <div class="row">
             {{#each courses}}
+            {{#unless (eq this.status 'hidden')}}
             <div class="col-md-6 col-lg-4 mb-3">
                 <div class="card h-100">
                     <img src="{{image_url}}" class="card-img-top" style="height:160px;object-fit:cover"
@@ -50,6 +51,7 @@
                     </div>
                 </div>
             </div>
+            {{/unless}}
             {{else}}
             <div class="col-12">
                 <p class="text-muted">No courses yet.</p>

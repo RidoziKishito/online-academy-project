@@ -547,3 +547,10 @@ export async function showCourseByInstructor(courseId, instructorId) {
       updated_at: db.fn.now()
     });
 }
+
+// Increase view 
+export async function increaseView(courseId) {
+  return await db('courses')
+    .where('course_id', courseId)
+    .increment('view_count', 1);
+}

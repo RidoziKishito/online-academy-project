@@ -66,6 +66,7 @@
         {{!-- Example static cards converted to Bootstrap cards; you should replace with dynamic rendering from server data --}}
         {{#if courses}}
           {{#each courses}}
+          {{#unless (eq this.status 'hidden')}}
             <div class="card mb-3">
 
               <div class="row g-0">
@@ -110,6 +111,7 @@
                 </div>
               </div>
             </div>
+          {{/unless}}
           {{/each}}
         {{else}}
           <div class="alert alert-info">No courses found.</div>
