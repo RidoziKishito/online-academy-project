@@ -497,7 +497,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const deleteBtn = document.getElementById('deleteReview');
     const starContainer = document.querySelector('.star-rating');
 
-    // Server-side template should replace {{course.id}} with actual id
     const courseId = '{{course.id}}';
     const reviewEndpoint = reviewForm?.getAttribute('action') || `/review/course/${courseId}`;
 
@@ -655,6 +654,20 @@ document.addEventListener('DOMContentLoaded', function () {
   };
 
 }); // DOMContentLoaded
+</script>
+
+
+<script>
+  // Tính view
+document.addEventListener("DOMContentLoaded", () => {
+  const courseId = "{{course.id}}"; // hoặc course.id tùy DB bạn
+  // Đợi 30 giây rồi mới tính view
+  setTimeout(() => {
+    fetch(`/courses/view/${courseId}`, {
+      method: "POST"
+    });
+  }, 15000);
+});
 </script>
 
 

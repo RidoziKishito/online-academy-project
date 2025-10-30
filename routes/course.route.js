@@ -124,7 +124,8 @@ router.get('/', async (req, res, next) => {
         total_lectures: totalLectures,
         is_new: !!c.is_new,
         is_bestseller: !!c.is_bestseller,
-        is_complete: !!c.is_complete
+        is_complete: !!c.is_complete,
+        status: c.status
       };
     });
 
@@ -573,6 +574,30 @@ router.get('/allCat', async (req, res) => {
     logger.error({ err }, 'Error loading categories');
     res.status(500).render('vwError/500', { layout: 'main' });
   }
+});
+
+
+router.post('/view/:id', async (req, res) => {
+  const courseId = req.params.id;
+  const now = Date.now();
+
+  // ✅ Nếu session chưa có viewedCourses thì tạo mới
+  if (!req.session.viewedCourses) {
+    req.session.viewedCourses = {};
+  }
+
+  const lastViewed = req.session.viewedCourses[courseId] || 0;
+
+  // ⏳ Nếu chưa đủ 30s kể từ lần cuối thì bỏ qua
+  if (now - lastViewed < 30000) {
+    return res.sendStatus(204);
+  }
+
+  // ✅ Nếu đủ 30s rồi thì tăng view + cập nhật lại thời điểm
+  await courseModel.increaseView(courseId);
+  req.session.viewedCourses[courseId] = now;
+
+  res.sendStatus(200);
 });
 
 

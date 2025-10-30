@@ -1,5 +1,5 @@
 import express from 'express';
-import { restrict } from '../middlewares/auth.mdw.js';
+import { restrict, isStudent } from '../middlewares/auth.mdw.js';
 import * as enrollmentModel from '../models/enrollment.model.js';
 import * as wishlistModel from '../models/wishlist.model.js';
 import * as courseModel from '../models/courses.model.js';
@@ -8,8 +8,81 @@ import * as userModel from '../models/user.model.js';
 import logger from '../utils/logger.js';
 const router = express.Router();
 
+
+// Everyone can see this link
+router.get('/public-profile', async (req, res) => {
+    try {
+        const userId = req.query.id;
+        
+        if (!userId) {
+            return res.redirect('/');
+        }
+
+    // Fetch user info
+        const user = await userModel.findById(userId);
+        
+        if (!user || user.role !== 'student') {
+            return res.status(404).render('error', { 
+                message: 'Student not found',
+                layout: 'main'
+            });
+        }
+
+        // Fetch public info
+        const [enrolledCourses, completedLessons] = await Promise.all([
+            enrollmentModel.findCoursesByUserId(userId),
+            progressModel.findCompletedLessonsByUserAll(userId)
+        ]);
+
+        // Compute public stats
+        const stats = {
+            totalCourses: enrolledCourses.length,
+            totalCompletedLessons: completedLessons.length
+        };
+
+        // Compute progress per course
+        const coursesWithProgress = await Promise.all(
+            enrolledCourses.map(async (course) => {
+                const [allLessons, completedInCourse] = await Promise.all([
+                    progressModel.countLessonsByCourse(course.course_id),
+                    progressModel.countCompletedLessons(course.course_id, userId)
+                ]);
+                
+                const progress = allLessons > 0 ? Math.round((completedInCourse / allLessons) * 100) : 0;
+                
+                return {
+                    ...course,
+                    totalLessons: allLessons,
+                    completedLessons: completedInCourse,
+                    progress: progress
+                };
+            })
+        );
+
+        // Calculate badges
+        const badges = calculateBadges(stats, coursesWithProgress);
+
+        res.render('vwStudent/public-profile', {
+            profileUser: user, // The viewed user
+            currentUser: req.session.authUser, // Current logged-in user (if any)
+            stats,
+            coursesWithProgress,
+            badges,
+            isOwnProfile: req.session.authUser?.user_id === parseInt(userId),
+            layout: 'main'
+        });
+    } catch (error) {
+        logger.error({ err: error, userId: req.query?.id }, 'Public profile error');
+        res.status(500).render('error', { 
+            message: 'Error loading profile',
+            layout: 'main'
+        });
+    }
+});
+
+
 // Apply middleware to all routes in this file
-router.use(restrict);
+router.use(restrict, isStudent);
 
 // Page: My courses
 router.get('/my-courses', async (req, res) =>
@@ -146,76 +219,6 @@ function calculateBadges(stats, courses) {
     return badges;
 }
 
-
-router.get('/public-profile', async (req, res) => {
-    try {
-        const userId = req.query.id;
-        
-        if (!userId) {
-            return res.redirect('/');
-        }
-
-    // Fetch user info
-        const user = await userModel.findById(userId);
-        
-        if (!user || user.role !== 'student') {
-            return res.status(404).render('error', { 
-                message: 'Student not found',
-                layout: 'main'
-            });
-        }
-
-        // Fetch public info
-        const [enrolledCourses, completedLessons] = await Promise.all([
-            enrollmentModel.findCoursesByUserId(userId),
-            progressModel.findCompletedLessonsByUserAll(userId)
-        ]);
-
-        // Compute public stats
-        const stats = {
-            totalCourses: enrolledCourses.length,
-            totalCompletedLessons: completedLessons.length
-        };
-
-        // Compute progress per course
-        const coursesWithProgress = await Promise.all(
-            enrolledCourses.map(async (course) => {
-                const [allLessons, completedInCourse] = await Promise.all([
-                    progressModel.countLessonsByCourse(course.course_id),
-                    progressModel.countCompletedLessons(course.course_id, userId)
-                ]);
-                
-                const progress = allLessons > 0 ? Math.round((completedInCourse / allLessons) * 100) : 0;
-                
-                return {
-                    ...course,
-                    totalLessons: allLessons,
-                    completedLessons: completedInCourse,
-                    progress: progress
-                };
-            })
-        );
-
-        // Calculate badges
-        const badges = calculateBadges(stats, coursesWithProgress);
-
-        res.render('vwStudent/public-profile', {
-            profileUser: user, // The viewed user
-            currentUser: req.session.authUser, // Current logged-in user (if any)
-            stats,
-            coursesWithProgress,
-            badges,
-            isOwnProfile: req.session.authUser?.user_id === parseInt(userId),
-            layout: 'main'
-        });
-    } catch (error) {
-        logger.error({ err: error, userId: req.query?.id }, 'Public profile error');
-        res.status(500).render('error', { 
-            message: 'Error loading profile',
-            layout: 'main'
-        });
-    }
-});
 
 
 export default router;

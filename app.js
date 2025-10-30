@@ -464,41 +464,13 @@ app.get('/', async (req, res) => {
       // Load courses data for authenticated student home
       const coursesModel = await import('./models/courses.model.js');
       
-      // Get top courses (limit 6 for featured section)
-      const topWeekCourses = await coursesModel.getAllWithBadge({ 
-        limit: 6, 
-        offset: 0,
-        order: 'views_count' // or 'avg_rating'
-      });
-      
-      // Get most viewed courses
-      const mostViewedCourses = await coursesModel.getAllWithBadge({ 
-        limit: 8, 
-        offset: 0,
-        order: 'views_count'
-      });
-      
-      // Get newest courses
-      const newestCourses = await coursesModel.getAllWithBadge({ 
-        limit: 8, 
-        offset: 0,
-        order: 'created_at'
-      });
-      
       return res.render('home-authen', { 
-        layout: 'main',
-        topWeekCourses: topWeekCourses || [],
-        mostViewedCourses: mostViewedCourses || [],
-        newestCourses: newestCourses || []
+        layout: 'main'
       });
     } catch (error) {
       logger.error({ err: error }, 'Error loading home page data');
-      // Fallback to render without data
       return res.render('home-authen', { 
-        layout: 'main',
-        topWeekCourses: [],
-        mostViewedCourses: [],
-        newestCourses: []
+        layout: 'main'
       });
     }
   }
@@ -522,7 +494,8 @@ app.use('/payment', paymentRouter);
 
 // -- Routes của học viên (cần đăng nhập) --
 // Student-only areas
-app.use('/student', restrict, isStudent, studentRouter);
+// Student has its own restrict in student.route.js
+app.use('/student', restrict, studentRouter);
 app.use('/learn', restrict, isStudent, learnRouter);
 
 // Public instructors profiles
