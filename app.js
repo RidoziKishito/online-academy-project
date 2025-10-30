@@ -577,7 +577,10 @@ process.on('uncaughtException', (err) => {
 const server = app.listen(PORT, () => {
   logger.info({ port: PORT }, `Application listening on port ${PORT}`);
 });
-
+app.use((err, req, res, next) => {
+  console.error("🔥 Lỗi thật sự:", err.stack);
+  res.status(500).send("Internal Server Error: " + err.message);
+});
 function shutdown() {
   logger.info('Shutting down gracefully...');
   try {

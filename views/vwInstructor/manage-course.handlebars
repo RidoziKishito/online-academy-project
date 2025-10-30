@@ -315,7 +315,7 @@ document.addEventListener('DOMContentLoaded', function () {
         </div>
 
         <!-- CONTENT TAB -->
-        <div class="tab-pane fade" id="tab-content">
+        <div class="tab-pane fade" id="tab-content" data-course-id="{{course.course_id}}">
             {{> course-content course=course chapters=chapters}}
         </div>
 

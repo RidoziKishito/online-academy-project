@@ -6,8 +6,24 @@ export function findAll() {
   return db(TABLE_NAME);
 }
 
-export function add(chapter) {
-  return db(TABLE_NAME).insert(chapter).returning('chapter_id');
+export async function add(chapter, trx) {
+  const client = trx || db;
+  try {
+    return await client(TABLE_NAME).insert(chapter).returning('chapter_id');
+  } catch (err) {
+    if (err && err.code === '23505' && String(err.constraint || '').includes('chapters_pkey')) {
+      if (trx) {
+        err.sequenceOutOfSync = true;
+        err.table = 'chapters';
+        throw err;
+      }
+      await db.raw(
+        `SELECT setval(pg_get_serial_sequence('chapters','chapter_id'), COALESCE((SELECT MAX(chapter_id) FROM chapters), 0) + 1, false)`
+      );
+      return await db(TABLE_NAME).insert(chapter).returning('chapter_id');
+    }
+    throw err;
+  }
 }
 
 export function findById(id) {
@@ -18,8 +34,8 @@ export function del(id) {
   return db(TABLE_NAME).where('chapter_id', id).del();
 }
 
-export function patch(id, chapter) {
-  return db(TABLE_NAME).where('chapter_id', id).update(chapter);
+export function patch(id, chapter, trx) {
+  return (trx || db)(TABLE_NAME).where('chapter_id', id).update(chapter);
 }
 
 export function findByCourseId(courseId) {

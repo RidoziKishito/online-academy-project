@@ -61,17 +61,24 @@
         const btn = document.getElementById('autoSaveBtn');
         if (btn) {
             const span = btn.querySelector('span');
+            if (span) span.textContent = hasChanges ? 'Unsaved Changes' : 'All Changes Saved';
             btn.classList.toggle('btn-warning', hasChanges);
-            span.textContent = hasChanges ? 'Unsaved Changes' : 'Saved';
             btn.disabled = !hasChanges;
+        }
+        const saveBtn = document.getElementById('saveBtn');
+        if (saveBtn) {
+            // Always enabled, but highlight when there are changes
+            saveBtn.classList.toggle('btn-warning', hasChanges);
+            saveBtn.classList.toggle('btn-primary', !hasChanges);
         }
     }
 
     function serializeContent() {
         const chapters = [];
         document.querySelectorAll('.chapter-card').forEach((chapterEl, chapterIdx) => {
+            const rawChapterId = chapterEl.dataset.chapterId;
             const chapter = {
-                chapter_id: chapterEl.dataset.chapterId,
+                chapter_id: (rawChapterId && rawChapterId.startsWith('new-')) ? null : (rawChapterId ? parseInt(rawChapterId, 10) : null),
                 order_index: chapterIdx + 1,
                 title: chapterEl.querySelector('.chapter-title').value,
                 lessons: []
@@ -82,7 +89,7 @@
                 const editor = editors[lessonId];
 
                 chapter.lessons.push({
-                    lesson_id: lessonId.startsWith('new-') ? null : lessonId,
+                    lesson_id: lessonId && lessonId.startsWith('new-') ? null : (lessonId ? parseInt(lessonId, 10) : null),
                     title: lessonEl.querySelector('.lesson-title').value,
                     video_url: lessonEl.querySelector('.lesson-video').value,
                     duration_seconds: parseInt(lessonEl.querySelector('.lesson-duration').value || 0),
@@ -116,10 +123,14 @@
     }
 
     async function saveContent() {
-        const courseId = document.querySelector('[data-course-id]').dataset.courseId;
+        // Find courseId from tab container to avoid null errors
+        const tab = document.getElementById('tab-content');
+        const courseId = tab && tab.dataset ? tab.dataset.courseId : null;
+        if (!courseId) throw new Error('Course ID not found on page');
+
         const chapters = serializeContent();
 
-        const response = await fetch(`/api/courses/${courseId}/content`, {
+        const response = await fetch(`/instructor/api/courses/${courseId}/content`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -128,7 +139,12 @@
         });
 
         if (!response.ok) {
-            throw new Error(`Save failed: ${response.statusText}`);
+            let message = response.statusText;
+            try {
+                const errBody = await response.json();
+                if (errBody && errBody.error) message = errBody.error;
+            } catch {}
+            throw new Error(`Save failed (${response.status}): ${message}`);
         }
 
         setUnsavedChanges(false);
@@ -187,13 +203,17 @@
         lesson.dataset.lessonId = lessonId;
 
         // Update lesson number and ID placeholders
-        lesson.querySelector('.lesson-label').textContent =
-            lesson.querySelector('.lesson-label').textContent.replace('__NUMBER__', lessonNumber);
+        const numEl = lesson.querySelector('.lesson-number');
+        if (numEl) {
+            numEl.textContent = String(lessonNumber);
+        }
         lesson.querySelector('[id^="quill-"]').id = `quill-${lessonId}`;
 
-        lessonsList.appendChild(lesson);
-        editors[lessonId] = initQuillEditor(lessonId);
-        wireUpLesson(lesson);
+    lessonsList.appendChild(lesson);
+    editors[lessonId] = initQuillEditor(lessonId);
+    wireUpLesson(lesson);
+    // Notify others (e.g., upload wiring) that a lesson is ready
+    window.dispatchEvent(new CustomEvent('lessonReady', { detail: { lessonId, element: lesson } }));
         setUnsavedChanges(true);
 
         // Scroll to new lesson
@@ -305,19 +325,65 @@
 
         // Wire up existing chapters and lessons
         document.querySelectorAll('.chapter-card').forEach(wireUpChapter);
-        document.querySelectorAll('.lesson-row').forEach(wireUpLesson);
+        document.querySelectorAll('.lesson-row').forEach((el) => {
+            wireUpLesson(el);
+            // Dispatch ready event for existing lessons so upload script can hook
+            const lessonId = el.dataset.lessonId;
+            window.dispatchEvent(new CustomEvent('lessonReady', { detail: { lessonId, element: el } }));
+        });
 
         // Add new chapter button
         document.getElementById('addChapterBtn').addEventListener('click', addChapter);
 
         // Manual save button
-        document.getElementById('autoSaveBtn').addEventListener('click', async () => {
+        const saveBtn1 = document.getElementById('autoSaveBtn');
+        saveBtn1?.addEventListener('click', async () => {
+            // Avoid double-clicks
+            if (saveBtn1.disabled) return;
+            const originalHtml = saveBtn1.innerHTML;
             try {
+                saveBtn1.disabled = true;
+                saveBtn1.classList.add('btn-warning');
+                saveBtn1.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Saving...';
                 await saveContent();
-                console.log('Content saved manually at', new Date().toLocaleTimeString());
+                saveBtn1.classList.remove('btn-warning');
+                saveBtn1.classList.add('btn-success');
+                saveBtn1.innerHTML = '<i class="bi bi-cloud-check me-1"></i>Saved';
+                setTimeout(() => {
+                    saveBtn1.classList.remove('btn-success');
+                    saveBtn1.innerHTML = originalHtml;
+                }, 1200);
             } catch (err) {
                 console.error('Manual save failed:', err);
-                alert('Failed to save changes. Please try again.');
+                alert(err.message || 'Failed to save changes. Please try again.');
+                saveBtn1.innerHTML = originalHtml;
+            } finally {
+                saveBtn1.disabled = false;
+            }
+        });
+
+        const saveBtn2 = document.getElementById('saveBtn');
+        saveBtn2?.addEventListener('click', async () => {
+            if (saveBtn2.disabled) return;
+            const originalHtml = saveBtn2.innerHTML;
+            try {
+                saveBtn2.disabled = true;
+                saveBtn2.classList.add('btn-warning');
+                saveBtn2.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Saving...';
+                await saveContent();
+                saveBtn2.classList.remove('btn-warning');
+                saveBtn2.classList.add('btn-success');
+                saveBtn2.innerHTML = '<i class="bi bi-cloud-check me-1"></i>Saved';
+                setTimeout(() => {
+                    saveBtn2.classList.remove('btn-success');
+                    saveBtn2.innerHTML = originalHtml;
+                }, 1200);
+            } catch (err) {
+                console.error('Manual save failed:', err);
+                alert(err.message || 'Failed to save changes. Please try again.');
+                saveBtn2.innerHTML = originalHtml;
+            } finally {
+                saveBtn2.disabled = false;
             }
         });
 

@@ -8,10 +8,30 @@ export function findByChapterId(chapterId) {
     .orderBy('order_index', 'asc');
 }
 
-export function add(lesson) {
-  return db(TABLE_NAME)
-    .insert(lesson)
-    .returning('lesson_id');
+export async function add(lesson, trx) {
+  const client = trx || db;
+  try {
+    return await client(TABLE_NAME)
+      .insert(lesson)
+      .returning('lesson_id');
+  } catch (err) {
+    // Sequence likely out of sync. If we're inside a transaction, bubble up so caller can reset outside the aborted trx.
+    if (err && err.code === '23505' && String(err.constraint || '').includes('lessons_pkey')) {
+      if (trx) {
+        err.sequenceOutOfSync = true;
+        err.table = 'lessons';
+        throw err;
+      }
+      // If not in a trx, we can self-heal
+      await db.raw(
+        `SELECT setval(pg_get_serial_sequence('lessons','lesson_id'), COALESCE((SELECT MAX(lesson_id) FROM lessons), 0) + 1, false)`
+      );
+      return await db(TABLE_NAME)
+        .insert(lesson)
+        .returning('lesson_id');
+    }
+    throw err;
+  }
 }
 
 export function findById(id) {
@@ -20,8 +40,8 @@ export function findById(id) {
     .first();
 }
 
-export function patch(id, lesson) {
-  return db(TABLE_NAME)
+export function patch(id, lesson, trx) {
+  return (trx || db)(TABLE_NAME)
     .where('lesson_id', id)
     .update(lesson);
 }

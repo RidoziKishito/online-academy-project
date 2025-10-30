@@ -16,60 +16,86 @@ export function findByCategory(categoryId) {
 }
 
 export async function updateCourseContent(courseId, chapters) {
-  return db.transaction(async (trx) => {
+  async function resetSequences() {
+    await db.raw(`SELECT setval(pg_get_serial_sequence('chapters','chapter_id'), COALESCE((SELECT MAX(chapter_id) FROM chapters), 0) + 1, false)`);
+    await db.raw(`SELECT setval(pg_get_serial_sequence('lessons','lesson_id'), COALESCE((SELECT MAX(lesson_id) FROM lessons), 0) + 1, false)`);
+  }
+
+  for (let attempt = 1; attempt <= 2; attempt++) {
     try {
-      const chapterModel = await import('./chapter.model.js');
-      const lessonModel = await import('./lesson.model.js');
+      return await db.transaction(async (trx) => {
+        const chapterModel = await import('./chapter.model.js');
+        const lessonModel = await import('./lesson.model.js');
 
-      // Process each chapter
-      for (const chapter of chapters) {
-        if (chapter.chapter_id) {
-          // Update existing chapter
-          await chapterModel.patch(chapter.chapter_id, {
-            title: chapter.title,
-            order_index: chapter.order_index
-          }, trx);
-        } else {
-          // Insert new chapter
-          const [newChapterId] = await chapterModel.add({
-            course_id: courseId,
-            title: chapter.title,
-            order_index: chapter.order_index
-          }, trx);
-          chapter.chapter_id = newChapterId;
-        }
-
-        // Process lessons for this chapter
-        if (Array.isArray(chapter.lessons)) {
-          for (const lesson of chapter.lessons) {
-            const lessonData = {
-              title: lesson.title,
-              video_url: lesson.video_url,
-              duration_seconds: lesson.duration_seconds,
-              is_previewable: lesson.is_previewable,
-              order_index: lesson.order_index,
-              content: lesson.content
-            };
-
-            if (lesson.lesson_id) {
-              // Update existing lesson
-              await lessonModel.patch(lesson.lesson_id, lessonData, trx);
+        // Process each chapter
+        for (const chapter of chapters) {
+          if (chapter.chapter_id) {
+            // Update existing chapter
+            await chapterModel.patch(chapter.chapter_id, {
+              title: chapter.title,
+              order_index: chapter.order_index
+            }, trx);
+          } else {
+            // Insert new chapter
+            const inserted = await chapterModel.add({
+              course_id: courseId,
+              title: chapter.title,
+              order_index: chapter.order_index
+            }, trx);
+            // Handle Postgres returning shape (array of objects) or numeric
+            let newId;
+            if (Array.isArray(inserted)) {
+              if (inserted.length === 0) throw new Error('Failed to insert chapter');
+              newId = typeof inserted[0] === 'object' ? inserted[0].chapter_id : inserted[0];
             } else {
-              // Insert new lesson
-              await lessonModel.add({
-                ...lessonData,
-                chapter_id: chapter.chapter_id
-              }, trx);
+              newId = inserted;
+            }
+            chapter.chapter_id = newId;
+          }
+
+          // Process lessons for this chapter
+          if (Array.isArray(chapter.lessons)) {
+            for (const lesson of chapter.lessons) {
+              const lessonData = {
+                title: lesson.title,
+                video_url: lesson.video_url,
+                duration_seconds: lesson.duration_seconds,
+                is_previewable: lesson.is_previewable,
+                order_index: lesson.order_index,
+                content: lesson.content
+              };
+
+              if (lesson.lesson_id) {
+                // Update existing lesson
+                await lessonModel.patch(lesson.lesson_id, lessonData, trx);
+              } else {
+                // Insert new lesson
+                const lret = await lessonModel.add({
+                  ...lessonData,
+                  chapter_id: chapter.chapter_id
+                }, trx);
+                if (Array.isArray(lret) && lret.length > 0) {
+                  const lid = typeof lret[0] === 'object' ? lret[0].lesson_id : lret[0];
+                  lesson.lesson_id = lid;
+                }
+              }
             }
           }
         }
-      }
 
-      return true;
+        return true;
+      });
     } catch (err) {
+      const isDup = err && err.code === '23505';
+      const seqFlag = err && err.sequenceOutOfSync;
+      if ((isDup || seqFlag) && attempt === 1) {
+        // Reset sequences outside of any aborted transaction and retry once
+        await resetSequences();
+        continue;
+      }
       throw err;
     }
-  });
+  }
 }
 
 export function findPageByCategory(categoryId, offset, limit) {
