@@ -23,13 +23,8 @@ export async function updateCourseContent(courseId, chapters) {
 
       // Process each chapter
       for (const chapter of chapters) {
-        if (chapter.chapter_id) {
-          // Update existing chapter
-          await chapterModel.patch(chapter.chapter_id, {
-            title: chapter.title,
-            order_index: chapter.order_index
-          }, trx);
-        } else {
+        let chapterId = chapter.chapter_id;
+        if (!chapterId || String(chapterId).startsWith('new-')) {
           // Insert new chapter
           const [newChapterId] = await chapterModel.add({
             course_id: courseId,
@@ -37,10 +32,16 @@ export async function updateCourseContent(courseId, chapters) {
             order_index: chapter.order_index
           }, trx);
           chapter.chapter_id = newChapterId;
+        } else {
+          // Update existing chapter
+          await chapterModel.patch(chapterId, {
+            title: chapter.title,
+            order_index: chapter.order_index
+          }, trx);
         }
 
         // Process lessons for this chapter
-        if (Array.isArray(chapter.lessons)) {
+        if (chapter.lessons && Array.isArray(chapter.lessons)) {
           for (const lesson of chapter.lessons) {
             const lessonData = {
               title: lesson.title,
@@ -50,21 +51,20 @@ export async function updateCourseContent(courseId, chapters) {
               order_index: lesson.order_index,
               content: lesson.content
             };
-
-            if (lesson.lesson_id) {
-              // Update existing lesson
-              await lessonModel.patch(lesson.lesson_id, lessonData, trx);
-            } else {
+            let lessonId = lesson.lesson_id;
+            if (!lessonId || String(lessonId).startsWith('new-')) {
               // Insert new lesson
               await lessonModel.add({
                 ...lessonData,
                 chapter_id: chapter.chapter_id
               }, trx);
+            } else {
+              // Update existing lesson
+              await lessonModel.patch(lessonId, lessonData, trx);
             }
           }
         }
       }
-
       return true;
     } catch (err) {
       throw err;
