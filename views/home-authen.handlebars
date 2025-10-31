@@ -128,33 +128,30 @@
 
     <!-- Top categories this week -->
     <section id="top-categories" class="mb-5" data-aos="fade-up">
-      <div class="d-flex justify-content-between align-items-center mb-1">
-  <h3 class="mb-0">Most enrolled categories this week</h3>
-  <a href="/courses/allCat" class="small text-muted">View all →</a>
-      </div>
+    <div class="d-flex justify-content-between align-items-center mb-1">
+      <h3 class="mb-2">Most enrolled categories this week</h3>
+      <a href="/courses/allCat" class="small text-muted">View all →</a>
+    </div>
 
-      <div class="row g-3">
-        {{#if topCategories}}
-            <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4">
-                
-                {{#each topCategories}}
-                <div class="col" data-aos="fade-up" data-aos-delay="100">
-                    <a href="/courses/by-category/{{this.category_id}}" 
-                    class="card h-100 text-decoration-none text-center p-4 shadow-sm border-0 category-card-hover" 
-                    style="background-color: #f8fdf9;">
-                      <i class="{{iconOrDefault ../categoryIcons this.category_name}} fs-1 text-success mb-3"></i>
-                      <h4 class="h5 mb-1">{{this.category_name}}</h4>
-                      <p class="text-muted small mb-0">{{this.total_courses}}+ courses</p>
-                    </a>
-                </div>
-                {{/each}}
-                
-            </div>
-        {{else}}
-          <div class="col-12 text-muted">No category data for this week.</div>
-        {{/if}}
+    {{#if topCategories}}
+    <div class="row row-cols-5 g-3">
+      {{#each topCategories}}
+      <div class="col">
+        <a href="/courses/by-category/{{this.category_id}}" 
+          class="card h-100 text-decoration-none text-center p-4 shadow-sm border-0 category-card-hover bg-light">
+          <i class="{{iconOrDefault ../categoryIcons this.category_name}} fs-1 text-success mb-3"></i>
+          <h4 class="h5 mb-1">{{this.category_name}}</h4>
+          <p class="text-muted small mb-0">{{this.total_courses}}+ courses</p>
+        </a>
       </div>
-    </section>
+      {{/each}}
+    </div>
+    {{else}}
+      <div class="col-12 text-muted">No category data for this week.</div>
+    {{/if}}
+  </section>
+
+
 
     <!-- Most viewed (Swiper carousel) -->
     <section id="most-viewed" class="mb-5" data-aos="fade-up">

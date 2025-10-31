@@ -106,10 +106,20 @@
 
               {{#if (eq @root.session.authUser.role 'instructor')}}
               <div class="text-center">
-                  <a class="btn btn-primary rounded-pill py-2 px-4 shadow-sm fw-semibold" href="/instructor/manage-course/{{course.id}}">
+                  <a class="btn btn-primary rounded-pill py-2 px-4 shadow-sm fw-semibold" href="/learn/{{course.id}}">
+                    <i class="bi bi-play-circle me-2"></i>Watch
+                  </a>
+                  <a class="btn btn-warning rounded-pill py-2 px-4 shadow-sm fw-semibold" href="/instructor/manage-course/{{course.id}}">
                     <i class="bi bi-pencil me-2"></i>Edit Course
                   </a>
               </div>
+              {{/if}}
+
+              {{#if (eq @root.session.authUser.role 'admin')}}
+              <div class="text-center">
+                  <a class="btn btn-primary rounded-pill py-2 px-4 shadow-sm fw-semibold" href="/learn/{{course.id}}">
+                    <i class="bi bi-play-circle me-2"></i>Watch
+                  </a>
               {{/if}}
                 
               {{#if (isStudent)}}

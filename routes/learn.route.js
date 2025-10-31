@@ -1,6 +1,6 @@
 // routes/learn.route.js
 import express from 'express';
-import { restrict } from '../middlewares/auth.mdw.js';
+import { restrict, isStudent, canAccessCourse } from '../middlewares/auth.mdw.js';
 import * as enrollmentModel from '../models/enrollment.model.js';
 import * as courseModel from '../models/courses.model.js';
 import * as chapterModel from '../models/chapter.model.js';
@@ -14,14 +14,16 @@ const router = express.Router();
 router.use(restrict);
 
 // Route course overview -> redirect to first lesson
-router.get('/:courseId', async (req, res) => {
+router.get('/:courseId', canAccessCourse, async (req, res) => {
   try {
     const userId = req.session.authUser.user_id;
     const courseId = parseInt(req.params.courseId, 10);
 
     const isEnrolled = await enrollmentModel.checkEnrollment(userId, courseId);
-    if (!isEnrolled) {
-      return res.redirect(`/courses/detail/${courseId}`);
+    if (req.session.authUser.role === 'student') {
+      if (!isEnrolled) {
+        return res.redirect(`/courses/detail/${courseId}`);
+      }
     }
 
     // Get chapters and completed lessons
@@ -68,8 +70,10 @@ router.get('/:courseId/lesson/:lessonId', async (req, res) => {
     const lessonId = parseInt(req.params.lessonId, 10);
 
     const isEnrolled = await enrollmentModel.checkEnrollment(userId, courseId);
-    if (!isEnrolled) {
-      return res.redirect(`/courses/detail/${courseId}`);
+    if (req.session.authUser.role === 'student') {
+      if (!isEnrolled) {
+        return res.redirect(`/courses/detail/${courseId}`);
+      }
     }
 
     const [course, allChapters, currentLesson, completedLessons] = await Promise.all([
@@ -118,7 +122,7 @@ router.get('/:courseId/lesson/:lessonId', async (req, res) => {
 });
 
 // API to mark a lesson as completed
-router.post('/mark-complete', async (req, res) => {
+router.post('/mark-complete', isStudent, async (req, res) => {
   try {
     const userId = req.session.authUser.user_id;
     const { lessonId, courseId } = req.body;
@@ -159,7 +163,7 @@ router.post('/mark-complete', async (req, res) => {
 });
 
 // API to save video watch time
-router.post('/progress', async (req, res) => {
+router.post('/progress', isStudent, async (req, res) => {
   try {
     const userId = req.session.authUser.user_id;
     const { lessonId, watchTime } = req.body;
