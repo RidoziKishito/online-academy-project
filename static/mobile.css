@@ -1,0 +1,722 @@
+/* ========================================
+   MOBILE RESPONSIVE IMPROVEMENTS
+    VietEdu - Mobile-First CSS
+   ======================================== */
+
+/* ===== Global Responsive Images ===== */
+img {
+    max-width: 100%;
+    height: auto;
+}
+
+.img-fluid {
+    max-width: 100%;
+    height: auto;
+}
+
+/* Prevent horizontal scroll */
+body {
+    overflow-x: hidden;
+}
+
+.container-fluid,
+.container {
+    overflow-x: hidden;
+}
+
+/* ===== Navbar Hamburger Icon - Global Styles ===== */
+/* Ensure hamburger menu is always visible and clickable */
+.navbar-toggler {
+    position: relative;
+    display: inline-block;
+    padding: 0.5rem 0.75rem;
+    font-size: 1.25rem;
+    line-height: 1;
+    background-color: transparent;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 0.375rem;
+    transition: box-shadow 0.15s ease-in-out;
+    cursor: pointer;
+    z-index: 1030;
+}
+
+.navbar-toggler:hover {
+    border-color: rgba(0, 0, 0, 0.2);
+}
+
+.navbar-toggler:focus {
+    text-decoration: none;
+    outline: 0;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+.navbar-toggler-icon {
+    display: inline-block;
+    width: 1.5em;
+    height: 1.5em;
+    vertical-align: middle;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 100%;
+}
+
+/* Show toggler only on mobile screens */
+@media (min-width: 992px) {
+    .navbar-toggler {
+        display: none !important;
+    }
+}
+
+/* ===== Small Devices (phones, < 576px) ===== */
+@media (max-width: 575.98px) {
+    /* Container & Spacing */
+    .container-fluid {
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+    }
+    
+    .container {
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+    }
+    
+    /* Navbar adjustments */
+    .navbar-brand {
+        font-size: 1.1rem !important;
+    }
+    
+    /* Hamburger Menu Icon - Ensure visibility */
+    .navbar-toggler {
+        padding: 0.5rem 0.75rem;
+        font-size: 1.25rem;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        border-radius: 0.25rem;
+        min-width: 44px;
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .navbar-toggler:focus {
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+        outline: none;
+    }
+    
+    .navbar-toggler-icon {
+        width: 1.5em;
+        height: 1.5em;
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%280, 0, 0, 0.75%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+        background-repeat: no-repeat;
+        background-position: center;
+        background-size: 100%;
+        display: inline-block;
+    }
+    
+    /* Dark navbar toggler icon */
+    .navbar-dark .navbar-toggler-icon,
+    .bg-dark .navbar-toggler-icon {
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 0.75%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+    }
+    
+    /* Search form full width */
+    .navbar .d-flex[role="search"] {
+        width: 100%;
+        margin-top: 0.5rem;
+        margin-left: 0 !important;
+    }
+    
+    .navbar .d-flex[role="search"] input {
+        flex: 1;
+    }
+    
+    /* Cards */
+    .card {
+        margin-bottom: 1rem;
+    }
+    
+    .card-body {
+        padding: 1rem !important;
+    }
+    
+    .card-header {
+        padding: 0.75rem 1rem !important;
+    }
+    
+    /* Typography - Smaller on mobile */
+    h1 {
+        font-size: 1.75rem !important;
+    }
+    
+    h2 {
+        font-size: 1.5rem !important;
+    }
+    
+    h3 {
+        font-size: 1.25rem !important;
+    }
+    
+    h4 {
+        font-size: 1.1rem !important;
+    }
+    
+    h5 {
+        font-size: 1rem !important;
+    }
+    
+    /* Buttons - Touch friendly */
+    .btn {
+        min-height: 44px;
+        padding: 0.625rem 1rem;
+        font-size: 0.95rem;
+    }
+    
+    .btn-sm {
+        min-height: 38px;
+        padding: 0.5rem 0.875rem;
+    }
+    
+    .btn-lg {
+        min-height: 50px;
+        padding: 0.75rem 1.25rem;
+    }
+    
+    /* Full width buttons helper */
+    .btn-block-mobile {
+        width: 100%;
+        display: block;
+        margin-bottom: 0.5rem;
+    }
+    
+    /* Forms */
+    .form-control,
+    .form-select {
+        min-height: 44px;
+        font-size: 16px; /* Prevent zoom on iOS */
+        padding: 0.625rem 0.875rem;
+    }
+    
+    .form-control:focus,
+    .form-select:focus {
+        font-size: 16px; /* Keep size on focus */
+    }
+    
+    textarea.form-control {
+        min-height: 100px;
+    }
+    
+    .form-label {
+        margin-bottom: 0.375rem;
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
+    
+    /* Form groups spacing */
+    .mb-3 {
+        margin-bottom: 1rem !important;
+    }
+    
+    /* Tables */
+    .table {
+        font-size: 0.875rem;
+    }
+    
+    .table th,
+    .table td {
+        padding: 0.5rem 0.25rem;
+        white-space: nowrap;
+    }
+    
+    /* Table responsive wrapper */
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    /* Make table scrollable on mobile */
+    table {
+        min-width: 500px;
+    }
+    
+    .table-responsive table {
+        margin-bottom: 0;
+    }
+    
+    /* Badges */
+    .badge {
+        font-size: 0.75rem;
+        padding: 0.375em 0.625em;
+    }
+    
+    /* Breadcrumb */
+    .breadcrumb {
+        font-size: 0.8rem;
+        padding: 0.5rem 0;
+    }
+    
+    /* Modals - Full screen on mobile */
+    .modal-dialog {
+        margin: 0;
+        max-width: 100%;
+        height: 100%;
+    }
+    
+    .modal-content {
+        height: 100%;
+        border: 0;
+        border-radius: 0;
+    }
+    
+    .modal-header {
+        padding: 1rem;
+    }
+    
+    .modal-body {
+        padding: 1rem;
+    }
+    
+    /* Alerts */
+    .alert {
+        font-size: 0.9rem;
+        padding: 0.75rem;
+    }
+    
+    /* Dropdowns */
+    .dropdown-menu {
+        font-size: 0.9rem;
+    }
+    
+    .dropdown-item {
+        padding: 0.625rem 1rem;
+    }
+}
+
+/* ===== Medium Devices (tablets, < 768px) ===== */
+@media (max-width: 767.98px) {
+    /* Video container - Better mobile height */
+    .video-container {
+        min-height: 200px !important;
+        max-height: 300px !important;
+    }
+    
+    .video-container video,
+    .video-container iframe,
+    .ratio.ratio-16x9 {
+        max-height: 300px !important;
+        min-height: 200px !important;
+    }
+    
+    /* Sidebar - Remove sticky on mobile */
+    .sticky-top {
+        position: relative !important;
+        top: 0 !important;
+    }
+    
+    /* Course cards - Better spacing */
+    .course-card {
+        margin-bottom: 1.5rem;
+    }
+    
+    /* Footer - Stack vertically */
+    footer .row > div {
+        text-align: center !important;
+        margin-bottom: 1.5rem;
+    }
+    
+    footer .text-md-end {
+        text-align: center !important;
+    }
+    
+    /* Nav links - More spacing */
+    .nav-link {
+        padding: 0.75rem 1rem;
+    }
+    
+    /* Instructor profile cards */
+    .instructor-card {
+        text-align: center;
+    }
+    
+    /* Course detail page - Stack layout */
+    .course-detail-header {
+        text-align: center;
+    }
+    
+    .course-detail-header img {
+        margin-bottom: 1rem;
+    }
+    
+    /* Lesson sidebar - Full width on mobile */
+    .lesson-sidebar {
+        max-height: 400px !important;
+        margin-top: 1rem;
+    }
+    
+    /* Profile pages - Center content */
+    .profile-avatar {
+        text-align: center;
+        margin-bottom: 1.5rem;
+    }
+    
+    /* Dashboard stats - Better mobile layout */
+    .stat-card {
+        margin-bottom: 1rem;
+    }
+}
+
+/* ===== Touch Improvements (All Mobile) ===== */
+@media (hover: none) and (pointer: coarse) {
+    /* Links and clickable items */
+    a,
+    button,
+    .btn,
+    .nav-link,
+    .dropdown-item {
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+    }
+    
+    /* Increase tap target for icons */
+    .bi,
+    .btn i {
+        font-size: 1.1em;
+    }
+    
+    /* Checkbox and radio - Bigger */
+    .form-check-input {
+        width: 1.25rem;
+        height: 1.25rem;
+    }
+    
+    .form-check-label {
+        padding-left: 0.5rem;
+    }
+}
+
+/* ===== Course Grid Responsive ===== */
+@media (max-width: 575.98px) {
+    /* 1 column on small phones */
+    .course-grid .col-md-4,
+    .course-grid .col-md-6,
+    .course-grid .col-lg-3,
+    .course-grid .col-lg-4 {
+        width: 100%;
+        max-width: 100%;
+    }
+}
+
+@media (min-width: 576px) and (max-width: 767.98px) {
+    /* 2 columns on larger phones/small tablets */
+    .course-grid .col-md-4,
+    .course-grid .col-lg-3 {
+        width: 50%;
+    }
+}
+
+/* ===== Navigation Improvements ===== */
+@media (max-width: 991.98px) {
+    /* Collapsed navbar */
+    .navbar-collapse {
+        padding-top: 1rem;
+        padding-bottom: 1rem;
+    }
+    
+    .navbar-nav {
+        text-align: left;
+    }
+    
+    .navbar-nav .nav-item {
+        padding: 0.5rem 0;
+    }
+    
+    .navbar-nav .nav-link {
+        padding: 0.75rem 1rem;
+        border-radius: 0.375rem;
+        transition: background-color 0.2s;
+    }
+    
+    .navbar-nav .nav-link:hover {
+        background-color: rgba(0, 0, 0, 0.05);
+    }
+    
+    /* Search in navbar */
+    .navbar .d-flex[role="search"] {
+        justify-content: stretch;
+        padding: 1rem 0;
+        width: 100%;
+    }
+    
+    .navbar .d-flex[role="search"] .form-control {
+        flex: 1;
+    }
+    
+    /* User dropdown */
+    .navbar .dropdown-menu {
+        width: 100%;
+        border: none;
+        box-shadow: none;
+        padding: 0.5rem 0;
+    }
+    
+    .navbar .dropdown-item {
+        padding: 0.75rem 1rem;
+    }
+}
+
+/* ===== Image Optimization ===== */
+@media (max-width: 767.98px) {
+    /* All images responsive by default */
+    img {
+        max-width: 100%;
+        height: auto;
+    }
+    
+    /* Course images */
+    .card-img-top {
+        max-height: 200px;
+        object-fit: cover;
+        width: 100%;
+    }
+    
+    /* Instructor avatars */
+    .instructor-avatar,
+    .user-avatar {
+        max-width: 120px;
+        margin: 0 auto;
+    }
+    
+    /* Hero images */
+    .hero-img {
+        max-height: 250px;
+        object-fit: cover;
+        width: 100%;
+    }
+}
+
+/* ===== Utility Classes for Mobile ===== */
+.mobile-only {
+    display: none;
+}
+
+@media (max-width: 767.98px) {
+    .mobile-only {
+        display: block;
+    }
+    
+    .mobile-hide {
+        display: none !important;
+    }
+    
+    .mobile-center {
+        text-align: center !important;
+    }
+    
+    .mobile-full-width {
+        width: 100% !important;
+    }
+}
+
+/* ===== Spacing Adjustments ===== */
+@media (max-width: 575.98px) {
+    /* Reduce gap in rows */
+    .row.g-4 {
+        --bs-gutter-x: 1rem;
+        --bs-gutter-y: 1rem;
+    }
+    
+    .row.g-3 {
+        --bs-gutter-x: 0.75rem;
+        --bs-gutter-y: 0.75rem;
+    }
+    
+    /* Margin utilities - Smaller on mobile */
+    .mb-4,
+    .my-4 {
+        margin-bottom: 1.5rem !important;
+    }
+    
+    .mb-5,
+    .my-5 {
+        margin-bottom: 2rem !important;
+    }
+    
+    .pt-4,
+    .py-4 {
+        padding-top: 1.5rem !important;
+    }
+    
+    .pb-4,
+    .py-4 {
+        padding-bottom: 1.5rem !important;
+    }
+}
+
+/* ===== Scrollbar Improvements ===== */
+@media (max-width: 767.98px) {
+    /* Thinner scrollbar on mobile */
+    ::-webkit-scrollbar {
+        width: 4px;
+        height: 4px;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 2px;
+    }
+}
+
+/* ===== Performance: Reduce animations on mobile ===== */
+@media (max-width: 767.98px) {
+    /* Reduce animation for better performance */
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.3s !important;
+        transition-duration: 0.2s !important;
+    }
+    
+    /* Disable complex animations */
+    [data-aos] {
+        transition-duration: 0.3s !important;
+    }
+}
+
+/* ===== Loading States ===== */
+@media (max-width: 575.98px) {
+    /* Loading States */
+    .spinner-border {
+        width: 2rem;
+        height: 2rem;
+    }
+    
+    .spinner-border-sm {
+        width: 1rem;
+        height: 1rem;
+    }
+}
+
+/* ===== Course Details Page ===== */
+@media (max-width: 767.98px) {
+    .course-detail-sidebar {
+        position: relative !important;
+        margin-top: 2rem;
+    }
+    
+    .course-price-card {
+        position: relative !important;
+        top: 0 !important;
+    }
+}
+
+/* ===== Lesson Navigation ===== */
+@media (max-width: 575.98px) {
+    .lesson-nav-buttons {
+        flex-direction: column !important;
+    }
+    
+    .lesson-nav-buttons .btn {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+}
+
+/* ===== Chat Widget Mobile ===== */
+@media (max-width: 767.98px) {
+    .chat-box {
+        width: 100% !important;
+        height: 100vh !important;
+        max-height: 100vh !important;
+        border-radius: 0 !important;
+    }
+    
+    .chat-floating-button {
+        bottom: 20px;
+        right: 20px;
+        z-index: 1050;
+    }
+}
+
+/* ===== Breadcrumb Mobile ===== */
+@media (max-width: 575.98px) {
+    .breadcrumb {
+        flex-wrap: wrap;
+    }
+    
+    .breadcrumb-item {
+        font-size: 0.75rem;
+    }
+    
+    .breadcrumb-item + .breadcrumb-item::before {
+        padding: 0 0.25rem;
+    }
+}
+
+/* ===== Cards Hover Effects (disable on touch) ===== */
+@media (hover: none) {
+    .card:hover {
+        transform: none !important;
+    }
+    
+    .btn:hover {
+        transform: none !important;
+    }
+}
+
+/* ===== Accessibility - Larger touch targets ===== */
+@media (max-width: 767.98px) {
+    a:not(.btn),
+    button:not(.btn) {
+        min-height: 44px;
+        min-width: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .nav-link,
+    .dropdown-item {
+        min-height: 48px;
+        display: flex;
+        align-items: center;
+    }
+}
+
+/* ===== Fix Common Layout Issues ===== */
+@media (max-width: 767.98px) {
+    /* Prevent content from touching screen edges */
+    .row {
+        margin-left: 0;
+        margin-right: 0;
+    }
+    
+    /* Card spacing */
+    .card {
+        margin-bottom: 1rem;
+    }
+    
+    /* List group items */
+    .list-group-item {
+        padding: 0.875rem 1rem;
+    }
+    
+    /* Alert spacing */
+    .alert {
+        margin-bottom: 1rem;
+    }
+}
+
+/* ===== Video Embeds Responsive ===== */
+@media (max-width: 767.98px) {
+    iframe,
+    video,
+    embed,
+    object {
+        max-width: 100%;
+        height: auto;
+    }
+    
+    .ratio {
+        max-width: 100%;
+    }
+}

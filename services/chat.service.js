@@ -1,6 +1,7 @@
 import Conversation from '../models/conversation.model.js';
 import Message from '../models/message.model.js';
 import db from '../utils/db.js';
+import logger from '../utils/logger.js';
 
 const ChatService = {
     // Get or create conversation between two users
@@ -16,7 +17,7 @@ const ChatService = {
             
             return conversation;
         } catch (error) {
-            console.error('Error getting/creating conversation:', error);
+            logger.error({ err: error, user1Id, user2Id }, 'Error getting/creating conversation');
             throw error;
         }
     },
@@ -38,7 +39,7 @@ const ChatService = {
             
             return message;
         } catch (error) {
-            console.error('Error sending message:', error);
+            logger.error({ err: error, conversationId, senderId }, 'Error sending message');
             throw error;
         }
     },
@@ -55,7 +56,7 @@ const ChatService = {
             const result = await Message.getMessages(conversationId, page, limit);
             return result;
         } catch (error) {
-            console.error('Error getting conversation messages:', error);
+            logger.error({ err: error, conversationId, userId }, 'Error getting conversation messages');
             throw error;
         }
     },
@@ -91,7 +92,7 @@ const ChatService = {
 
             return conversationsWithMessages;
         } catch (error) {
-            console.error('Error getting user conversations:', error);
+            logger.error({ err: error, userId }, 'Error getting user conversations');
             throw error;
         }
     },
@@ -126,7 +127,7 @@ const ChatService = {
             
             return results;
         } catch (error) {
-            console.error('Error sending bulk message:', error);
+            logger.error({ err: error, instructorId, count: Array.isArray(studentIds) ? studentIds.length : 0 }, 'Error sending bulk message');
             throw error;
         }
     },
@@ -146,7 +147,7 @@ const ChatService = {
             
             return students;
         } catch (error) {
-            console.error('Error getting course students:', error);
+            logger.error({ err: error, courseId }, 'Error getting course students');
             throw error;
         }
     },
@@ -163,7 +164,7 @@ const ChatService = {
             const messages = await Message.searchMessages(conversationId, searchTerm);
             return messages;
         } catch (error) {
-            console.error('Error searching messages:', error);
+            logger.error({ err: error, conversationId, userId, searchTerm }, 'Error searching messages');
             throw error;
         }
     },
@@ -194,7 +195,7 @@ const ChatService = {
                 other_user: otherUser
             };
         } catch (error) {
-            console.error('Error getting conversation details:', error);
+            logger.error({ err: error, conversationId, userId }, 'Error getting conversation details');
             throw error;
         }
     },
@@ -211,7 +212,7 @@ const ChatService = {
             const deleted = await Message.deleteMessage(conversationId, messageId);
             return deleted;
         } catch (error) {
-            console.error('Error deleting message:', error);
+            logger.error({ err: error, conversationId, messageId, userId }, 'Error deleting message');
             throw error;
         }
     }

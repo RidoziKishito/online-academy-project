@@ -1,32 +1,39 @@
 <div class="container mt-4">
   <div class="card p-3" style="background-color: var(--green-light-bg)">
-  <h2 class="mb-4 text-center">Course Categories</h2>
+    <h2 class="mb-4 text-center">Course Categories</h2>
 
-  <div class="row">
-    {{#each categories}}
-      <div class="col-md-6 mb-4">
-        <div class="card shadow-sm border-0">
-          <div class="card-body">
-            <h5 class="card-title fw-bold">{{name}}</h5>
-            
-            {{#if children}}
-              <ul class="list-group list-group-flush mt-2">
-                {{#each children}}
-                  <li class="list-group-item d-flex justify-content-between align-items-center">
-                    {{name}}
-                    <a href="/courses/by-category/{{category_id}}" class="btn btn-sm btn-outline-primary">
-                      View
-                    </a>
-                  </li>
-                {{/each}}
-              </ul>
-            {{else}}
-              <p class="text-muted">No subcategories</p>
-            {{/if}}
+    <div class="row">
+      {{#each categories}}
+        <div class="col-md-6 mb-4">
+          <div class="card shadow-sm border-0">
+            <div class="card-body">
+              <!-- parent category with icon -->
+              <h5 class="card-title fw-bold d-flex align-items-center">
+                <i class="{{iconOrDefault @root.categoryIcons name}} fs-4 text-success me-2"></i>
+                {{name}}
+              </h5>
+
+              {{#if children}}
+                <ul class="list-group list-group-flush mt-2">
+                  {{#each children}}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                      <div class="d-flex align-items-center">
+                        <i class="{{iconOrDefault @root.categoryIcons name}} me-2 text-muted"></i>
+                        <span>{{name}}</span>
+                      </div>
+                      <a href="/courses/by-category/{{category_id}}" class="btn btn-sm btn-outline-primary">
+                        View
+                      </a>
+                    </li>
+                  {{/each}}
+                </ul>
+              {{else}}
+                <p class="text-muted">No subcategories</p>
+              {{/if}}
+            </div>
           </div>
         </div>
-      </div>
-    {{/each}}
-  </div>
+      {{/each}}
+    </div>
   </div>
 </div>

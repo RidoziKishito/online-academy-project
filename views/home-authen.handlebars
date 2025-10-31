@@ -24,21 +24,21 @@
     <!-- HERO -->
     <section id="hero" class="mb-4">
       <div class="row align-items-center g-4">
-        <div class="col-lg-6" data-aos="fade-right">
+        <div class="col-12 col-lg-6" data-aos="fade-right">
           <h1 class="display-5 fw-bold">
-            Khám phá tiềm năng, <br><span class="text-success">Mở lối tương lai</span>
+            Unlock your potential, <br><span class="text-success">Shape your future</span>
           </h1>
           <p class="text-muted mb-3">
-            Chào <strong>{{#if authUser.full_name}}{{authUser.full_name}}{{else}}{{authUser.email}}{{/if}}</strong>.
-            Gợi ý khoá học hàng đầu dành cho bạn — cập nhật theo xu hướng tuần này.
+            Hello <strong>{{#if authUser.full_name}}{{authUser.full_name}}{{else}}{{authUser.email}}{{/if}}</strong>.
+            Top course suggestions for you — updated with this week's trends.
           </p>
-          <div class="d-flex gap-2">
-            <a href="/courses" class="btn btn-success btn-lg rounded-pill">Bắt đầu học</a>
+          <div class="d-flex gap-2 flex-wrap">
+            <a href="/courses" class="btn btn-success btn-lg rounded-pill">Start learning</a>
             <a href="/student/my-courses" class="btn btn-outline-secondary btn-lg rounded-pill">My Courses</a>
           </div>
         </div>
 
-        <div class="col-lg-6" data-aos="fade-left">
+        <div class="col-12 col-lg-6" data-aos="fade-left">
           {{!-- if you pass heroBanners the carousel will be used, otherwise fall back to new images --}}
           {{#if heroBanners}}
             <div id="heroCarousel" class="carousel slide rounded-3" data-bs-ride="carousel">
@@ -66,7 +66,7 @@
             </div>
           {{else}}
             {{!-- different default image set --}}
-            <img src="https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=1400&q=80" alt="Học trực tuyến" class="hero-img shadow-sm">
+            <img src="https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=1400&q=80" alt="Online learning" class="hero-img shadow-sm">
           {{/if}}
         </div>
       </div>
@@ -75,35 +75,43 @@
     <!-- Featured this week (3-4 courses) -->
     <section id="featured-courses" class="mb-5" data-aos="fade-up">
         <div class="d-flex justify-content-between align-items-center mb-3">
-          <h3 class="mb-0">Nổi bật tuần qua</h3>
-          <a href="/courses?filter=trending" class="small text-muted">Xem tất cả →</a>
+          <h3 class="mb-0">Featured this week</h3>
+          <a href="/courses?filter=trending" class="small text-muted">View all →</a>
         </div>
 
-        {{#if top3WeekCourses}}
+        {{#if topWeekCourses}}
           <section id="featured-courses" class="bg-white">
             <div class="container">
                 <div class="row g-4">
 
-                    {{#each top3WeekCourses}}
-                    <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="100">
+                    {{#each topWeekCourses}}
+                    <div class="col-12 col-sm-6 col-md-6 col-lg-4" data-aos="fade-up" data-aos-delay="100">
                         <div class="card h-100 shadow-sm border-0 overflow-hidden">
                             <div class="position-relative">
-                                <a href="/courses/detail/{{this.course_id}}"><img src={{this.image_url}} class="card-img-top"></a>
+                                <a href="/courses/detail/{{this.course_id}}">
+                                <img 
+                                  src="{{this.image_url}}" 
+                                  alt="{{this.title}}" 
+                                  class="card-img-top img-fluid"
+                                  style="width:100%; height:200px; object-fit:cover; object-position:center;"
+                                  loading="lazy"
+                                >
+                                </a>
                                 <span class="badge bg-success position-absolute top-0 start-0 m-3 rounded-pill">{{this.category_name}}</span>
                             </div>
                             <div class="card-body d-flex flex-column">
-                                <a href="#" class="h5 card-title text-decoration-none text-body-emphasis mb-2">{{this.title}}</a>
+                                <a href="/courses/detail/{{this.course_id}}" class="h5 card-title text-decoration-none text-body-emphasis mb-2">{{this.title}}</a>
                                 <span class="star-rating">
                                     {{{render_stars this.rating_avg}}}
                                 </span>
                             </div>
                             <div class="card-footer bg-white pt-0 border-top-0 pb-3">
-                                <div class="d-flex justify-content-between align-items-center">
+                                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                                     <div class="d-flex align-items-center">
-                                        <img src={{this.avatar_url}} alt="Author" class="rounded-circle" width="30" height="30">
+                                        <img src="{{this.instructor_avatar}}" alt="{{this.instructor_name}}" class="rounded-circle" width="30" height="30" loading="lazy">
                                         <span class="ms-2 small text-muted">{{this.instructor_name}}</span>
                                     </div>
-                                    <span class="fs-5 fw-bold text-success">{{format_number this.sale_price}}đ</span>
+                                    <span class="fs-5 fw-bold text-success">₫{{format_number this.sale_price}}</span>
                                 </div>
                             </div>
                         </div>
@@ -114,15 +122,15 @@
             </div>
         </section>
       {{else}}
-        <div class="text-muted">Chưa có khoá học nổi bật trong tuần.</div>
+  <div class="text-muted">No featured courses this week.</div>
       {{/if}}
     </section>
 
     <!-- Top categories this week -->
     <section id="top-categories" class="mb-5" data-aos="fade-up">
       <div class="d-flex justify-content-between align-items-center mb-1">
-        <h3 class="mb-0">Lĩnh vực được đăng ký nhiều nhất trong tuần</h3>
-        <a href="/courses/allCat" class="small text-muted">Xem tất cả →</a>
+  <h3 class="mb-0">Most enrolled categories this week</h3>
+  <a href="/courses/allCat" class="small text-muted">View all →</a>
       </div>
 
       <div class="row g-3">
@@ -134,8 +142,8 @@
                     <a href="/courses/by-category/{{this.category_id}}" 
                     class="card h-100 text-decoration-none text-center p-4 shadow-sm border-0 category-card-hover" 
                     style="background-color: #f8fdf9;">
-                      <i class="{{iconOrDefault ../categoryIcons this.name}} fs-1 text-success mb-3"></i>
-                      <h4 class="h5 mb-1">{{this.name}}</h4>
+                      <i class="{{iconOrDefault ../categoryIcons this.category_name}} fs-1 text-success mb-3"></i>
+                      <h4 class="h5 mb-1">{{this.category_name}}</h4>
                       <p class="text-muted small mb-0">{{this.total_courses}}+ courses</p>
                     </a>
                 </div>
@@ -143,7 +151,7 @@
                 
             </div>
         {{else}}
-          <div class="col-12 text-muted">Không có dữ liệu lĩnh vực tuần này.</div>
+          <div class="col-12 text-muted">No category data for this week.</div>
         {{/if}}
       </div>
     </section>
@@ -151,8 +159,8 @@
     <!-- Most viewed (Swiper carousel) -->
     <section id="most-viewed" class="mb-5" data-aos="fade-up">
       <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3 class="mb-0">Xem nhiều nhất</h3>
-        <a href="/courses?sort=views" class="small text-muted">Xem tất cả →</a>
+  <h3 class="mb-0">Most viewed</h3>
+  <a href="/courses?sort=views" class="small text-muted">View all →</a>
       </div>
 
       {{#if mostViewCourses}}
@@ -167,14 +175,14 @@
                     </a>
                     <span class="badge bg-success text-white rounded-pill badge-cat">{{this.category_name}}</span>
                   </div>
-                  <div class="card-body p-2 d-flex flex-column">
+                  <div class="card-body p-2 d-flex flex-column" style="min-height:90px;">
                     <a href="/courses/detail/{{this.course_id}}" class="text-decoration-none text-dark">
                       <h6 class="mb-1 small">{{this.title}}</h6>
                     </a>
                     <div class="small text-muted mb-2">{{this.instructor_name}}</div>
                     <div class="mt-auto d-flex justify-content-between align-items-center">
                       <div class="small text-warning">{{{render_stars this.rating_avg}}}</div>
-                      <div class="fw-semibold text-success small">{{format_number this.sale_price}}đ</div>
+                      <div class="fw-semibold text-success small">₫{{format_number this.sale_price}}</div>
                     </div>
                   </div>
                 </div>
@@ -188,15 +196,15 @@
           <div class="swiper-button-next"></div>
         </div>
       {{else}}
-        <div class="text-muted">Chưa có khoá học.</div>
+  <div class="text-muted">No courses yet.</div>
       {{/if}}
     </section>
 
     <!-- Newest courses (Swiper carousel) -->
     <section id="newest-courses" class="mb-5" data-aos="fade-up">
       <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3 class="mb-0">Khoá học mới nhất</h3>
-        <a href="/courses?sort=newest" class="small text-muted">Xem tất cả →</a>
+  <h3 class="mb-0">Newest courses</h3>
+  <a href="/courses?sort=newest" class="small text-muted">View all →</a>
       </div>
 
       {{#if newestCourses}}
@@ -211,14 +219,15 @@
                     </a>
                     <span class="badge bg-success text-white rounded-pill badge-cat">{{this.category_name}}</span>
                   </div>
-                  <div class="card-body p-2 d-flex flex-column">
+                  <div class="card-body p-2 d-flex flex-column" style="min-height:100px;">
+
                     <a href="/courses/detail/{{this.course_id}}" class="text-decoration-none text-dark">
                       <h6 class="mb-1 small">{{this.title}}</h6>
                     </a>
                     <div class="small text-muted mb-2">{{this.instructor_name}}</div>
                     <div class="mt-auto d-flex justify-content-between align-items-center">
                       <div class="small text-warning"> {{{render_stars this.rating_avg}}} </div>
-                      <div class="fw-semibold text-success small">{{format_number this.sale_price}}đ</div>
+                      <div class="fw-semibold text-success small">₫{{format_number this.sale_price}}</div>
                     </div>
                   </div>
                 </div>
@@ -231,7 +240,7 @@
           <div class="swiper-button-next"></div>
         </div>
       {{else}}
-        <div class="text-muted">Chưa có khoá học mới.</div>
+  <div class="text-muted">No new courses.</div>
       {{/if}}
     </section>
 
@@ -243,8 +252,8 @@
     <section data-aos="fade-up">
       <div class="d-flex justify-content-between align-items-center">
         <div>
-          <h5 class="mb-1 text-success">Cần hỗ trợ chọn khoá học?</h5>
-          <p class="mb-0 small text-muted">Tư vấn lộ trình học cá nhân hoá phù hợp với mục tiêu nghề nghiệp của bạn.</p>
+          <h5 class="mb-1 text-success">Need help choosing a course?</h5>
+          <p class="mb-0 small text-muted">Personalized learning path advice tailored to your career goals.</p>
         </div>
       </div>
     </section>
@@ -258,7 +267,7 @@
 <script>
   document.addEventListener('DOMContentLoaded', function() {
 
-    // --- 1. KHỞI TẠO AOS (Animate on Scroll) ---
+  // --- 1. Initialize AOS (Animate on Scroll) ---
     if (window.AOS) {
       AOS.init({
         duration: 800,
@@ -267,9 +276,9 @@
       });
     }
 
-    // --- 2. KHỞI TẠO SWIPER (Carousels) ---
+  // --- 2. Initialize Swiper (Carousels) ---
 
-    // Carousel cho "Most Viewed"
+  // Carousel for "Most Viewed"
     if (window.Swiper) {
       var mostViewedSwiper = new Swiper('#most-viewed-swiper', {
           loop: false,
@@ -299,7 +308,7 @@
           }
       });
 
-      // Carousel cho "Newest Courses"
+  // Carousel for "Newest Courses"
       var newestCoursesSwiper = new Swiper('#newest-courses-swiper', {
           loop: false,
           autoplay: {
@@ -336,10 +345,10 @@
 </script>
 
 <style>
-  /* --- TÙY CHỈNH SWIPER NAVIGATION --- */
+  /* --- Customize Swiper navigation --- */
   .swiper-button-prev,
   .swiper-button-next {
-    color: var(--bs-success) !important; /* dùng màu text-success */
+  color: var(--bs-success) !important; /* use text-success color */
     width: 36px;
     height: 36px;
     background: rgba(255,255,255,0.85);
@@ -354,17 +363,17 @@
     transform: scale(1.05);
   }
 
-  /* Ẩn các pseudo-element mặc định của Swiper (mũi tên trắng) */
+  /* Hide default Swiper pseudo-elements (white arrow icons) */
   .swiper-button-prev::after,
   .swiper-button-next::after {
     font-size: 18px;
     font-weight: bold;
   }
 
-  /* --- TÙY CHỈNH PAGINATION (chấm tròn) --- */
+  /* --- Customize pagination (dots) --- */
   .swiper-pagination {
-    position: relative;
-    margin-top: 12px; /* đẩy xuống dưới để không đè vào card */
+  position: relative;
+  margin-top: 12px; /* push down to avoid overlapping cards */
     text-align: center;
   }
 

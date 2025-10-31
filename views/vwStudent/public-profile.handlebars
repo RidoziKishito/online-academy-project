@@ -1,0 +1,95 @@
+<div class="container py-5">
+  <div class="row">
+    <!-- User Info Card -->
+    <div class="col-lg-4 mb-4">
+      <div class="card shadow-sm">
+        <div class="card-body text-center">
+          <div class="mb-3">
+            <i class="bi bi-person-circle" style="font-size: 80px; color: #6c757d;"></i>
+          </div>
+          <h4 class="mb-2">{{profileUser.full_name}}</h4>
+          <p class="text-muted mb-3">{{profileUser.email}}</p>
+          <span class="badge bg-primary mb-3">Student</span>
+          
+          {{#if isOwnProfile}}
+          <div class="d-grid">
+            <a href="/student/profile" class="btn btn-primary">
+              <i class="bi bi-pencil"></i> Edit Profile
+            </a>
+          </div>
+          {{/if}}
+        </div>
+      </div>
+
+      <!-- Stats Card -->
+      <div class="card shadow-sm mt-3">
+        <div class="card-body">
+          <h5 class="card-title mb-3">Statistics</h5>
+          <div class="mb-2">
+            <i class="bi bi-book text-primary"></i>
+            <strong>{{stats.totalCourses}}</strong> Courses Enrolled
+          </div>
+          <div>
+            <i class="bi bi-check-circle text-success"></i>
+            <strong>{{stats.totalCompletedLessons}}</strong> Lessons Completed
+          </div>
+        </div>
+      </div>
+
+      <!-- Badges -->
+      {{#if badges.length}}
+      <div class="card shadow-sm mt-3">
+        <div class="card-body">
+          <h5 class="card-title mb-3">Achievements</h5>
+          <div class="d-flex flex-wrap gap-2">
+            {{#each badges}}
+            <span class="badge bg-{{this.color}} p-2" title="{{this.description}}">
+              <i class="bi bi-{{this.icon}}"></i> {{this.name}}
+            </span>
+            {{/each}}
+          </div>
+        </div>
+      </div>
+      {{/if}}
+    </div>
+
+    <!-- Courses List -->
+    <div class="col-lg-8">
+      <div class="card shadow-sm">
+        <div class="card-header">
+          <h5 class="mb-0">Enrolled Courses</h5>
+        </div>
+        <div class="card-body">
+          {{#if coursesWithProgress.length}}
+          <div class="row">
+            {{#each coursesWithProgress}}
+            <div class="col-md-6 mb-3">
+              <div class="card h-100">
+                {{#if this.image_url}}
+                <img src="{{this.image_url}}" class="card-img-top" alt="{{this.title}}" style="height: 150px; object-fit: cover;">
+                {{/if}}
+                <div class="card-body">
+                  <h6 class="card-title">{{this.title}}</h6>
+                  <p class="card-text small text-muted">{{this.category_name}}</p>
+                  <div class="mb-2">
+                    <small class="text-muted">Progress: {{this.progress}}%</small>
+                    <div class="progress" style="height: 8px;">
+                      <div class="progress-bar" role="progressbar" style="width: {{this.progress}}%"></div>
+                    </div>
+                  </div>
+                  <small class="text-muted">
+                    {{this.completedLessons}}/{{this.totalLessons}} lessons completed
+                  </small>
+                </div>
+              </div>
+            </div>
+            {{/each}}
+          </div>
+          {{else}}
+          <p class="text-muted text-center py-5">No courses enrolled yet.</p>
+          {{/if}}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

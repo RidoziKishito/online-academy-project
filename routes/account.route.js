@@ -1,23 +1,31 @@
 import express from 'express';
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcrypt';
 import * as userModel from '../models/user.model.js';
 import { restrict } from '../middlewares/auth.mdw.js';
 import { sendResetEmail, sendVerifyEmail } from '../utils/mailer.js';
 import recaptcha from '../middlewares/recaptcha.mdw.js';
+import rateLimit from 'express-rate-limit';
+import logger from '../utils/logger.js';
 
 const router = express.Router();
+
+// Rate limiters for auth actions
+const signinLimiter = rateLimit({ windowMs: 60 * 1000, max: 10 });
+const signupLimiter = rateLimit({ windowMs: 60 * 1000, max: 5 });
+const forgotLimiter = rateLimit({ windowMs: 60 * 1000, max: 5 });
+const resetLimiter = rateLimit({ windowMs: 60 * 1000, max: 10 });
 
 router.get('/signin', (req, res) => {
   if (req.query.ret) req.session.retUrl = req.query.ret;
   res.render('vwAccount/signin', { error: false});
 });
 
-router.post('/signup', recaptcha.middleware.verify, async (req, res) => {
+router.post('/signup', signupLimiter, recaptcha.middleware.verify, async (req, res) => {
   const { fullName, email, password, confirm_password } = req.body;
   const oldData = { fullName, email };
   const errorMessages = {};
 
-  // Kiểm tra CAPTCHA
+  // Check CAPTCHA
   if (req.recaptcha && req.recaptcha.error) {
     errorMessages._global = ['CAPTCHA verification failed. Please try again.'];
     return res.render('vwAccount/signup', { 
@@ -70,7 +78,7 @@ router.post('/signup', recaptcha.middleware.verify, async (req, res) => {
     try {
       await sendVerifyEmail(email, token, fullName);
     } catch (emailError) {
-      console.error('Failed to send verification email:', emailError);
+      logger.error({ err: emailError, email }, 'Failed to send verification email');
       // still let user proceed to verification page; they can request resend
     }
 
@@ -87,7 +95,7 @@ router.post('/signup', recaptcha.middleware.verify, async (req, res) => {
         recaptcha: recaptcha.render()
       });
     }
-    console.error(err);
+    logger.error({ err }, 'Signup error');
     errorMessages._global = ['An unexpected error occurred. Please try again later.'];
     return res.render('vwAccount/signup', { 
       oldData, 
@@ -97,7 +105,7 @@ router.post('/signup', recaptcha.middleware.verify, async (req, res) => {
   }
 });
 
-// Route kiểm tra email đã tồn tại chưa
+// Route to check if email already exists
 router.get('/is-email-available', async (req, res) => {
   const email = req.query.email;
   const user = await userModel.findByEmail(email);
@@ -113,14 +121,14 @@ router.get('/signup', (req, res) => {
   });
 });
 
-router.post('/signin', async (req, res) => {
-  // Tìm user bằng email, không phải username
+router.post('/signin', signinLimiter, async (req, res) => {
+  // Find user by email (not username)
   const user = await userModel.findByEmail(req.body.email);
   if (!user) {
     return res.render('vwAccount/signin', { error: true, oldData: { email: req.body.email } });
   }
 
-  // So sánh mật khẩu với password_hash
+  // Compare password with password_hash
   const password_match = bcrypt.compareSync(req.body.password, user.password_hash);
   if (password_match === false) {
     return res.render('vwAccount/signin', { error: true, oldData: { email: req.body.email } });
@@ -147,11 +155,11 @@ router.post('/signout', (req, res) => {
   req.session.isAuthenticated = false;
   req.session.authUser = null;
   req.session.retUrl = '/';
-  res.redirect(req.headers.referer || '/');
+  res.redirect('/');
 });
 
 router.get('/profile', restrict, (req, res) => {
-  res.render('vwAccount/profile'); // user đã có trong res.locals từ middleware
+  res.render('vwAccount/profile'); // user is already in res.locals from middleware
 });
 
 // Change password routes
@@ -186,7 +194,7 @@ router.post('/change-pwd', restrict, async (req, res) => {
 router.post('/profile', restrict, async (req, res) => {
   const { user_id } = req.session.authUser;
   
-  // Dữ liệu cần cập nhật
+  // Data to update
   const updatedUser = {
     full_name: req.body.fullName,
     email: req.body.email,
@@ -194,7 +202,7 @@ router.post('/profile', restrict, async (req, res) => {
   };
   await userModel.patch(user_id, updatedUser);
 
-  // Cập nhật lại session
+  // Update session
   req.session.authUser.full_name = req.body.fullName;
   req.session.authUser.email = req.body.email;
 
@@ -206,7 +214,7 @@ router.post('/profile', restrict, async (req, res) => {
     res.render('vwAccount/forgot-password');
   });
 
-  router.post('/forgot-password', async (req, res) => {
+  router.post('/forgot-password', forgotLimiter, async (req, res) => {
     const { email } = req.body;
   
     if (!email || email.trim().length === 0) {
@@ -236,7 +244,7 @@ router.post('/profile', restrict, async (req, res) => {
       try {
         await sendResetEmail(email, token, user.full_name);
       } catch (emailError) {
-        console.error('Failed to send reset email:', emailError);
+        logger.error({ err: emailError, email }, 'Failed to send reset email');
         return res.json({
           success: false,
           message: 'Failed to send reset email. Please try again later.'
@@ -249,7 +257,7 @@ router.post('/profile', restrict, async (req, res) => {
         email: email
       });
     } catch (err) {
-      console.error('Forgot password error:', err);
+      logger.error({ err, email }, 'Forgot password error');
       res.json({
         success: false,
         message: 'An error occurred. Please try again.'
@@ -265,7 +273,7 @@ router.post('/profile', restrict, async (req, res) => {
     });
   });
 
-  router.post('/reset-password', async (req, res) => {
+  router.post('/reset-password', resetLimiter, async (req, res) => {
     const { email, token, password, confirm_password } = req.body;
     const errorMessages = {};
     const oldData = { email, token };
@@ -310,7 +318,7 @@ router.post('/profile', restrict, async (req, res) => {
       // Redirect to signin with success message
       res.redirect('/account/signin?reset=success');
     } catch (err) {
-      console.error('Reset password error:', err);
+      logger.error({ err, email }, 'Reset password error');
       res.render('vwAccount/reset-password', {
         error: 'An error occurred. Please try again.',
         oldData
@@ -318,7 +326,7 @@ router.post('/profile', restrict, async (req, res) => {
     }
   });
 
-// (Các route đổi mật khẩu có thể giữ nguyên logic, chỉ cần đảm bảo tên cột password_hash là đúng)
+// (Password change routes keep logic intact; ensure column name password_hash is correct)
 
 // Email verification pages
 router.get('/verify-email', (req, res) => {
@@ -348,7 +356,7 @@ router.post('/verify-email', async (req, res) => {
     }
     return res.render('vwAccount/signin', { success: 'Your email has been verified. Please sign in.' });
   } catch (err) {
-    console.error('Verify email error:', err);
+    logger.error({ err, email }, 'Verify email error');
     if (req.headers.accept?.includes('application/json')) {
       return res.json({ success: false, message: 'An error occurred. Please try again.' });
     }
@@ -385,7 +393,7 @@ router.post('/resend-verification', async (req, res) => {
     try {
       await sendVerifyEmail(email, token, user.full_name);
     } catch (emailError) {
-      console.error('Resend verification email failed:', emailError);
+      logger.error({ err: emailError, email }, 'Resend verification email failed');
       if (req.headers.accept?.includes('application/json')) {
         return res.json({ success: false, message: 'Failed to send verification email. Try again later.' });
       }
@@ -396,7 +404,7 @@ router.post('/resend-verification', async (req, res) => {
     }
     return res.render('vwAccount/verify-email', { email, success: 'Verification code resent. Please check your inbox.' });
   } catch (err) {
-    console.error('Resend verification error:', err);
+    logger.error({ err, email }, 'Resend verification error');
     if (req.headers.accept?.includes('application/json')) {
       return res.json({ success: false, message: 'An error occurred. Please try again.' });
     }

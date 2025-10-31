@@ -2,6 +2,7 @@ import express from 'express';
 import ChatService from '../services/chat.service.js';
 import { restrict } from '../middlewares/auth.mdw.js';
 import rateLimit from 'express-rate-limit';
+import logger from '../utils/logger.js';
 
 const router = express.Router();
 
@@ -25,7 +26,7 @@ router.get('/conversations', restrict, async (req, res) => {
             data: conversations
         });
     } catch (error) {
-        console.error('Error getting conversations:', error);
+        logger.error({ err: error, userId: req.session?.authUser?.user_id }, 'Error getting conversations');
         sendErrorResponse(res, 500, 'Failed to get conversations', error, req);
     }
 });
@@ -66,7 +67,7 @@ router.post('/conversations', restrict, async (req, res) => {
             data: conversation
         });
     } catch (error) {
-        console.error('Error creating conversation:', error);
+        logger.error({ err: error, currentUserId: req.session?.authUser?.user_id, body: req.body }, 'Error creating conversation');
         res.status(500).json({
             success: false,
             message: 'Failed to create conversation',
@@ -88,7 +89,7 @@ router.get('/conversations/:id', restrict, async (req, res) => {
             data: conversation
         });
     } catch (error) {
-        console.error('Error getting conversation details:', error);
+        logger.error({ err: error, conversationId: req.params?.id, userId: req.session?.authUser?.user_id }, 'Error getting conversation details');
         res.status(500).json({
             success: false,
             message: 'Failed to get conversation details',
@@ -111,7 +112,7 @@ router.get('/conversations/:id/messages', restrict, async (req, res) => {
             data: result
         });
     } catch (error) {
-        console.error('Error getting messages:', error);
+        logger.error({ err: error, conversationId: req.params?.id, userId: req.session?.authUser?.user_id }, 'Error getting messages');
         res.status(500).json({
             success: false,
             message: 'Failed to get messages',
@@ -155,7 +156,7 @@ router.post('/conversations/:id/messages', restrict, messageRateLimit, async (re
         }
 
         // Validate message type
-        const allowedTypes = ['text', 'emoji'];
+        const allowedTypes = ['text'];
         if (!allowedTypes.includes(messageType)) {
             return res.status(400).json({
                 success: false,
@@ -178,7 +179,7 @@ router.post('/conversations/:id/messages', restrict, messageRateLimit, async (re
             data: message
         });
     } catch (error) {
-        console.error('Error sending message:', error);
+        logger.error({ err: error, conversationId: req.params?.id, senderId: req.session?.authUser?.user_id }, 'Error sending message');
         res.status(500).json({
             success: false,
             message: 'Failed to send message',
@@ -208,7 +209,7 @@ router.get('/conversations/:id/search', restrict, async (req, res) => {
             data: messages
         });
     } catch (error) {
-        console.error('Error searching messages:', error);
+        logger.error({ err: error, conversationId: req.params?.id, userId: req.session?.authUser?.user_id, q: req.query?.q }, 'Error searching messages');
         res.status(500).json({
             success: false,
             message: 'Failed to search messages',
@@ -237,7 +238,7 @@ router.delete('/conversations/:id/messages/:messageId', restrict, async (req, re
             message: 'Message deleted successfully'
         });
     } catch (error) {
-        console.error('Error deleting message:', error);
+        logger.error({ err: error, conversationId: req.params?.id, messageId: req.params?.messageId, userId: req.session?.authUser?.user_id }, 'Error deleting message');
         res.status(500).json({
             success: false,
             message: 'Failed to delete message',
@@ -267,7 +268,7 @@ router.get('/students/:courseId', restrict, async (req, res) => {
             data: students
         });
     } catch (error) {
-        console.error('Error getting course students:', error);
+        logger.error({ err: error, courseId: req.params?.courseId, userId: req.session?.authUser?.user_id }, 'Error getting course students');
         res.status(500).json({
             success: false,
             message: 'Failed to get course students',
@@ -311,7 +312,7 @@ router.post('/bulk-message', restrict, async (req, res) => {
             data: results
         });
     } catch (error) {
-        console.error('Error sending bulk message:', error);
+        logger.error({ err: error, instructorId: req.session?.authUser?.user_id, count: Array.isArray(req.body?.studentIds) ? req.body.studentIds.length : 0 }, 'Error sending bulk message');
         res.status(500).json({
             success: false,
             message: 'Failed to send bulk message',

@@ -1,4 +1,5 @@
 import db from '../utils/db.js';
+import logger from '../utils/logger.js';
 
 const TABLE_NAME = 'user_wishlist';
 
@@ -22,7 +23,7 @@ export async function checkWishlist(userId, courseId) {
             .first();
         return !!result;
     } catch (error) {
-        console.error('[checkWishlist] Error:', error);
+      logger.error({ err: error, userId, courseId }, '[checkWishlist] Error');
         return false;
     }
 }

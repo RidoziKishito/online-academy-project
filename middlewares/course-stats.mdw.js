@@ -1,4 +1,5 @@
 import * as courseModel from '../models/courses.model.js';
+import logger from '../utils/logger.js';
 
 // Middleware để tăng view_count khi xem chi tiết khóa học
 export async function incrementViewCount(req, res, next) {
@@ -27,6 +28,6 @@ export async function updateCourseStats(courseId) {
         const enrollmentCount = await courseModel.countEnrollmentsByCourse(courseId);
         await courseModel.patch(courseId, { enrollment_count: enrollmentCount });
     } catch (err) {
-        console.error('Error updating course stats:', err);
+          logger.error({ err, courseId }, 'Error updating course stats');
     }
 }

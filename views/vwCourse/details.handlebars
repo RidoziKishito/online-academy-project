@@ -10,7 +10,7 @@
 
         {{#if categories.parent.id}}
         <li class="breadcrumb-item">
-          <a href="/category/{{categories.parent.id}}" class="text-light fw-semibold text-decoration-none">
+          <a href="/courses/by-category/{{categories.parent.id}}" class="text-light fw-semibold text-decoration-none">
             {{categories.parent.name}}
           </a>
         </li>
@@ -18,7 +18,7 @@
 
         {{#if categories.child.id}}
         <li class="breadcrumb-item">
-          <a href="/category/{{categories.child.id}}" class="text-light fw-semibold text-decoration-none">
+          <a href="/courses/by-category/{{categories.child.id}}" class="text-light fw-semibold text-decoration-none">
             {{categories.child.name}}
           </a>
         </li>
@@ -59,6 +59,7 @@
         {{#if course.is_bestseller}}
         <span class="badge bg-warning text-dark rounded-pill px-3 py-2 me-1">🔥 Bestseller</span>
         {{/if}}
+        {{#if (not is_complete)}}  <span class="badge bg-light text-secondary ms-2">⏳ In progress</span>{{/if}}
 
         <!-- Instructor -->
         <div class="mt-4 d-flex align-items-center">
@@ -83,82 +84,93 @@
         <div class="card border-0 shadow-lg rounded-4 overflow-hidden flex-fill">
 <div class="card-body p-4 d-flex flex-nowrap align-items-center justify-content-between">
 
-            <!-- Ảnh bên trái -->
+            <!-- Left image -->
             <div class="flex-shrink-0 me-4 mb-3">
               <img src="{{#if course.image_url}}{{course.image_url}}{{else}}https://via.placeholder.com/400x250?text=No+Image{{/if}}"
                   alt="{{course.title}}" class="rounded-4 shadow-sm"
                   style="width: 320px; height: 200px; object-fit: cover;">
             </div>
 
-            <!-- Giá & Nút -->
+            <!-- Price & Buttons -->
             <div class="flex-grow-1 d-flex flex-column justify-content-center text-center">
-              <!-- Giá -->
+              <!-- Price -->
               <div class="mb-3">
-                {{#if course.sale_price}}
+                {{#unless (eq course.sale_price course.price)}}
                   <h3 class="text-danger fw-bold mb-0">{{format_number course.sale_price}} VND</h3>
                   <small class="text-muted text-decoration-line-through">{{format_number course.price}} VND</small>
                 {{else}}
-                  <h3 class="text-danger fw-bold mb-0">{{format_number course.price}} VND</h3>
-                {{/if}}
+                  <h3 class="fw-bold mb-0">{{format_number course.price}} VND</h3>
+                {{/unless}}
               </div>
 
-              <!-- Nút hành động -->
-<div class="text-center">
-  {{#if isEnrolled}}
-    <a class="btn btn-primary rounded-pill py-2 px-4 shadow-sm fw-semibold" href="/learn/{{course.id}}">
-      <i class="bi bi-play-circle me-2"></i>Continue learning
-    </a>
-  {{else}}
-    <!-- Hàng 1: Add to Cart + Buy Now -->
-    <div class="d-flex justify-content-center align-items-center mb-3 flex-wrap">
 
-      {{!-- Replace existing Buy Now button with this block --}}
-      {{#if isEnrolled}}
-        <!-- User đã ghi danh: hiển thị nút Learn -->
-        <a href="/learn/{{course.course_id}}"
-          class="btn btn-success rounded-pill py-2 fw-semibold me-2">
-          <i class="bi bi-play-circle-fill me-2"></i>Learn
-        </a>
-      {{else}}
-        {{#if @root.session.authUser}}
-          <!-- User đã login nhưng chưa enroll: bật modal thanh toán -->
-          <button type="button"
-                  class="btn btn-outline-success rounded-pill py-2 fw-semibold me-2"
-                  data-bs-toggle="modal"
-                  data-bs-target="#paymentQrModal">
-            <i class="bi bi-lightning-charge-fill me-2"></i>Buy Now
-          </button>
-        {{else}}
-          <!-- User chưa login: redirect giống wishlist (kèm retUrl) -->
-          <a href="/account/signin?ret={{retUrl}}"
-            class="btn btn-outline-success rounded-pill py-2 fw-semibold me-2">
-            <i class="bi bi-lightning-charge-fill me-2"></i>Buy Now
-          </a>
-        {{/if}}
-      {{/if}}
+              {{#if (eq @root.session.authUser.role 'instructor')}}
+              <div class="text-center">
+                  <a class="btn btn-primary rounded-pill py-2 px-4 shadow-sm fw-semibold" href="/instructor/manage-course/{{course.id}}">
+                    <i class="bi bi-pencil me-2"></i>Edit Course
+                  </a>
+              </div>
+              {{/if}}
+                
+              {{#if (isStudent)}}
+              <!-- Action buttons -->
+              <div class="text-center">
+                {{#if isEnrolled}}
+                  <a class="btn btn-primary rounded-pill py-2 px-4 shadow-sm fw-semibold" href="/learn/{{course.id}}">
+                    <i class="bi bi-play-circle me-2"></i>Continue learning
+                  </a>
+                {{else}}
+                <!-- Row 1: Buy Now -->
+                  <div class="d-flex justify-content-center align-items-center mb-3 flex-wrap">
+
+                {{!-- Replace existing Buy Now button with this block --}}
+                    {{#if isEnrolled}}
+                <!-- User enrolled: show Learn button -->
+                      <a href="/learn/{{course.course_id}}"
+                        class="btn btn-success rounded-pill py-2 fw-semibold me-2">
+                        <i class="bi bi-play-circle-fill me-2"></i>Learn
+                      </a>
+                    {{else}}
+                      {{#if @root.session.authUser}}
+                        <!-- Logged-in user but not enrolled: open payment modal -->
+                        <button type="button"
+                                class="btn btn-outline-success rounded-pill py-2 fw-semibold me-2"
+                                data-bs-toggle="modal"
+                                data-bs-target="#paymentQrModal">
+                          <i class="bi bi-lightning-charge-fill me-2"></i>Buy Now
+                        </button>
+                      {{else}}
+                        <!-- User not logged in: redirect same as wishlist (with retUrl) -->
+                        <a href="/account/signin?ret={{retUrl}}"
+                          class="btn btn-outline-success rounded-pill py-2 fw-semibold me-2">
+                          <i class="bi bi-lightning-charge-fill me-2"></i>Buy Now
+                        </a>
+                      {{/if}}
+                    {{/if}}
 
 
 
-      {{#if @root.session.authUser}}
-        {{#if isInWishlist}}
-          <button type="button" class="btn btn-danger rounded-pill py-2" id="wishlistBtn" data-course-id="{{course.id}}">
-            <i class="bi bi-heart-fill"></i>
-            <span id="wishlistText">Remove</span>
-          </button>
-        {{else}}
-          <button type="button" class="btn btn-outline-danger rounded-pill py-2" id="wishlistBtn" data-course-id="{{course.id}}">
-            <i class="bi bi-heart"></i>
-            <span id="wishlistText">Add to Wishlist</span>
-          </button>
-        {{/if}}
-      {{else}}
-      <a href="/account/signin?ret={{retUrl}}" class="btn btn-outline-danger rounded-pill py-2">
-          <i class="bi bi-heart"></i> Add to Wishlist
-        </a>
-      {{/if}}
-    </div>
-  {{/if}}
-</div>
+                    {{#if @root.session.authUser}}
+                      {{#if isInWishlist}}
+                        <button type="button" class="btn btn-danger rounded-pill py-2" id="wishlistBtn" data-course-id="{{course.id}}">
+                          <i class="bi bi-heart-fill"></i>
+                          <span id="wishlistText">Remove</span>
+                        </button>
+                      {{else}}
+                        <button type="button" class="btn btn-outline-danger rounded-pill py-2" id="wishlistBtn" data-course-id="{{course.id}}">
+                          <i class="bi bi-heart"></i>
+                          <span id="wishlistText">Add to Wishlist</span>
+                        </button>
+                      {{/if}}
+                    {{else}}
+                    <a href="/account/signin?ret={{retUrl}}" class="btn btn-outline-danger rounded-pill py-2">
+                        <i class="bi bi-heart"></i> Add to Wishlist
+                      </a>
+                    {{/if}}
+                  </div>
+                {{/if}}
+              </div>
+              {{/if}}
 
 
               {{!-- Enroll form for free course (optional) --}}
@@ -200,7 +212,7 @@
                         {{#if this.is_previewable}}
                           <a href="javascript:void(0)"
                             class="preview-btn text-decoration-none text-dark me-2"
-                            data-video="{{this.video_url}}">
+                            data-video="{{getYouTubeEmbedUrl this.video_url}}">
                             {{this.order_index}}. {{this.title}}
                             <span class="badge bg-success ms-2 small">Preview</span>
                           </a>
@@ -226,7 +238,7 @@
       </div>
     </section>
 
-    <!-- ✅ Requirements -->
+  <!-- ✅ Requirements -->
     <section class="mt-5">
       <h4 class="fw-bold mb-3"><i class="bi bi-check-circle text-success me-2"></i>Requirements</h4>
       <ul class="list-group list-group-flush">
@@ -234,7 +246,7 @@
       </ul>
     </section>
 
-    <!-- 📝 Detailed Description -->
+  <!-- 📝 Detailed Description -->
     <section class="mt-5">
       <h4 class="fw-bold mb-3"><i class="bi bi-file-earmark-text text-success me-2"></i>Detailed Description</h4>
       <div class="p-4 bg-light rounded-4 shadow-sm">
@@ -242,7 +254,7 @@
       </div>
     </section>
 
-    <!-- 💬 Feedback (Review Form when enrolled) -->
+  <!-- 💬 Feedback (Review Form when enrolled) -->
     {{#if isEnrolled}}
     <section class="mt-5">
       <h4 class="fw-bold mb-3"><i class="bi bi-chat-dots text-success me-2"></i>Student Feedback</h4>
@@ -269,14 +281,14 @@
             <div class="mb-3">
               <label for="comment" class="form-label">Comment:</label>
               <textarea class="form-control" id="comment" name="comment" rows="4"
-                        placeholder="Chia sẻ trải nghiệm của bạn...">{{#if userReview}}{{userReview.comment}}{{/if}}</textarea>
+                        placeholder="Share your experience...">{{#if userReview}}{{userReview.comment}}{{/if}}</textarea>
             </div>
             <div class="d-flex gap-2">
               <button type="submit" class="btn btn-primary">
-              {{#if userReview}}Cập nhật đánh giá{{else}}Send{{/if}}
+              {{#if userReview}}Update review{{else}}Send{{/if}}
               </button>
               {{#if userReview}}
-              <button type="button" class="btn btn-outline-danger" id="deleteReview">Xóa đánh giá</button>
+              <button type="button" class="btn btn-outline-danger" id="deleteReview">Delete review</button>
               {{/if}}
             </div>
           </form>
@@ -285,7 +297,7 @@
     </section>
     {{/if}}
 
-    <!-- 💬 Feedback Display -->
+  <!-- 💬 Feedback Display -->
     <section class="mt-4">
       <h4 class="fw-bold mb-3"><i class="bi bi-chat-square-text text-success me-2"></i>Reviews from Students</h4>
       <div class="row row-cols-1 row-cols-md-3 g-4">
@@ -307,7 +319,7 @@
         {{/each}}
         {{#unless course.reviews.length}}
           <div class="col-12">
-            <p class="text-muted small">Chưa có đánh giá nào.</p>
+            <p class="text-muted small">No reviews yet.</p>
           </div>
         {{/unless}}
       </div>
@@ -322,9 +334,24 @@
           <div>
             <h5 class="fw-bold mb-1">{{course.instructor_name}}</h5>
             <p class="text-muted small mb-2">{{course.instructor_bio}}</p>
-            <a href="/instructors/{{course.instructor_id}}" class="btn btn-outline-success rounded-pill btn-sm">
-              View More Courses
-            </a>
+            <div class="d-flex gap-2 flex-wrap">
+              <a href="/instructors/{{course.instructor_id}}" class="btn btn-outline-success rounded-pill btn-sm">
+                <i class="bi bi-collection me-1"></i>View More Courses
+              </a>
+              {{#if isAuthenticated}}
+                {{#if (ne authUser.user_id course.instructor_id)}}
+                  <button type="button" 
+                          class="btn btn-primary rounded-pill btn-sm" 
+                          onclick="openChatWithInstructor({{course.instructor_id}}, '{{course.instructor_name}}')">
+                    <i class="bi bi-chat-dots me-1"></i>Chat with Instructor
+                  </button>
+                {{/if}}
+              {{else}}
+                <a href="/account/signin?ret={{retUrl}}" class="btn btn-outline-primary rounded-pill btn-sm">
+                  <i class="bi bi-chat-dots me-1"></i>Chat with Instructor
+                </a>
+              {{/if}}
+            </div>
           </div>
         </div>
       </div>
@@ -335,9 +362,10 @@
       <h4 class="fw-bold mb-3"><i class="bi bi-book text-success me-2"></i>Related Courses</h4>
       <div class="row row-cols-1 row-cols-md-4 g-4">
         {{#each related_courses}}
-          <a class="col text-decoration-none" href="/courses/detail/{{this.id}}">
+          <a class="col text-decoration-none" href="/courses/detail/{{this.course_id}}">
             <div class="card border-0 shadow-sm rounded-4 h-100">
-              <img src="{{this.image_url}}" class="card-img-top" height="180" alt="{{this.title}}">
+              <img src="{{this.image_url}}" class="card-img-top" alt="{{this.title}}"
+                   style="width: 100%; height: 180px; object-fit: cover; border-top-left-radius: 1rem; border-top-right-radius: 1rem;">
               <div class="card-body">
                 <h6 class="fw-semibold text-dark">{{this.title}}</h6>
                 <p class="text-muted small mb-1">{{this.instructor_name}}</p>
@@ -359,10 +387,10 @@
 <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel"
      aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
+    <div class="modal-content bg-light text-dark">
       <div class="modal-header border-0">
         <h5 class="modal-title text-danger" id="deleteConfirmModalLabel">
-          <i class="bi bi-exclamation-triangle-fill me-2"></i>Xác nhận xóa
+          <i class="bi bi-exclamation-triangle-fill me-2"></i>Confirm deletion
         </h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
@@ -370,20 +398,21 @@
         <div class="mb-3">
           <i class="bi bi-trash3 text-danger" style="font-size: 3rem;"></i>
         </div>
-        <h6>Bạn có chắc chắn muốn xóa đánh giá này không?</h6>
-        <p class="text-muted">Hành động này không thể hoàn tác.</p>
+  <h6>Are you sure you want to delete this review?</h6>
+  <p class="text-muted">This action cannot be undone.</p>
       </div>
       <div class="modal-footer border-0 justify-content-center">
         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
-          <i class="bi bi-x-lg me-1"></i>Hủy
+          <i class="bi bi-x-lg me-1"></i>Cancel
         </button>
         <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
-          <i class="bi bi-trash3 me-1"></i>Xóa đánh giá
+          <i class="bi bi-trash3 me-1"></i>Delete review
         </button>
       </div>
     </div>
   </div>
 </div>
+
 
 <!-- Note: global preview video modal is expected to exist on page (id="videoModal" and iframe id="previewVideo") -->
 <script>
@@ -392,7 +421,7 @@ document.addEventListener('DOMContentLoaded', function () {
   function showAlert(message, type = 'success') {
     const existing = document.querySelector('.alert');
     if (existing) existing.remove();
-    const title = type === 'success' ? 'Thành công!' : (type === 'warning' ? 'Cảnh báo!' : 'Lỗi!');
+  const title = type === 'success' ? 'Success!' : (type === 'warning' ? 'Warning!' : 'Error!');
     const html = `
       <div class="alert alert-${type} alert-dismissible fade show" role="alert">
         <strong>${title}</strong> ${message}
@@ -459,12 +488,12 @@ document.addEventListener('DOMContentLoaded', function () {
         } else {
           this.className = originalClass;
           this.innerHTML = originalContent;
-          showAlert('Có lỗi: ' + (result?.message || 'Không thể thao tác wishlist.'), 'danger');
+          showAlert('Error: ' + (result?.message || 'Unable to update wishlist.'), 'danger');
         }
       } catch (err) {
-        this.className = originalClass;
-        this.innerHTML = originalContent;
-        showAlert('Có lỗi xảy ra khi thao tác wishlist', 'danger');
+  this.className = originalClass;
+  this.innerHTML = originalContent;
+  showAlert('An error occurred while updating wishlist', 'danger');
         console.error(err);
       } finally {
         this.disabled = false;
@@ -480,7 +509,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const deleteBtn = document.getElementById('deleteReview');
     const starContainer = document.querySelector('.star-rating');
 
-    // Server-side template should replace {{course.id}} with actual id
     const courseId = '{{course.id}}';
     const reviewEndpoint = reviewForm?.getAttribute('action') || `/review/course/${courseId}`;
 
@@ -530,7 +558,7 @@ document.addEventListener('DOMContentLoaded', function () {
         e.preventDefault();
 
         if (!ratingInput || Number(ratingInput.value) === 0) {
-          showAlert('Vui lòng chọn số sao đánh giá!', 'warning');
+          showAlert('Please select a rating!', 'warning');
           return;
         }
 
@@ -559,14 +587,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
           const result = await resp.json().catch(()=>({ success: false, message: 'Invalid JSON response' }));
           if (result && result.success) {
-            showAlert(result.message || 'Gửi đánh giá thành công', 'success');
+            showAlert(result.message || 'Review submitted successfully', 'success');
             setTimeout(() => location.reload(), 1200);
           } else {
-            showAlert(result?.message || 'Có lỗi khi gửi đánh giá', 'danger');
+            showAlert(result?.message || 'Error submitting review', 'danger');
           }
         } catch (err) {
           console.error(err);
-          showAlert('Có lỗi xảy ra khi gửi đánh giá', 'danger');
+          showAlert('An error occurred while submitting the review', 'danger');
         }
       });
     }
@@ -603,14 +631,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const result = await resp.json().catch(()=>({ success: false, message: 'Invalid JSON response' }));
             if (result && result.success) {
-              showAlert(result.message || 'Xóa đánh giá thành công', 'success');
+              showAlert(result.message || 'Review deleted successfully', 'success');
               setTimeout(() => location.reload(), 1200);
             } else {
-              showAlert(result?.message || 'Không thể xóa đánh giá', 'danger');
+              showAlert(result?.message || 'Unable to delete review', 'danger');
             }
           } catch (err) {
             console.error(err);
-            showAlert('Có lỗi xảy ra khi xóa đánh giá', 'danger');
+            showAlert('An error occurred while deleting the review', 'danger');
           }
         }, { once: true });
       });
@@ -620,7 +648,38 @@ document.addEventListener('DOMContentLoaded', function () {
     wireDelete();
   })();
 
+  /* ---------- Chat with Instructor ---------- */
+  window.openChatWithInstructor = function(instructorId, instructorName) {
+    // Check if chat system is available
+    if (typeof window.chatSystem !== 'undefined') {
+      window.chatSystem.openChatWithUser(instructorId, instructorName);
+    } else {
+      // Fallback: show alert and try to initialize chat system
+      console.log('Chat system not initialized, attempting to initialize...');
+      if (typeof ChatSystem !== 'undefined') {
+        window.chatSystem = new ChatSystem();
+        window.chatSystem.openChatWithUser(instructorId, instructorName);
+      } else {
+        alert('Chat system is not available. Please refresh the page and try again.');
+      }
+    }
+  };
+
 }); // DOMContentLoaded
+</script>
+
+
+<script>
+  // Tính view
+document.addEventListener("DOMContentLoaded", () => {
+  const courseId = "{{course.id}}"; // hoặc course.id tùy DB bạn
+  // Đợi 30 giây rồi mới tính view
+  setTimeout(() => {
+    fetch(`/courses/view/${courseId}`, {
+      method: "POST"
+    });
+  }, 15000);
+});
 </script>
 
 
@@ -650,26 +709,26 @@ document.addEventListener('DOMContentLoaded', function () {
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content border-0 rounded-4 shadow bg-light text-dark">
       <form id="paymentForm" method="POST" action="/payment/confirm">
-        <!-- nếu dùng CSRF, chèn token ở đây -->
+        <!-- if using CSRF, insert token here -->
         <div class="modal-body text-center p-4">
-          <h5 id="paymentQrModalLabel" class="mb-1 text-success">Thanh toán đơn hàng</h5>
-          <p class="small text-muted mb-3">Quét mã QR bằng app ngân hàng/ ví điện tử để thanh toán.</p>
+          <h5 id="paymentQrModalLabel" class="mb-1 text-success">Order Payment</h5>
+          <p class="small text-muted mb-3">Scan the QR code using your banking app or e-wallet to pay.</p>
 
           <input type="hidden" name="course_id" value="{{course.id}}">
           <input type="hidden" name="price" value="{{#if course.sale_price}}{{course.sale_price}}{{else}}{{course.price}}{{/if}}">
 
           <div class="my-3">
-            <img src="/static/qr.jpg" alt="QR Payment" class="img-fluid" style="max-width:320px; width:100%; height:auto;" />
+            <img src="/qr.jpg" alt="QR Payment" class="img-fluid" style="max-width:320px; width:100%; height:auto;" />
           </div>
 
-          <p class="small text-muted mb-3">Sau khi quét và thanh toán, nhấn nút bên dưới để xác nhận.</p>
+          <p class="small text-muted mb-3">After scanning and paying, press the button below to confirm.</p>
 
           <div class="d-flex justify-content-center gap-2">
             <button type="submit" class="btn btn-success rounded-pill px-4 py-2 fw-semibold">
-              Đã thanh toán
+              Paid
             </button>
             <button type="button" class="btn btn-outline-secondary rounded-pill px-3 py-2" data-bs-dismiss="modal">
-              Hủy
+              Cancel
             </button>
           </div>
         </div>

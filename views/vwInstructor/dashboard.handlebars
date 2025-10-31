@@ -28,15 +28,18 @@
                             <img src="{{image_url}}" alt="{{title}}" class="rounded me-2" width="60" height="40"
                                 style="object-fit: cover;">
                             {{/if}}
-                            <div>
+                            <div>                        
                                 <strong>{{title}}</strong>
+                                {{#ifEq2 this.status 'hidden'}}
+                                <span class="badge bg-secondary">Hidden</span>
+                                {{/ifEq2}}
                                 <div class="text-muted small">
-                                    {{#if sale_price}}
+                                    {{#unless (eq price sale_price)}}
                                     <span class="text-decoration-line-through">${{price}}</span>
                                     <span class="text-danger fw-bold">${{sale_price}}</span>
                                     {{else}}
-                                    ${{price}}
-                                    {{/if}}
+                                    <b>₫ {{price}}</b>
+                                    {{/unless}}
                                 </div>
                             </div>
                         </div>
@@ -55,6 +58,11 @@
                     </td>
 
                     <td class="text-end">
+                        <a class="btn btn-outline-info btn-sm" 
+                            href="/courses/detail/{{course_id}}" 
+                            role="button" title="View Course">
+                            <i class="bi bi-search"></i>
+                        </a>
                         <a class="btn btn-outline-primary btn-sm" href="/instructor/manage-course/{{course_id}}"
                             role="button" title="Edit Course">
                             <i class="bi bi-pencil-square"></i>
