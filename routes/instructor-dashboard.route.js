@@ -1,4 +1,7 @@
 import express from 'express';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
 import { restrict, isInstructor } from '../middlewares/auth.mdw.js';
 import * as courseModel from '../models/courses.model.js';
 import * as progressModel from '../models/progress.model.js';
@@ -417,6 +420,61 @@ router.post('/courses/show', isInstructor, async (req, res) => {
         logger.error({ err, body: req.body, instructorId: req.session?.authUser?.user_id }, 'POST /instructor/courses/show error');
     return res.status(500).json({ success:false, message:'Server error' });
   }
+});
+
+// ================= Video Upload (Multer) =================
+// Ensure upload directory exists
+const videosDir = path.join(process.cwd(), 'static', 'videos');
+try {
+    fs.mkdirSync(videosDir, { recursive: true });
+} catch {}
+
+const allowedMime = new Set([
+    'video/mp4',
+    'video/quicktime', // .mov
+    'video/x-msvideo', // .avi
+    'video/x-matroska', // .mkv
+    'video/webm',
+]);
+
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, videosDir);
+    },
+    filename: function (req, file, cb) {
+        const ext = path.extname(file.originalname).toLowerCase();
+        const base = path.basename(file.originalname, ext).replace(/[^a-z0-9_-]/gi, '_');
+        const ts = Date.now();
+        const rand = Math.random().toString(36).slice(2, 8);
+        cb(null, `${base}_${ts}_${rand}${ext}`);
+    }
+});
+
+const upload = multer({
+    storage,
+    limits: { fileSize: 500 * 1024 * 1024 }, // 500MB
+    fileFilter: function (req, file, cb) {
+        const mimetypeOk = allowedMime.has(file.mimetype);
+        const ext = path.extname(file.originalname).toLowerCase();
+        const extOk = ['.mp4', '.mov', '.avi', '.mkv', '.webm'].includes(ext);
+        if (mimetypeOk && extOk) return cb(null, true);
+        cb(new Error('Invalid file type. Allowed: mp4, mov, avi, mkv, webm'));
+    }
+});
+
+// POST /instructor/api/upload/video
+router.post('/api/upload/video', (req, res) => {
+    upload.single('video')(req, res, (err) => {
+        if (err) {
+            return res.status(400).json({ error: err.message || 'Upload failed' });
+        }
+        if (!req.file) {
+            return res.status(400).json({ error: 'No file uploaded' });
+        }
+        // Public URL (served from /static as root "/")
+        const url = `/videos/${req.file.filename}`;
+        return res.json({ url });
+    });
 });
 
 export default router;

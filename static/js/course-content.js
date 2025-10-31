@@ -31,6 +31,24 @@
         }
     }
 
+    function isYouTube(url) {
+        if (!url) return false;
+        return url.includes('youtube.com') || url.includes('youtu.be');
+    }
+
+    function renderPreview(box, url) {
+        if (!url) {
+            box.innerHTML = `<div class="video-preview rounded d-flex align-items-center justify-content-center bg-light"><span class="text-muted">No preview available</span></div>`;
+            return;
+        }
+        if (isYouTube(url)) {
+            const embed = getYouTubeEmbed(url);
+            box.innerHTML = `<div class="video-preview rounded overflow-hidden"><iframe src="${embed}" allowfullscreen></iframe></div>`;
+        } else {
+            box.innerHTML = `<div class="video-preview rounded overflow-hidden"><video controls style="width:100%;height:100%;object-fit:contain;"><source src="${url}"></video></div>`;
+        }
+    }
+
     function initQuillEditor(id) {
         if (editors[id]) return editors[id];
 
@@ -241,6 +259,10 @@
         lesson.querySelector('.lesson-label').textContent =
             lesson.querySelector('.lesson-label').textContent.replace('__NUMBER__', lessonNumber);
         lesson.querySelector('[id^="quill-"]').id = `quill-${lessonId}`;
+        // Ensure radio group name is unique per lesson
+        lesson.querySelectorAll('input.video-source').forEach(r => {
+            r.setAttribute('name', `video-src-${lessonId}`);
+        });
 
         lessonsList.appendChild(lesson);
         editors[lessonId] = initQuillEditor(lessonId);
@@ -297,15 +319,7 @@
         lessonEl.querySelector('.preview-video').addEventListener('click', () => {
             const url = lessonEl.querySelector('.lesson-video').value;
             const box = lessonEl.querySelector('.video-preview-box');
-            const embed = getYouTubeEmbed(url);
-
-            box.innerHTML = embed ?
-                `<div class="video-preview rounded overflow-hidden">
-                    <iframe src="${embed}" allowfullscreen></iframe>
-                </div>` :
-                `<div class="video-preview rounded d-flex align-items-center justify-content-center bg-light">
-                    <span class="text-muted">No preview available</span>
-                </div>`;
+            renderPreview(box, url);
         });
 
         // Remove lesson
@@ -344,6 +358,87 @@
                     el.addEventListener(event, () => setUnsavedChanges(true));
                 });
         });
+
+        // Video source toggle
+        const youtubeGroup = lessonEl.querySelector('.youtube-input-group');
+        const uploadGroup = lessonEl.querySelector('.upload-input-group');
+        lessonEl.querySelectorAll('.video-source').forEach(r => {
+            r.addEventListener('change', (e) => {
+                if (e.target.value === 'youtube') {
+                    if (youtubeGroup) youtubeGroup.style.display = 'block';
+                    if (uploadGroup) uploadGroup.style.display = 'none';
+                } else {
+                    if (youtubeGroup) youtubeGroup.style.display = 'none';
+                    if (uploadGroup) uploadGroup.style.display = 'block';
+                }
+            });
+        });
+
+        // Upload handling
+        const fileInput = lessonEl.querySelector('.lesson-video-file');
+        const progressWrap = lessonEl.querySelector('.lesson-upload-progress');
+        const progressBar = progressWrap ? progressWrap.querySelector('.progress-bar') : null;
+        const videoInput = lessonEl.querySelector('.lesson-video');
+
+        async function uploadFile(file) {
+            return new Promise((resolve, reject) => {
+                const allowed = ['video/mp4','video/quicktime','video/x-msvideo','video/x-matroska','video/webm'];
+                if (!allowed.includes(file.type)) {
+                    return reject(new Error('Invalid file type. Allowed: mp4, mov, avi, mkv, webm'));
+                }
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', '/instructor/api/upload/video');
+                xhr.responseType = 'json';
+                xhr.upload.onprogress = (e) => {
+                    if (progressWrap && progressBar) {
+                        progressWrap.style.display = 'block';
+                        if (e.lengthComputable) {
+                            const pct = Math.round((e.loaded / e.total) * 100);
+                            progressBar.style.width = pct + '%';
+                            progressBar.setAttribute('aria-valuenow', pct);
+                        }
+                    }
+                };
+                xhr.onerror = () => reject(new Error('Network error during upload'));
+                xhr.onload = () => {
+                    if (progressWrap && progressBar) {
+                        progressBar.style.width = '0%';
+                        progressBar.setAttribute('aria-valuenow', '0');
+                        setTimeout(() => { progressWrap.style.display = 'none'; }, 400);
+                    }
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        const data = xhr.response || {};
+                        if (data && data.url) return resolve(data.url);
+                        return reject(new Error('Invalid server response'));
+                    }
+                    const msg = (xhr.response && xhr.response.error) || 'Upload failed';
+                    reject(new Error(msg));
+                };
+                const fd = new FormData();
+                fd.append('video', file);
+                xhr.send(fd);
+            });
+        }
+
+        if (fileInput) {
+            fileInput.addEventListener('change', async (e) => {
+                const file = e.target.files && e.target.files[0];
+                if (!file) return;
+                try {
+                    const url = await uploadFile(file);
+                    if (videoInput) videoInput.value = url;
+                    const box = lessonEl.querySelector('.video-preview-box');
+                    renderPreview(box, url);
+                    setUnsavedChanges(true);
+                    if (window.Swal) Swal.fire({ icon: 'success', title: 'Upload complete', text: 'The video has been uploaded.' });
+                } catch (err) {
+                    if (window.Swal) Swal.fire({ icon: 'error', title: 'Upload failed', text: err.message || 'Could not upload video.' });
+                } finally {
+                    // reset input to allow re-uploading same file if needed
+                    e.target.value = '';
+                }
+            });
+        }
     }
 
     // Initialize everything when DOM is ready
