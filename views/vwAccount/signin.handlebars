@@ -46,3 +46,42 @@
     </div>
 
 </form>
+{{#fillContent 'js'}}
+<script>
+// validate added: client-side validation for signin form
+document.addEventListener('DOMContentLoaded', function () {
+    const form = document.querySelector('form');
+    if (!form) return;
+
+    function showError(title, text) {
+        if (window.Swal) return Swal.fire({ icon: 'error', title, text });
+        alert(`${title}: ${text}`);
+    }
+
+    function isValidEmail(email) {
+        // Basic email regex
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    }
+
+    form.addEventListener('submit', function (e) {
+        const email = document.getElementById('txtEmail')?.value?.trim() || '';
+        const password = document.getElementById('txtPassword')?.value || '';
+
+        if (!email || !password) {
+            e.preventDefault();
+            return showError('Missing information', 'Email and password are required.');
+        }
+
+        if (!isValidEmail(email)) {
+            e.preventDefault();
+            return showError('Invalid email', 'Please enter a valid email address.');
+        }
+
+        if (password.length < 6) {
+            e.preventDefault();
+            return showError('Weak password', 'Password must be at least 6 characters.');
+        }
+    });
+});
+</script>
+{{/fillContent}}
