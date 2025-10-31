@@ -122,65 +122,67 @@
                   </a>
               {{/if}}
                 
-              {{#if (isStudent)}}
+              {{#unless (eq @root.session.authUser.role 'instructor')}}
+              {{#unless (eq @root.session.authUser.role 'admin')}}
               <!-- Action buttons -->
-              <div class="text-center">
-                {{#if isEnrolled}}
-                  <a class="btn btn-primary rounded-pill py-2 px-4 shadow-sm fw-semibold" href="/learn/{{course.id}}">
-                    <i class="bi bi-play-circle me-2"></i>Continue learning
-                  </a>
-                {{else}}
-                <!-- Row 1: Buy Now -->
-                  <div class="d-flex justify-content-center align-items-center mb-3 flex-wrap">
+                <div class="text-center">
+                  {{#if isEnrolled}}
+                    <a class="btn btn-primary rounded-pill py-2 px-4 shadow-sm fw-semibold" href="/learn/{{course.id}}">
+                      <i class="bi bi-play-circle me-2"></i>Continue learning
+                    </a>
+                  {{else}}
+                  <!-- Row 1: Buy Now -->
+                    <div class="d-flex justify-content-center align-items-center mb-3 flex-wrap">
 
-                {{!-- Replace existing Buy Now button with this block --}}
-                    {{#if isEnrolled}}
-                <!-- User enrolled: show Learn button -->
-                      <a href="/learn/{{course.course_id}}"
-                        class="btn btn-success rounded-pill py-2 fw-semibold me-2">
-                        <i class="bi bi-play-circle-fill me-2"></i>Learn
-                      </a>
-                    {{else}}
-                      {{#if @root.session.authUser}}
-                        <!-- Logged-in user but not enrolled: open payment modal -->
-                        <button type="button"
-                                class="btn btn-outline-success rounded-pill py-2 fw-semibold me-2"
-                                data-bs-toggle="modal"
-                                data-bs-target="#paymentQrModal">
-                          <i class="bi bi-lightning-charge-fill me-2"></i>Buy Now
-                        </button>
+                      {{!-- Replace existing Buy Now button with this block --}}
+                      {{#if isEnrolled}}
+                      <!-- User enrolled: show Learn button -->
+                        <a href="/learn/{{course.course_id}}"
+                          class="btn btn-success rounded-pill py-2 fw-semibold me-2">
+                          <i class="bi bi-play-circle-fill me-2"></i>Learn
+                        </a>
                       {{else}}
-                        <!-- User not logged in: redirect same as wishlist (with retUrl) -->
-                        <a href="/account/signin?ret={{retUrl}}"
-                          class="btn btn-outline-success rounded-pill py-2 fw-semibold me-2">
-                          <i class="bi bi-lightning-charge-fill me-2"></i>Buy Now
+                        {{#if @root.session.authUser}}
+                          <!-- Logged-in user but not enrolled: open payment modal -->
+                          <button type="button"
+                                  class="btn btn-outline-success rounded-pill py-2 fw-semibold me-2"
+                                  data-bs-toggle="modal"
+                                  data-bs-target="#paymentQrModal">
+                            <i class="bi bi-lightning-charge-fill me-2"></i>Buy Now
+                          </button>
+                        {{else}}
+                          <!-- User not logged in: redirect same as wishlist (with retUrl) -->
+                          <a href="/account/signin?ret={{retUrl}}"
+                            class="btn btn-outline-success rounded-pill py-2 fw-semibold me-2">
+                            <i class="bi bi-lightning-charge-fill me-2"></i>Buy Now
+                          </a>
+                        {{/if}}
+                      {{/if}}
+
+
+
+                      {{#if @root.session.authUser}}
+                        {{#if isInWishlist}}
+                          <button type="button" class="btn btn-danger rounded-pill py-2" id="wishlistBtn" data-course-id="{{course.id}}">
+                            <i class="bi bi-heart-fill"></i>
+                            <span id="wishlistText">Remove</span>
+                          </button>
+                        {{else}}
+                          <button type="button" class="btn btn-outline-danger rounded-pill py-2" id="wishlistBtn" data-course-id="{{course.id}}">
+                            <i class="bi bi-heart"></i>
+                            <span id="wishlistText">Add to Wishlist</span>
+                          </button>
+                        {{/if}}
+                      {{else}}
+                      <a href="/account/signin?ret={{retUrl}}" class="btn btn-outline-danger rounded-pill py-2">
+                          <i class="bi bi-heart"></i> Add to Wishlist
                         </a>
                       {{/if}}
-                    {{/if}}
-
-
-
-                    {{#if @root.session.authUser}}
-                      {{#if isInWishlist}}
-                        <button type="button" class="btn btn-danger rounded-pill py-2" id="wishlistBtn" data-course-id="{{course.id}}">
-                          <i class="bi bi-heart-fill"></i>
-                          <span id="wishlistText">Remove</span>
-                        </button>
-                      {{else}}
-                        <button type="button" class="btn btn-outline-danger rounded-pill py-2" id="wishlistBtn" data-course-id="{{course.id}}">
-                          <i class="bi bi-heart"></i>
-                          <span id="wishlistText">Add to Wishlist</span>
-                        </button>
-                      {{/if}}
-                    {{else}}
-                    <a href="/account/signin?ret={{retUrl}}" class="btn btn-outline-danger rounded-pill py-2">
-                        <i class="bi bi-heart"></i> Add to Wishlist
-                      </a>
-                    {{/if}}
-                  </div>
-                {{/if}}
-              </div>
-              {{/if}}
+                    </div>
+                  {{/if}}
+                </div>
+                {{/unless}}
+              {{/unless}}
 
 
               {{!-- Enroll form for free course (optional) --}}
