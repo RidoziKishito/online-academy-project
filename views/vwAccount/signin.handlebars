@@ -1,4 +1,4 @@
-<form action="" method="post">
+<form id="signinForm" action="" method="post">
     <div class="card">
         <div class="card-header d-flex justify-content-between align-items-center">
             <span>Sign In</span>
@@ -46,3 +46,57 @@
     </div>
 
 </form>
+{{#fillContent 'js'}}
+<script>
+window.addEventListener('load', function () {
+  const form = document.getElementById('signinForm');
+  if (!form) {
+    console.warn('⚠️ Sign-in form not found!');
+    return;
+  }
+
+  function showAlert(icon, title, text, timer = 2000) {
+    if (window.Swal)
+      return Swal.fire({ icon, title, text, timer, showConfirmButton: false });
+    alert(`${title}\n${text}`);
+  }
+
+  function isValidEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }
+
+  form.addEventListener('submit', async function (e) {
+    e.preventDefault(); // 🔒 Chặn reload 100%
+    const email = document.getElementById('txtEmail').value.trim();
+    const password = document.getElementById('txtPassword').value;
+
+    if (!email || !password)
+      return showAlert('error', 'Missing information', 'Email and password are required.');
+
+    if (!isValidEmail(email))
+      return showAlert('error', 'Invalid email', 'Please enter a valid email address.');
+
+    if (password.length < 6)
+      return showAlert('error', 'Weak password', 'Password must be at least 6 characters.');
+
+    try {
+      const res = await fetch('/account/signin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const result = await res.json();
+
+      if (res.ok && result.success) {
+        showAlert('success', 'Welcome!', 'Sign in successful. Redirecting...');
+        setTimeout(() => window.location.href = result.redirect || '/', 1500);
+      } else {
+        showAlert('error', 'Sign in failed', result.message || 'Invalid email or password.');
+      }
+    } catch {
+      showAlert('error', 'Connection error', 'Unable to reach server.');
+    }
+  });
+});
+</script>
+{{/fillContent}}

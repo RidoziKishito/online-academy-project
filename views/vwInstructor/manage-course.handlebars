@@ -32,6 +32,62 @@
     const fullDescInput = document.querySelector('#full_description');
     if (fullDescInput) fullDescInput.value = initialHtml;
 
+        // validate added: client-side validation for manage course form
+        (function addManageCourseValidation(){
+            const form = document.querySelector('#frmAddCourse');
+            if (!form) return;
+
+            function showError(title, text){
+                if (window.Swal) return Swal.fire({ icon: 'error', title, text });
+                alert(`${title}: ${text}`);
+            }
+
+            function parseNumberLike(val){
+                if (!val) return null;
+                const num = Number(String(val).replace(/[,\s]/g, ''));
+                return Number.isFinite(num) ? num : null;
+            }
+
+            form.addEventListener('submit', function(e){
+                const title = form.querySelector('input[name="title"]')?.value?.trim() || '';
+                const priceStr = document.getElementById('currentPrice')?.value?.trim() || '';
+                const saleStr = document.getElementById('originalPrice')?.value?.trim() || '';
+                const category = document.getElementById('parentCategory')?.value || '';
+
+                if (!title){
+                    e.preventDefault();
+                    return showError('Missing title', 'Course title is required.');
+                }
+
+                const descText = (quill?.root?.innerText || '').trim();
+                if (!descText){
+                    e.preventDefault();
+                    return showError('Missing description', 'Please provide the course description.');
+                }
+
+                // Numeric validations (if present)
+                if (priceStr){
+                    const n = parseNumberLike(priceStr);
+                    if (n === null || n < 0){
+                        e.preventDefault();
+                        return showError('Invalid price', 'Price must be a non-negative number.');
+                    }
+                }
+                if (saleStr){
+                    const n = parseNumberLike(saleStr);
+                    if (n === null || n < 0){
+                        e.preventDefault();
+                        return showError('Invalid sale price', 'Sale price must be a non-negative number.');
+                    }
+                }
+
+                if (!category){
+                    e.preventDefault();
+                    return showError('Missing category', 'Please select a main category.');
+                }
+            }, true);
+        })();
+
     // On submit, copy quill html to hidden input so server receives full_description
     document.querySelector('#frmAddCourse').addEventListener('submit', function (e) {
         const html = quill.root.innerHTML;

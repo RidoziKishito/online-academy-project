@@ -66,48 +66,62 @@ router.get('/edit', restrict, isAdmin, async (req, res, next) => {
 router.post('/patch', restrict, isAdmin, async (req, res, next) => {
   try {
     const { user_id, full_name, email, password, confirm_password, role } = req.body;
+    const isJson = req.headers['content-type']?.includes('application/json');
     const errorMessages = {};
-    const oldData = { full_name, email, role, user_id };
 
-    // If no user_id => create new (password required)
+    // === Validation ===
+    if (!full_name || !email) {
+      const msg = 'Full name and email are required.';
+      if (isJson) return res.status(400).json({ success: false, message: msg });
+      return res.render('vwAdmin/account-edit', { errorMessages: { _global: [msg] }, oldData: req.body });
+    }
+
+    // New user
     if (!user_id) {
-      if (!password || password.length < 6) {
+      if (!password || password.length < 6)
         errorMessages.password = ['Password must be at least 6 characters.'];
-      }
-      if (password !== confirm_password) {
+      if (password !== confirm_password)
         errorMessages.confirm_password = ['Passwords do not match.'];
-      }
+
       if (Object.keys(errorMessages).length > 0) {
-        return res.render('vwAdmin/account-edit', { errorMessages, oldData });
+        if (isJson) return res.status(400).json({ success: false, errorMessages });
+        return res.render('vwAdmin/account-edit', { errorMessages, oldData: req.body });
       }
 
       const hash = await bcrypt.hash(password, 10);
-      const newUser = { full_name, email, role, password_hash: hash };
-      await userModel.add(newUser);
+      await userModel.add({ full_name, email, role, password_hash: hash });
+
+      if (isJson) return res.json({ success: true, message: 'Account created successfully.' });
       return res.redirect('/admin/accounts');
     }
 
-    // Update existing user: password optional
-    if (password && password.trim().length > 0) {
-      if (password.length < 6) {
+    // Update existing user
+    if (password) {
+      if (password.length < 6)
         errorMessages.password = ['Password must be at least 6 characters.'];
-      }
-      if (password !== confirm_password) {
+      if (password !== confirm_password)
         errorMessages.confirm_password = ['Passwords do not match.'];
-      }
     }
 
     if (Object.keys(errorMessages).length > 0) {
-      return res.render('vwAdmin/account-edit', { errorMessages, oldData, user: { user_id, full_name, email, role } });
+      if (isJson) return res.status(400).json({ success: false, errorMessages });
+      return res.render('vwAdmin/account-edit', { errorMessages, oldData: req.body });
     }
 
-    const patch = { full_name, email, role };
+    const patchData = { full_name, email, role };
     if (password && password.trim().length > 0) {
-      patch.password_hash = await bcrypt.hash(password, 10);
+      patchData.password_hash = await bcrypt.hash(password, 10);
     }
-    await userModel.patch(user_id, patch);
+
+    await userModel.patch(user_id, patchData);
+
+    if (isJson) return res.json({ success: true, message: 'Account updated successfully.' });
     res.redirect('/admin/accounts');
   } catch (err) {
+    console.error('Account patch error:', err);
+    if (req.headers['content-type']?.includes('application/json')) {
+      return res.status(500).json({ success: false, message: 'Server error occurred.' });
+    }
     next(err);
   }
 });

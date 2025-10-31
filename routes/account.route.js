@@ -122,32 +122,45 @@ router.get('/signup', (req, res) => {
 });
 
 router.post('/signin', signinLimiter, async (req, res) => {
-  // Find user by email (not username)
-  const user = await userModel.findByEmail(req.body.email);
+  const isJson = req.headers['content-type']?.includes('application/json');
+  const { email, password } = req.body;
+
+  // Tìm user theo email
+  const user = await userModel.findByEmail(email);
   if (!user) {
-    return res.render('vwAccount/signin', { error: true, oldData: { email: req.body.email } });
+    const msg = 'Invalid email or password.';
+    if (isJson) return res.status(401).json({ error: true, message: msg });
+    return res.render('vwAccount/signin', { error: true, oldData: { email } });
   }
 
-  // Compare password with password_hash
-  const password_match = bcrypt.compareSync(req.body.password, user.password_hash);
-  if (password_match === false) {
-    return res.render('vwAccount/signin', { error: true, oldData: { email: req.body.email } });
+  // So sánh mật khẩu
+  const password_match = bcrypt.compareSync(password, user.password_hash);
+  if (!password_match) {
+    const msg = 'Invalid email or password.';
+    if (isJson) return res.status(401).json({ error: true, message: msg });
+    return res.render('vwAccount/signin', { error: true, oldData: { email } });
   }
 
-  // Block sign-in if email not verified
+  // Kiểm tra xác thực email
   if (user.is_verified === false) {
-    // Optionally, trigger resend silently? We'll show a friendly message.
-    return res.render('vwAccount/verify-email', {
-      email: user.email,
-      error: 'Your email is not verified. Please enter the code we sent to your inbox.'
-    });
+    const msg = 'Your email is not verified.';
+    if (isJson) return res.status(403).json({ error: true, message: msg });
+    return res.render('vwAccount/verify-email', { email: user.email, error: msg });
   }
 
+  // Lưu session
   req.session.isAuthenticated = true;
   req.session.authUser = user;
 
   const retUrl = req.session.retUrl || '/';
   delete req.session.retUrl;
+
+  // ✅ Nếu là AJAX, trả JSON thay vì redirect
+  if (isJson) {
+    return res.json({ success: true, message: 'Login successful', redirect: retUrl });
+  }
+
+  // Nếu là form thường → redirect như cũ
   res.redirect(retUrl);
 });
 
@@ -192,21 +205,32 @@ router.post('/change-pwd', restrict, async (req, res) => {
 });
 
 router.post('/profile', restrict, async (req, res) => {
+  const { fullName, email, avt_url } = req.body;
   const { user_id } = req.session.authUser;
-  
-  // Data to update
-  const updatedUser = {
-    full_name: req.body.fullName,
-    email: req.body.email,
-    avatar_url: req.body.avt_url
-  };
-  await userModel.patch(user_id, updatedUser);
 
-  // Update session
-  req.session.authUser.full_name = req.body.fullName;
-  req.session.authUser.email = req.body.email;
+  // Validation backend (đề phòng bypass)
+  if (!fullName || !email) {
+    if (req.headers['content-type'].includes('application/json')) {
+      return res.status(400).json({ success: false, message: 'Thiếu thông tin bắt buộc.' });
+    }
+    return res.render('vwAccount/profile', {
+      authUser: req.session.authUser,
+      error: 'Full name và email là bắt buộc.'
+    });
+  }
 
-  res.render('vwAccount/profile', { success: true });
+  await userModel.patch(user_id, { full_name: fullName, email, avatar_url: avt_url });
+
+  // Cập nhật session
+  req.session.authUser = { ...req.session.authUser, full_name: fullName, email, avatar_url: avt_url };
+
+  // Nếu là AJAX → trả JSON
+  if (req.headers['content-type'].includes('application/json')) {
+    return res.json({ success: true });
+  }
+
+  // Nếu form thường → render lại view
+  res.render('vwAccount/profile', { success: true, authUser: req.session.authUser });
 });
 
   // Forgot Password - Request reset token
