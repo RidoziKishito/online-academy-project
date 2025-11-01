@@ -3,6 +3,7 @@ import * as userModel from '../models/user.model.js';
 import { restrict, isAdmin } from '../middlewares/auth.mdw.js';
 import bcrypt from 'bcrypt';
 import { sendInstructorAccountEmail } from '../utils/mailer.js';
+import logger from '../utils/logger.js';
 
 const router = express.Router();
 
@@ -118,16 +119,26 @@ router.post('/patch', restrict, isAdmin, async (req, res, next) => {
         throw e;
       }
 
+      // Send welcome email to instructor (non-blocking)
+      let emailWarning = null;
       if (role === 'instructor') {
         const emailSent = await sendInstructorAccountEmail(email, full_name, password);
         if (!emailSent) {
           logger.warn({ email }, 'Failed to send instructor account email - admin should inform user manually');
-          // Continue; do not block admin flow
+          emailWarning = 'Account created successfully, but failed to send welcome email. Please inform the instructor manually.';
         }
       }
 
-      if (isJson) return res.json({ success: true, message: 'Account created successfully.' });
-      return res.redirect('/admin/accounts');
+      if (isJson) {
+        return res.json({ 
+          success: true, 
+          message: emailWarning || 'Account created successfully.',
+          warning: emailWarning ? true : false
+        });
+      }
+      
+      // For non-JSON, redirect with success message (email failure is logged but not blocking)
+      return res.redirect('/admin/accounts?success=created');
     }
 
     // Update existing user
@@ -170,7 +181,7 @@ router.post('/patch', restrict, isAdmin, async (req, res, next) => {
     if (isJson) return res.json({ success: true, message: 'Account updated successfully.' });
     res.redirect('/admin/accounts');
   } catch (err) {
-    console.error('Account patch error:', err);
+  logger.error({ err }, 'Account patch error');
     if (req.headers['content-type']?.includes('application/json')) {
       return res.status(500).json({ success: false, message: 'Server error occurred.' });
     }
@@ -245,7 +256,7 @@ router.post('/ban/:id', restrict, isAdmin, async (req, res, next) => {
     await userModel.banUser(targetId, { permanent, until: untilDate, reason, adminId });
     return res.json({ ok: true });
   } catch (err) {
-    console.error('Ban error:', err);
+  logger.error({ err }, 'Ban error');
     return res.status(500).json({ ok: false, error: 'Ban failed' });
   }
 });
@@ -259,7 +270,7 @@ router.post('/unban/:id', restrict, isAdmin, async (req, res) => {
     await userModel.unbanUser(targetId);
     return res.json({ ok: true });
   } catch (err) {
-    console.error('Unban error:', err);
+  logger.error({ err }, 'Unban error');
     return res.status(500).json({ ok: false, error: 'Unban failed' });
   }
 });

@@ -62,6 +62,8 @@
     </div>
   </div>
 </div>
+
+{{#fillContent "js"}}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
   const form = document.querySelector('form[action="/admin/accounts/patch"]');
@@ -86,18 +88,22 @@ document.addEventListener('DOMContentLoaded', function () {
     const confirm_password = form.querySelector('input[name="confirm_password"]').value;
     const role = form.querySelector('select[name="role"]').value;
 
+    // Validation
     if (!full_name || !email) {
       return showAlert('error', 'Missing information', 'Full name and email are required.');
     }
     if (!isValidEmail(email)) {
       return showAlert('error', 'Invalid email', 'Please enter a valid email address.');
     }
+    
+    // Password validation for new account
     if (!user_id) {
       if (!password || password.length < 6)
         return showAlert('error', 'Weak password', 'Password must be at least 6 characters.');
       if (password !== confirm_password)
         return showAlert('error', 'Password mismatch', 'Confirm password does not match.');
     } else {
+      // Password validation for existing account (optional)
       if (password && password.length < 6)
         return showAlert('error', 'Weak password', 'New password must be at least 6 characters.');
       if (password && password !== confirm_password)
@@ -114,7 +120,12 @@ document.addEventListener('DOMContentLoaded', function () {
       const result = await res.json();
 
       if (res.ok && result.success) {
-        showAlert('success', 'Success', result.message || 'Account saved successfully.');
+        // Check if there's a warning (e.g., email not sent)
+        if (result.warning) {
+          showAlert('warning', 'Success with Warning', result.message || 'Account saved, but there was an issue sending the email.');
+        } else {
+          showAlert('success', 'Success', result.message || 'Account saved successfully.');
+        }
       } else {
         showAlert('error', 'Error', result.message || 'Unable to save account.');
       }
@@ -124,3 +135,4 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 });
 </script>
+{{/fillContent}}
