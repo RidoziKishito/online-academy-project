@@ -4,6 +4,16 @@ import logger from './logger.js';
 
 dotenv.config();
 
+// WARNING: Gmail SMTP may be blocked on some hosting providers (e.g., Render)
+// Consider using SendGrid, Mailgun, or other email services for production
+// See EMAIL_CONFIG.md for setup instructions
+
+// Check if email is properly configured
+const isEmailConfigured = process.env.EMAIL_USER && process.env.EMAIL_PASS;
+if (!isEmailConfigured) {
+  logger.warn('Email credentials not configured - email features will be disabled');
+}
+
 // Create transporter using Gmail SMTP with enhanced configuration for production
 const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
@@ -17,14 +27,51 @@ const transporter = nodemailer.createTransport({
     rejectUnauthorized: false,
     ciphers: 'SSLv3'
   },
-  connectionTimeout: 10000, // 10 seconds timeout
-  greetingTimeout: 10000,
-  socketTimeout: 10000,
+  connectionTimeout: 5000, // Reduced to 5 seconds for faster failure detection
+  greetingTimeout: 5000,
+  socketTimeout: 5000,
   pool: true, // Use connection pooling
-  maxConnections: 5,
+  maxConnections: 3,
   maxMessages: 100,
   rateLimit: 10 // Max 10 messages per second
 });
+
+/**
+ * Send email with retry logic and better error handling
+ * @param {Object} mailOptions - Nodemailer mail options
+ * @param {number} maxRetries - Maximum retry attempts (default: 2)
+ */
+async function sendMailWithRetry(mailOptions, maxRetries = 2) {
+  let lastError;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const info = await transporter.sendMail(mailOptions);
+      return info; // Success
+    } catch (error) {
+      lastError = error;
+      logger.warn({ 
+        err: error, 
+        attempt, 
+        maxRetries,
+        to: mailOptions.to 
+      }, `Email send attempt ${attempt} failed`);
+      
+      // Don't retry on authentication errors
+      if (error.code === 'EAUTH' || error.responseCode === 535) {
+        throw error;
+      }
+      
+      // Wait before retry (exponential backoff)
+      if (attempt < maxRetries) {
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+      }
+    }
+  }
+  
+  // All retries failed
+  throw lastError;
+}
 
 /**
  * Send password reset email with token
@@ -33,6 +80,11 @@ const transporter = nodemailer.createTransport({
  * @param {string} fullName - User's full name (optional)
  */
 export async function sendResetEmail(email, token, fullName = 'User') {
+  if (!isEmailConfigured) {
+    logger.warn({ email }, 'Cannot send reset email - email not configured');
+    return false;
+  }
+  
   const resetUrl = `${process.env.BASE_URL || 'http://localhost:3000'}/account/reset-password?email=${encodeURIComponent(email)}&token=${token}`;
   
   const mailOptions = {
@@ -87,12 +139,13 @@ export async function sendResetEmail(email, token, fullName = 'User') {
   };
 
   try {
-    await transporter.sendMail(mailOptions);
+    await sendMailWithRetry(mailOptions);
     logger.info({ email }, 'Password reset email sent');
     return true;
   } catch (error) {
     logger.error({ err: error, email }, 'Error sending reset email');
-    throw new Error('Failed to send reset email');
+    // Don't throw - return false instead to allow app to continue
+    return false;
   }
 }
 
@@ -103,6 +156,11 @@ export async function sendResetEmail(email, token, fullName = 'User') {
  * @param {string} fullName - User's full name (optional)
  */
 export async function sendVerifyEmail(email, token, fullName = 'User') {
+  if (!isEmailConfigured) {
+    logger.warn({ email }, 'Cannot send verification email - email not configured');
+    return false;
+  }
+  
   const verifyUrl = `${process.env.BASE_URL || 'http://localhost:3000'}/account/verify-email?email=${encodeURIComponent(email)}`;
   const mailOptions = {
     from: `"${process.env.APP_NAME || 'Online Academy'}" <${process.env.EMAIL_USER}>`,
@@ -150,12 +208,13 @@ export async function sendVerifyEmail(email, token, fullName = 'User') {
   };
 
   try {
-    await transporter.sendMail(mailOptions);
+    await sendMailWithRetry(mailOptions);
     logger.info({ email }, 'Verification email sent');
     return true;
   } catch (error) {
     logger.error({ err: error, email }, 'Error sending verification email');
-    throw new Error('Failed to send verification email');
+    // Don't throw - return false instead to allow app to continue
+    return false;
   }
 }
 
@@ -187,6 +246,11 @@ export async function testEmailConfig() {
  * @param {string} rawPassword
  */
 export async function sendInstructorAccountEmail(email, fullName = 'Instructor', rawPassword) {
+  if (!isEmailConfigured) {
+    logger.warn({ email }, 'Cannot send instructor account email - email not configured');
+    return false;
+  }
+  
   const appName = process.env.APP_NAME || 'Online Academy';
   const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
   const signinUrl = `${baseUrl}/account/signin`;
@@ -239,12 +303,13 @@ export async function sendInstructorAccountEmail(email, fullName = 'Instructor',
   };
 
   try {
-    await transporter.sendMail(mailOptions);
+    await sendMailWithRetry(mailOptions);
     logger.info({ email }, 'Instructor account email sent');
     return true;
   } catch (error) {
     logger.error({ err: error, email }, 'Error sending instructor account email');
-    throw new Error('Failed to send instructor account email');
+    // Don't throw - return false instead to allow app to continue
+    return false;
   }
 }
 
@@ -255,6 +320,11 @@ export async function sendInstructorAccountEmail(email, fullName = 'Instructor',
  * @param {string} fullName
  */
 export async function sendInstructorPromotionEmail(email, fullName = 'User') {
+  if (!isEmailConfigured) {
+    logger.warn({ email }, 'Cannot send instructor promotion email - email not configured');
+    return false;
+  }
+  
   const appName = process.env.APP_NAME || 'Online Academy';
   const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
   const dashboardUrl = `${baseUrl}/instructor`;
@@ -297,11 +367,12 @@ export async function sendInstructorPromotionEmail(email, fullName = 'User') {
   };
 
   try {
-    await transporter.sendMail(mailOptions);
+    await sendMailWithRetry(mailOptions);
     logger.info({ email }, 'Instructor promotion email sent');
     return true;
   } catch (error) {
     logger.error({ err: error, email }, 'Error sending instructor promotion email');
-    throw new Error('Failed to send instructor promotion email');
+    // Don't throw - return false instead to allow app to continue
+    return false;
   }
 }

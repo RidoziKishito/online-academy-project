@@ -81,11 +81,10 @@ router.post('/signup', signupLimiter, recaptcha.middleware.verify, async (req, r
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
     await userModel.setResetToken(email, token, expiresAt);
 
-    try {
-      await sendVerifyEmail(email, token, fullName);
-    } catch (emailError) {
-      logger.error({ err: emailError, email }, 'Failed to send verification email');
-      // still let user proceed to verification page; they can request resend
+    const emailSent = await sendVerifyEmail(email, token, fullName);
+    if (!emailSent) {
+      logger.warn({ email }, 'Failed to send verification email - user can request resend');
+      // Still let user proceed to verification page; they can request resend
     }
 
     // Render verify email page
@@ -281,13 +280,12 @@ router.post('/profile', restrict, async (req, res) => {
       await userModel.setResetToken(email, token, expiresAt);
     
       // Send email with token
-      try {
-        await sendResetEmail(email, token, user.full_name);
-      } catch (emailError) {
-        logger.error({ err: emailError, email }, 'Failed to send reset email');
+      const emailSent = await sendResetEmail(email, token, user.full_name);
+      if (!emailSent) {
+        logger.error({ email }, 'Failed to send reset email');
         return res.json({
           success: false,
-          message: 'Failed to send reset email. Please try again later.'
+          message: 'Failed to send reset email. Please try again later or contact support.'
         });
       }
     
@@ -430,15 +428,16 @@ router.post('/resend-verification', async (req, res) => {
     const token = Math.random().toString(36).substring(2, 10).toUpperCase();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
     await userModel.setResetToken(email, token, expiresAt);
-    try {
-      await sendVerifyEmail(email, token, user.full_name);
-    } catch (emailError) {
-      logger.error({ err: emailError, email }, 'Resend verification email failed');
+    
+    const emailSent = await sendVerifyEmail(email, token, user.full_name);
+    if (!emailSent) {
+      logger.error({ email }, 'Resend verification email failed');
       if (req.headers.accept?.includes('application/json')) {
-        return res.json({ success: false, message: 'Failed to send verification email. Try again later.' });
+        return res.json({ success: false, message: 'Failed to send verification email. Email service may be unavailable.' });
       }
-      return res.render('vwAccount/verify-email', { email, error: 'Failed to send verification email. Try again later.' });
+      return res.render('vwAccount/verify-email', { email, error: 'Failed to send verification email. Email service may be unavailable.' });
     }
+    
     if (req.headers.accept?.includes('application/json')) {
       return res.json({ success: true });
     }

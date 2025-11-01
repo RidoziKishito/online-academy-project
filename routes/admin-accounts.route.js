@@ -119,11 +119,10 @@ router.post('/patch', restrict, isAdmin, async (req, res, next) => {
       }
 
       if (role === 'instructor') {
-        try {
-          await sendInstructorAccountEmail(email, full_name, password);
-        } catch (e) {
-          console.error('Send instructor account email failed:', e?.message || e);
-          // Continue; do not block admin flow; optionally add flash later
+        const emailSent = await sendInstructorAccountEmail(email, full_name, password);
+        if (!emailSent) {
+          logger.warn({ email }, 'Failed to send instructor account email - admin should inform user manually');
+          // Continue; do not block admin flow
         }
       }
 
