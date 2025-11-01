@@ -252,13 +252,16 @@ router.post('/ban/:id', restrict, isAdmin, async (req, res, next) => {
       permanent = true;
     } else {
       if (until) {
+        // Parse the provided datetime string as UTC
         const parsed = new Date(until);
         if (isNaN(parsed.getTime())) return res.status(400).json({ ok: false, error: 'Invalid until datetime' });
         untilDate = parsed;
       } else if (durationHours) {
         const hours = parseFloat(durationHours);
         if (isNaN(hours) || hours <= 0) return res.status(400).json({ ok: false, error: 'Invalid duration hours' });
-        untilDate = new Date(Date.now() + hours * 3600 * 1000);
+        // Create UTC timestamp for Supabase (which stores in GMT+0)
+        const nowUtc = new Date();
+        untilDate = new Date(nowUtc.getTime() + hours * 3600 * 1000);
       } else {
         return res.status(400).json({ ok: false, error: 'Provide until or durationHours for temporary ban' });
       }
