@@ -16,6 +16,7 @@ router.get('/', restrict, isAdmin, async (req, res, next) => {
     const filters = {
       role: req.query.role || null,
       isVerified: req.query.is_verified || null,
+      isBanned: req.query.is_banned || null,
       limit,
       offset
     };
@@ -40,6 +41,7 @@ router.get('/', restrict, isAdmin, async (req, res, next) => {
       roles,
       currentRole: filters.role,
       currentVerified: filters.isVerified,
+      currentBanned: filters.isBanned,
       pagination: { currentPage: page, totalPages, totalItems: total, limit }
     });
   } catch (err) {
@@ -89,13 +91,32 @@ router.post('/patch', restrict, isAdmin, async (req, res, next) => {
         return res.render('vwAdmin/account-edit', { errorMessages, oldData: req.body });
       }
 
+      // Ensure email is not already registered when creating a new account
+      const existing = await userModel.findByEmail(email);
+      if (existing) {
+        errorMessages.email = ['Email is already registered. Please edit the existing user or use another email.'];
+        if (isJson) return res.status(400).json({ success: false, errorMessages, code: 'email_exists' });
+        return res.render('vwAdmin/account-edit', { errorMessages, oldData: req.body });
+      }
+
       const hash = await bcrypt.hash(password, 10);
       const newUser = { full_name, email, role, password_hash: hash };
       // Auto-verify instructors created by admin and email credentials
       if (role === 'instructor') {
         newUser.is_verified = true;
       }
-      const [insertedId] = await userModel.add(newUser);
+      let insertedId;
+      try {
+        [insertedId] = await userModel.add(newUser);
+      } catch (e) {
+        // Friendly fallback if unique constraint hit at DB level
+        if (e && e.code === '23505') {
+          errorMessages.email = ['Email is already registered. Please edit the existing user or use another email.'];
+          if (isJson) return res.status(400).json({ success: false, errorMessages, code: 'email_exists' });
+          return res.render('vwAdmin/account-edit', { errorMessages, oldData: req.body });
+        }
+        throw e;
+      }
 
       if (role === 'instructor') {
         try {
@@ -121,6 +142,23 @@ router.post('/patch', restrict, isAdmin, async (req, res, next) => {
     if (Object.keys(errorMessages).length > 0) {
       if (isJson) return res.status(400).json({ success: false, errorMessages });
       return res.render('vwAdmin/account-edit', { errorMessages, oldData: req.body });
+    }
+
+    // Update existing user
+    // Optional: ensure email uniqueness if changed
+    const current = await userModel.findById(user_id);
+    if (!current) {
+      if (isJson) return res.status(404).json({ success: false, message: 'User not found' });
+      return res.redirect('/admin/accounts?error=not_found');
+    }
+
+    if (email && email !== current.email) {
+      const dup = await userModel.findByEmail(email);
+      if (dup && dup.user_id != user_id) {
+        errorMessages.email = ['Email is already used by another account.'];
+        if (isJson) return res.status(400).json({ success: false, errorMessages, code: 'email_exists' });
+        return res.render('vwAdmin/account-edit', { errorMessages, oldData: req.body });
+      }
     }
 
     const patchData = { full_name, email, role };

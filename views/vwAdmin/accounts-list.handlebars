@@ -18,12 +18,20 @@
             {{/each}}
           </select>
         </div>
-        <div class="col-md-6">
+        <div class="col-md-3">
           <label for="verifiedFilter" class="form-label">Filter by Verified</label>
           <select class="form-select" id="verifiedFilter" name="is_verified">
             <option value="">All</option>
             <option value="true" {{#if (eq currentVerified 'true')}}selected{{/if}}>Verified</option>
             <option value="false" {{#if (eq currentVerified 'false')}}selected{{/if}}>Not Verified</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label for="bannedFilter" class="form-label">Filter by Banned</label>
+          <select class="form-select" id="bannedFilter" name="is_banned">
+            <option value="">All</option>
+            <option value="true" {{#if (eq currentBanned 'true')}}selected{{/if}}>Banned</option>
+            <option value="false" {{#if (eq currentBanned 'false')}}selected{{/if}}>Not Banned</option>
           </select>
         </div>
       </form>
@@ -79,15 +87,17 @@
               <a class="btn btn-sm btn-outline-primary" href="/admin/accounts/edit?id={{this.user_id}}" title="Edit">
                 <i class="bi bi-pencil-square"></i>
               </a>
-              {{#if this.is_banned}}
-                <button type="button" class="btn btn-sm btn-outline-success unban-btn" data-user-id="{{this.user_id}}" data-user-name="{{this.full_name}}">
-                  <i class="bi bi-unlock"></i>
-                </button>
-              {{else}}
-                <button type="button" class="btn btn-sm btn-outline-warning ban-btn" data-user-id="{{this.user_id}}" data-user-name="{{this.full_name}}">
-                  <i class="bi bi-lock"></i>
-                </button>
-              {{/if}}
+              {{#unless (eq this.role 'admin')}}
+                {{#if this.is_banned}}
+                  <button type="button" class="btn btn-sm btn-outline-success unban-btn" data-user-id="{{this.user_id}}" data-user-name="{{this.full_name}}">
+                    <i class="bi bi-unlock"></i>
+                  </button>
+                {{else}}
+                  <button type="button" class="btn btn-sm btn-outline-warning ban-btn" data-user-id="{{this.user_id}}" data-user-name="{{this.full_name}}">
+                    <i class="bi bi-lock"></i>
+                  </button>
+                {{/if}}
+              {{/unless}}
               <button type="button" class="btn btn-sm btn-danger delete-btn" data-user-id="{{this.user_id}}" data-user-name="{{this.full_name}}" {{#if this.is_verified}}disabled title="Cannot delete verified user"{{/if}}>
                 <i class="bi bi-trash"></i>
               </button>
@@ -138,7 +148,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (role === 'student') {
       return `<a class="btn btn-sm btn-outline-info" href="/student/public-profile?id=${userId}" title="View Profile"><i class="bi bi-person"></i></a>`;
     } else if (role === 'instructor') {
-      return `<a class="btn btn-sm btn-outline-info" href="/instructor/${userId}" title="View Profile"><i class="bi bi-person"></i></a>`;
+      return `<a class="btn btn-sm btn-outline-info" href="/instructors/${userId}" title="View Profile"><i class="bi bi-person"></i></a>`;
     }
     return '';
   }
@@ -160,9 +170,9 @@ document.addEventListener('DOMContentLoaded', function() {
           <a class="btn btn-sm btn-outline-primary" href="/admin/accounts/edit?id=${u.user_id}" title="Edit">
             <i class="bi bi-pencil-square"></i>
           </a>
-          ${u.is_banned
+          ${u.role === 'admin' ? '' : (u.is_banned
             ? `<button type="button" class="btn btn-sm btn-outline-success unban-btn" data-user-id="${u.user_id}" data-user-name="${u.full_name || u.email}"><i class="bi bi-unlock"></i></button>`
-            : `<button type="button" class="btn btn-sm btn-outline-warning ban-btn" data-user-id="${u.user_id}" data-user-name="${u.full_name || u.email}"><i class="bi bi-lock"></i></button>`}
+            : `<button type="button" class="btn btn-sm btn-outline-warning ban-btn" data-user-id="${u.user_id}" data-user-name="${u.full_name || u.email}"><i class="bi bi-lock"></i></button>`)}
           <button type="button" class="btn btn-sm btn-danger delete-btn" data-user-id="${u.user_id}" data-user-name="${u.full_name || u.email}" ${u.is_verified ? 'disabled title="Cannot delete verified user"' : ''}>
             <i class="bi bi-trash"></i>
           </button>

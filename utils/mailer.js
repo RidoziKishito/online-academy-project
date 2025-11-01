@@ -247,3 +247,61 @@ export async function sendInstructorAccountEmail(email, fullName = 'Instructor',
     throw new Error('Failed to send instructor account email');
   }
 }
+
+/**
+ * Send an email notifying the user that their account has been upgraded to Instructor.
+ * No password included (user already has one). Encourages them to review instructor dashboard.
+ * @param {string} email
+ * @param {string} fullName
+ */
+export async function sendInstructorPromotionEmail(email, fullName = 'User') {
+  const appName = process.env.APP_NAME || 'Online Academy';
+  const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
+  const dashboardUrl = `${baseUrl}/instructor`;
+
+  const mailOptions = {
+    from: `"${appName}" <${process.env.EMAIL_USER}>`,
+    to: email,
+    subject: `You're now an Instructor at ${appName}`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background-color: #198754; color: white; padding: 20px; text-align: center; }
+          .content { background-color: #f8f9fa; padding: 24px; }
+          .button { display: inline-block; background-color: #198754; color: white; padding: 12px 20px; text-decoration: none; border-radius: 6px; margin: 16px 0; }
+          .footer { text-align: center; color: #666; font-size: 12px; margin-top: 20px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>Instructor Role Granted</h1>
+          </div>
+          <div class="content">
+            <p>Hello <strong>${fullName}</strong>,</p>
+            <p>Your account has been upgraded to <strong>Instructor</strong> at ${appName}. You can now create and manage courses.</p>
+            <p style="text-align:center"><a class="button" href="${dashboardUrl}">Go to Instructor Dashboard</a></p>
+            <p>If this wasn't expected, please contact our support.</p>
+          </div>
+          <div class="footer">
+            <p>&copy; ${new Date().getFullYear()} ${appName}. All rights reserved.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    logger.info({ email }, 'Instructor promotion email sent');
+    return true;
+  } catch (error) {
+    logger.error({ err: error, email }, 'Error sending instructor promotion email');
+    throw new Error('Failed to send instructor promotion email');
+  }
+}
