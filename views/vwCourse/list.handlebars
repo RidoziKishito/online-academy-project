@@ -92,7 +92,7 @@
                         {{#if is_bestseller}}<span class="badge bg-warning text-dark ms-2">🔥 Bestseller</span>{{/if}}
                         {{#if (not is_complete)}}  <span class="badge bg-light text-secondary ms-2">⏳ In progress</span>{{/if}}
                       </h5>
-                      <p class="card-text text-muted mb-1">{{short_description}}</p>
+                      <div class="card-text text-muted mb-1">{{{short_description}}}</div>
                       <p class="card-text mb-1"><small class="text-muted">Instructor: {{instructor_name}}</small></p>
                       <p class="card-text mb-1"><small class="text-muted">  {{{render_stars rating_avg}}} • {{rating_avg}} • ({{rating_count}})</small></p>
                       <p class="card-text mb-1 text-muted small">{{total_hours}} hours • {{total_lectures}} lectures</p>
