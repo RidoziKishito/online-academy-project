@@ -212,7 +212,7 @@
                         {{#if this.is_previewable}}
                           <a href="javascript:void(0)"
                             class="preview-btn text-decoration-none text-dark me-2"
-                            data-video="{{getYouTubeEmbedUrl this.video_url}}">
+                            data-video="{{#if (isYouTube this.video_url)}}{{getYouTubeEmbedUrl this.video_url}}{{else}}{{this.video_url}}{{/if}}">
                             {{this.order_index}}. {{this.title}}
                             <span class="badge bg-success ms-2 small">Preview</span>
                           </a>
@@ -433,26 +433,45 @@ document.addEventListener('DOMContentLoaded', function () {
     setTimeout(() => document.querySelector('.alert')?.remove(), 5000);
   }
 
-  /* ---------- Video preview ---------- */
+  /* ---------- Video preview (supports YouTube + local) ---------- */
   (function initVideoPreview() {
     const previewBtns = document.querySelectorAll('.preview-btn');
     const videoModalEl = document.getElementById('videoModal');
     const videoIframe = document.getElementById('previewVideo');
-    if (!previewBtns.length || !videoModalEl || !videoIframe) return;
+    const ytContainer = document.getElementById('ytContainer');
+    const localContainer = document.getElementById('localContainer');
+    const localVideo = document.getElementById('previewVideoLocal');
+    if (!previewBtns.length || !videoModalEl || !videoIframe || !ytContainer || !localContainer || !localVideo) return;
+
+    function isYouTube(url) { return !!url && (url.includes('youtube.com') || url.includes('youtu.be')); }
 
     previewBtns.forEach(btn => {
       btn.addEventListener('click', () => {
         const url = btn.dataset.video;
         if (!url) return;
-        videoIframe.src = url.includes('?') ? url + '&autoplay=1' : url + '?autoplay=1';
         const myModal = new bootstrap.Modal(videoModalEl);
-        myModal.show();
+        if (isYouTube(url)) {
+          ytContainer.style.display = '';
+          localContainer.style.display = 'none';
+          localVideo.pause?.();
+          localVideo.removeAttribute('src');
+          videoIframe.src = url.includes('?') ? url + '&autoplay=1' : url + '?autoplay=1';
+          myModal.show();
+        } else {
+          ytContainer.style.display = 'none';
+          videoIframe.src = '';
+          localContainer.style.display = '';
+          localVideo.src = url;
+          myModal.show();
+          setTimeout(() => { try { localVideo.play(); } catch(_) {} }, 150);
+        }
       });
     });
 
     videoModalEl.addEventListener('hidden.bs.modal', () => {
-      // stop video playback
       videoIframe.src = '';
+      localVideo.pause?.();
+      localVideo.removeAttribute('src');
     });
   })();
 
