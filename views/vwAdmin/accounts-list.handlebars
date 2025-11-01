@@ -13,11 +13,15 @@
         <div class="row g-3 mb-3">
           <div class="col-12 col-md-8 col-lg-6">
             <label for="emailSearch" class="form-label">Search by Email</label>
-            <div class="input-group">
+            <div class="input-group account-search-group">
               <span class="input-group-text"><i class="bi bi-search"></i></span>
               <input type="text" class="form-control" id="emailSearch" name="q" placeholder="Enter partial email (e.g. @gmail, john)" value="{{currentSearch}}" />
-              <button type="submit" class="btn btn-outline-secondary">Search</button>
-              <button type="button" id="clearSearch" class="btn btn-outline-danger" title="Clear search">&times;</button>
+              <button type="submit" class="btn btn-outline-secondary btn-icon" id="emailSearchSubmit" title="Search" aria-label="Search">
+                <i class="bi bi-arrow-return-left"></i>
+              </button>
+              <button type="button" id="clearSearch" class="btn btn-outline-secondary btn-icon" title="Clear search" aria-label="Clear search">
+                <i class="bi bi-x-lg"></i>
+              </button>
             </div>
           </div>
         </div>
