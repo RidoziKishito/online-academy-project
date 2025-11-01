@@ -483,6 +483,12 @@ document.addEventListener('DOMContentLoaded', function() {
             title: 'Cannot Delete',
             text: 'This course has enrollments and cannot be deleted.'
         });
+    } else if (error === 'has_lessons') {
+        Swal.fire({
+            icon: 'error',
+            title: 'Cannot Delete',
+            text: 'This course still has lessons. Please remove all lessons first.'
+        });
     }
 });
 </script>
