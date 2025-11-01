@@ -8,39 +8,46 @@
       </a>
     </div>
     <div class="card-body">
-      <form method="get" action="/admin/accounts" class="row g-3 mb-3" id="filterForm">
-        <div class="col-md-4">
-          <label for="roleFilter" class="form-label">Filter by Role</label>
-          <select class="form-select" id="roleFilter" name="role">
-            <option value="">All Roles</option>
-            {{#each roles}}
-            <option value="{{this}}" {{#if (eq ../currentRole this)}}selected{{/if}}>{{this}}</option>
-            {{/each}}
-          </select>
+      <form method="get" action="/admin/accounts" id="filterForm">
+        <!-- Search row on top -->
+        <div class="row g-3 mb-3">
+          <div class="col-12 col-md-8 col-lg-6">
+            <label for="emailSearch" class="form-label">Search by Email</label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-search"></i></span>
+              <input type="text" class="form-control" id="emailSearch" name="q" placeholder="Enter partial email (e.g. @gmail, john)" value="{{currentSearch}}" />
+              <button type="submit" class="btn btn-outline-secondary">Search</button>
+              <button type="button" id="clearSearch" class="btn btn-outline-danger" title="Clear search">&times;</button>
+            </div>
+          </div>
         </div>
-        <div class="col-md-2">
-          <label for="verifiedFilter" class="form-label">Filter by Verified</label>
-          <select class="form-select" id="verifiedFilter" name="is_verified">
-            <option value="">All</option>
-            <option value="true" {{#if (eq currentVerified 'true')}}selected{{/if}}>Verified</option>
-            <option value="false" {{#if (eq currentVerified 'false')}}selected{{/if}}>Not Verified</option>
-          </select>
-        </div>
-        <div class="col-md-2">
-          <label for="bannedFilter" class="form-label">Filter by Banned</label>
-          <select class="form-select" id="bannedFilter" name="is_banned">
-            <option value="">All</option>
-            <option value="true" {{#if (eq currentBanned 'true')}}selected{{/if}}>Banned</option>
-            <option value="false" {{#if (eq currentBanned 'false')}}selected{{/if}}>Not Banned</option>
-          </select>
-        </div>
-        <div class="col-md-4">
-          <label for="emailSearch" class="form-label">Search by Email</label>
-          <div class="input-group">
-            <span class="input-group-text"><i class="bi bi-search"></i></span>
-            <input type="text" class="form-control" id="emailSearch" name="q" placeholder="Enter partial email (e.g. @gmail, john)" value="{{currentSearch}}" />
-            <button type="submit" class="btn btn-outline-secondary">Search</button>
-            <button type="button" id="clearSearch" class="btn btn-outline-danger" title="Clear search">&times;</button>
+
+        <!-- Filters row below -->
+        <div class="row g-3 mb-3">
+          <div class="col-md-4">
+            <label for="roleFilter" class="form-label">Filter by Role</label>
+            <select class="form-select" id="roleFilter" name="role">
+              <option value="">All Roles</option>
+              {{#each roles}}
+              <option value="{{this}}" {{#if (eq ../currentRole this)}}selected{{/if}}>{{this}}</option>
+              {{/each}}
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label for="verifiedFilter" class="form-label">Filter by Verified</label>
+            <select class="form-select" id="verifiedFilter" name="is_verified">
+              <option value="">All</option>
+              <option value="true" {{#if (eq currentVerified 'true')}}selected{{/if}}>Verified</option>
+              <option value="false" {{#if (eq currentVerified 'false')}}selected{{/if}}>Not Verified</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label for="bannedFilter" class="form-label">Filter by Banned</label>
+            <select class="form-select" id="bannedFilter" name="is_banned">
+              <option value="">All</option>
+              <option value="true" {{#if (eq currentBanned 'true')}}selected{{/if}}>Banned</option>
+              <option value="false" {{#if (eq currentBanned 'false')}}selected{{/if}}>Not Banned</option>
+            </select>
           </div>
         </div>
       </form>
