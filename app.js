@@ -20,7 +20,7 @@ dotenv.config();
 import { testEmailConfig } from './utils/mailer.js';
 testEmailConfig();
 // Import Middlewares
-import { restrict, isAdmin, isInstructor, isStudent } from './middlewares/auth.mdw.js';
+import { restrict, isAdmin, isInstructor, isStudent, enforceNotBanned } from './middlewares/auth.mdw.js';
 // Import Models (chỉ cần cho middleware)
 import * as categoryModel from './models/category.model.js';
 import * as viewModel from './models/views.model.js';
@@ -177,15 +177,14 @@ app.engine('handlebars', engine({
         minute: '2-digit'
       });
     },
+    // Unified duration formatter: returns H:MM:SS (if hours > 0) or M:SS
     format_duration(seconds) {
-      if (!seconds) return '0 min';
-      const hours = Math.floor(seconds / 3600);
-      const minutes = Math.floor((seconds % 3600) / 60);
-
-      if (hours > 0) {
-        return `${hours}h ${minutes}m`;
-      }
-      return `${minutes} min`;
+      seconds = Number(seconds) || 0;
+      const h = Math.floor(seconds / 3600);
+      const m = Math.floor((seconds % 3600) / 60);
+      const s = seconds % 60;
+      if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+      return `${m}:${String(s).padStart(2,'0')}`;
     },
     eq(a, b) {
       return a === b;
@@ -419,6 +418,9 @@ app.use(function (req, res, next) {
   res.locals.currentYear = new Date().getFullYear();
   next();
 });
+
+// Block banned users early for any subsequent route
+app.use(enforceNotBanned);
 
 // Provide Supabase configuration to templates
 app.use(function (req, res, next) {

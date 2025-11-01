@@ -45,7 +45,10 @@
 
         <!-- Rating + Stats -->
         <div class="mb-3 small text-muted">
-          <span class="text-warning me-2">{{{render_stars course.rating_avg}}}</span>
+          <span class="text-warning me-2">
+            <span class="visually-hidden">Rating: {{course.rating_avg}} out of 5</span>
+            <span aria-hidden="true">{{{render_stars course.rating_avg}}}</span>
+          </span>
           ({{course.rating_count}} ratings) •
           <i class="bi bi-people ms-1 me-1"></i>
           <span id="enrollmentCount">{{course.enrollment_count}}</span> students •
@@ -222,12 +225,13 @@
                     <li class="list-group-item d-flex justify-content-between align-items-center">
                       <div class="d-flex align-items-center">
                         {{#if this.is_previewable}}
-                          <a href="javascript:void(0)"
-                            class="preview-btn text-decoration-none text-dark me-2"
-                            data-video="{{getYouTubeEmbedUrl this.video_url}}">
+                          <button type="button"
+                            class="preview-btn btn btn-link p-0 text-decoration-none text-dark me-2"
+                            data-video="{{#if (isYouTube this.video_url)}}{{getYouTubeEmbedUrl this.video_url}}{{else}}{{this.video_url}}{{/if}}"
+                            aria-label="Preview: {{this.title}}">
                             {{this.order_index}}. {{this.title}}
                             <span class="badge bg-success ms-2 small">Preview</span>
-                          </a>
+                          </button>
                         {{else}}
                           <div class="text-decoration-none text-dark me-2">
                             {{this.order_index}}. {{this.title}}
@@ -324,7 +328,10 @@
                   style="width:50px; height:50px; object-fit:cover; object-position:center;">
                   <div>
                     <div class="fw-semibold">{{this.name}}</div>
-                    <div class="text-warning small">{{{render_stars this.rating}}}</div>
+                    <div class="text-warning small">
+                      <span class="visually-hidden">Rating: {{this.rating}} out of 5</span>
+                      <span aria-hidden="true">{{{render_stars this.rating}}}</span>
+                    </div>
                   </div>
                 </div>
                 <p class="text-muted small mb-0">{{this.comment}}</p>
@@ -385,7 +392,10 @@
                 <h6 class="fw-semibold text-dark">{{this.title}}</h6>
                 <p class="text-muted small mb-1">{{this.instructor_name}}</p>
                 <div class="d-flex justify-content-between align-items-center">
-                  <span class="text-warning small">{{{render_stars this.rating_avg}}}</span>
+                  <span class="text-warning small">
+                    <span class="visually-hidden">Rating: {{this.rating_avg}} out of 5</span>
+                    <span aria-hidden="true">{{{render_stars this.rating_avg}}}</span>
+                  </span>
                   <span class="fw-semibold text-danger">{{format_number this.sale_price}}</span>
                 </div>
               </div>
@@ -429,8 +439,9 @@
 </div>
 
 
-<!-- Note: global preview video modal is expected to exist on page (id="videoModal" and iframe id="previewVideo") -->
+{{#fillContent 'js'}}
 <script>
+// Note: global preview video modal is expected to exist on page (id="videoModal" and iframe id="previewVideo")
 document.addEventListener('DOMContentLoaded', function () {
   /* ---------- Helpers ---------- */
   function showAlert(message, type = 'success') {
@@ -448,28 +459,11 @@ document.addEventListener('DOMContentLoaded', function () {
     setTimeout(() => document.querySelector('.alert')?.remove(), 5000);
   }
 
-  /* ---------- Video preview ---------- */
-  (function initVideoPreview() {
-    const previewBtns = document.querySelectorAll('.preview-btn');
-    const videoModalEl = document.getElementById('videoModal');
-    const videoIframe = document.getElementById('previewVideo');
-    if (!previewBtns.length || !videoModalEl || !videoIframe) return;
-
-    previewBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
-        const url = btn.dataset.video;
-        if (!url) return;
-        videoIframe.src = url.includes('?') ? url + '&autoplay=1' : url + '?autoplay=1';
-        const myModal = new bootstrap.Modal(videoModalEl);
-        myModal.show();
-      });
-    });
-
-    videoModalEl.addEventListener('hidden.bs.modal', () => {
-      // stop video playback
-      videoIframe.src = '';
-    });
-  })();
+  /* ---------- Video preview is handled globally in layouts/main.handlebars ---------- */
+  // The global script attaches click handlers to `.preview-btn` and manages
+  // the modal `#videoModal` for both YouTube (iframe) and local <video> URLs.
+  // This page only provides the markup: links with `data-video` and the
+  // global modal exists in the layout. No per-page init needed here.
 
   /* ---------- Wishlist toggle ---------- */
   (function initWishlist() {
@@ -683,19 +677,16 @@ document.addEventListener('DOMContentLoaded', function () {
 }); // DOMContentLoaded
 </script>
 
-
 <script>
-  // Tính view
-document.addEventListener("DOMContentLoaded", () => {
-  const courseId = "{{course.id}}"; // hoặc course.id tùy DB bạn
-  // Đợi 30 giây rồi mới tính view
+// Course view counting after delay
+document.addEventListener('DOMContentLoaded', () => {
+  const courseId = '{{course.id}}';
   setTimeout(() => {
-    fetch(`/courses/view/${courseId}`, {
-      method: "POST"
-    });
+    fetch(`/courses/view/${courseId}`, { method: 'POST' });
   }, 15000);
 });
 </script>
+{{/fillContent}}
 
 
 <style>

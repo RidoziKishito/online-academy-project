@@ -17,7 +17,13 @@ const resetLimiter = rateLimit({ windowMs: 60 * 1000, max: 10 });
 
 router.get('/signin', (req, res) => {
   if (req.query.ret) req.session.retUrl = req.query.ret;
-  res.render('vwAccount/signin', { error: false});
+  const { error, msg } = req.query;
+  const vm = { error: false };
+  if (error === 'ban') {
+    vm.error = true;
+    vm.banMessage = msg || 'Your account is banned.';
+  }
+  res.render('vwAccount/signin', vm);
 });
 
 router.post('/signup', signupLimiter, recaptcha.middleware.verify, async (req, res) => {
@@ -75,11 +81,10 @@ router.post('/signup', signupLimiter, recaptcha.middleware.verify, async (req, r
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
     await userModel.setResetToken(email, token, expiresAt);
 
-    try {
-      await sendVerifyEmail(email, token, fullName);
-    } catch (emailError) {
-      logger.error({ err: emailError, email }, 'Failed to send verification email');
-      // still let user proceed to verification page; they can request resend
+    const emailSent = await sendVerifyEmail(email, token, fullName);
+    if (!emailSent) {
+      logger.warn({ email }, 'Failed to send verification email - user can request resend');
+      // Still let user proceed to verification page; they can request resend
     }
 
     // Render verify email page
@@ -122,32 +127,55 @@ router.get('/signup', (req, res) => {
 });
 
 router.post('/signin', signinLimiter, async (req, res) => {
-  // Find user by email (not username)
-  const user = await userModel.findByEmail(req.body.email);
+  const isJson = req.headers['content-type']?.includes('application/json');
+  const { email, password } = req.body;
+
+  // Tìm user theo email
+  const user = await userModel.findByEmail(email);
   if (!user) {
-    return res.render('vwAccount/signin', { error: true, oldData: { email: req.body.email } });
+    const msg = 'Invalid email or password.';
+    if (isJson) return res.status(401).json({ error: true, message: msg });
+    return res.render('vwAccount/signin', { error: true, oldData: { email } });
   }
 
-  // Compare password with password_hash
-  const password_match = bcrypt.compareSync(req.body.password, user.password_hash);
-  if (password_match === false) {
-    return res.render('vwAccount/signin', { error: true, oldData: { email: req.body.email } });
+  // So sánh mật khẩu
+  const password_match = bcrypt.compareSync(password, user.password_hash);
+  if (!password_match) {
+    const msg = 'Invalid email or password.';
+    if (isJson) return res.status(401).json({ error: true, message: msg });
+    return res.render('vwAccount/signin', { error: true, oldData: { email } });
   }
 
-  // Block sign-in if email not verified
+  // Kiểm tra xác thực email
   if (user.is_verified === false) {
-    // Optionally, trigger resend silently? We'll show a friendly message.
-    return res.render('vwAccount/verify-email', {
-      email: user.email,
-      error: 'Your email is not verified. Please enter the code we sent to your inbox.'
-    });
+    const msg = 'Your email is not verified.';
+    if (isJson) return res.status(403).json({ error: true, message: msg });
+    return res.render('vwAccount/verify-email', { email: user.email, error: msg });
   }
 
+  // Kiểm tra trạng thái bị ban
+  const banInfo = userModel.isCurrentlyBanned(user);
+  if (banInfo.banned) {
+    const msg = banInfo.permanent
+      ? 'Your account has been permanently banned.'
+      : `Your account is temporarily banned until ${new Date(banInfo.until).toLocaleString()}.`;
+    if (isJson) return res.status(403).json({ error: true, message: msg, banned: true, permanent: !!banInfo.permanent, until: banInfo.until || null });
+    return res.render('vwAccount/signin', { error: true, banMessage: msg, oldData: { email } });
+  }
+
+  // Lưu session
   req.session.isAuthenticated = true;
   req.session.authUser = user;
 
   const retUrl = req.session.retUrl || '/';
   delete req.session.retUrl;
+
+  // ✅ Nếu là AJAX, trả JSON thay vì redirect
+  if (isJson) {
+    return res.json({ success: true, message: 'Login successful', redirect: retUrl });
+  }
+
+  // Nếu là form thường → redirect như cũ
   res.redirect(retUrl);
 });
 
@@ -192,21 +220,32 @@ router.post('/change-pwd', restrict, async (req, res) => {
 });
 
 router.post('/profile', restrict, async (req, res) => {
+  const { fullName, email, avt_url } = req.body;
   const { user_id } = req.session.authUser;
-  
-  // Data to update
-  const updatedUser = {
-    full_name: req.body.fullName,
-    email: req.body.email,
-    avatar_url: req.body.avt_url
-  };
-  await userModel.patch(user_id, updatedUser);
 
-  // Update session
-  req.session.authUser.full_name = req.body.fullName;
-  req.session.authUser.email = req.body.email;
+  // Validation backend (đề phòng bypass)
+  if (!fullName || !email) {
+    if (req.headers['content-type'].includes('application/json')) {
+      return res.status(400).json({ success: false, message: 'Thiếu thông tin bắt buộc.' });
+    }
+    return res.render('vwAccount/profile', {
+      authUser: req.session.authUser,
+      error: 'Full name và email là bắt buộc.'
+    });
+  }
 
-  res.render('vwAccount/profile', { success: true });
+  await userModel.patch(user_id, { full_name: fullName, email, avatar_url: avt_url });
+
+  // Cập nhật session
+  req.session.authUser = { ...req.session.authUser, full_name: fullName, email, avatar_url: avt_url };
+
+  // Nếu là AJAX → trả JSON
+  if (req.headers['content-type'].includes('application/json')) {
+    return res.json({ success: true });
+  }
+
+  // Nếu form thường → render lại view
+  res.render('vwAccount/profile', { success: true, authUser: req.session.authUser });
 });
 
   // Forgot Password - Request reset token
@@ -241,13 +280,12 @@ router.post('/profile', restrict, async (req, res) => {
       await userModel.setResetToken(email, token, expiresAt);
     
       // Send email with token
-      try {
-        await sendResetEmail(email, token, user.full_name);
-      } catch (emailError) {
-        logger.error({ err: emailError, email }, 'Failed to send reset email');
+      const emailSent = await sendResetEmail(email, token, user.full_name);
+      if (!emailSent) {
+        logger.error({ email }, 'Failed to send reset email');
         return res.json({
           success: false,
-          message: 'Failed to send reset email. Please try again later.'
+          message: 'Failed to send reset email. Please try again later or contact support.'
         });
       }
     
@@ -390,15 +428,16 @@ router.post('/resend-verification', async (req, res) => {
     const token = Math.random().toString(36).substring(2, 10).toUpperCase();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
     await userModel.setResetToken(email, token, expiresAt);
-    try {
-      await sendVerifyEmail(email, token, user.full_name);
-    } catch (emailError) {
-      logger.error({ err: emailError, email }, 'Resend verification email failed');
+    
+    const emailSent = await sendVerifyEmail(email, token, user.full_name);
+    if (!emailSent) {
+      logger.error({ email }, 'Resend verification email failed');
       if (req.headers.accept?.includes('application/json')) {
-        return res.json({ success: false, message: 'Failed to send verification email. Try again later.' });
+        return res.json({ success: false, message: 'Failed to send verification email. Email service may be unavailable.' });
       }
-      return res.render('vwAccount/verify-email', { email, error: 'Failed to send verification email. Try again later.' });
+      return res.render('vwAccount/verify-email', { email, error: 'Failed to send verification email. Email service may be unavailable.' });
     }
+    
     if (req.headers.accept?.includes('application/json')) {
       return res.json({ success: true });
     }

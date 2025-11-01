@@ -2,6 +2,8 @@ import express from 'express';
 import * as userModel from '../models/user.model.js';
 import { restrict, isAdmin } from '../middlewares/auth.mdw.js';
 import bcrypt from 'bcrypt';
+import { sendInstructorAccountEmail, sendInstructorPromotionEmail } from '../utils/mailer.js';
+import logger from '../utils/logger.js';
 
 const router = express.Router();
 
@@ -15,6 +17,8 @@ router.get('/', restrict, isAdmin, async (req, res, next) => {
     const filters = {
       role: req.query.role || null,
       isVerified: req.query.is_verified || null,
+      isBanned: req.query.is_banned || null,
+      emailQuery: (req.query.q && String(req.query.q).trim()) || null,
       limit,
       offset
     };
@@ -39,6 +43,8 @@ router.get('/', restrict, isAdmin, async (req, res, next) => {
       roles,
       currentRole: filters.role,
       currentVerified: filters.isVerified,
+      currentBanned: filters.isBanned,
+      currentSearch: filters.emailQuery,
       pagination: { currentPage: page, totalPages, totalItems: total, limit }
     });
   } catch (err) {
@@ -46,68 +52,150 @@ router.get('/', restrict, isAdmin, async (req, res, next) => {
   }
 });
 
-// edit or create form
-router.get('/edit', restrict, isAdmin, async (req, res, next) => {
-  const id = req.query.id;
-  const role = await userModel.getRoleOptions();
-  if (!id) {
-    // render create form
-    return res.render('vwAdmin/account-edit', { role });
-  }
+// create form
+router.get('/create', restrict, isAdmin, async (req, res, next) => {
   try {
+    const role = await userModel.getRoleOptions();
+    res.render('vwAdmin/account-create', { role });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// edit form
+router.get('/edit/:id', restrict, isAdmin, async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id);
+    const role = await userModel.getRoleOptions();
     const user = await userModel.findById(id);
+    if (!user) return res.redirect('/admin/accounts?error=not_found');
     res.render('vwAdmin/account-edit', { user, role });
   } catch (err) {
     next(err);
   }
 });
 
-// patch (create or update)
-router.post('/patch', restrict, isAdmin, async (req, res, next) => {
+// backward-compat: redirect old query style to new routes
+router.get('/edit', restrict, isAdmin, async (req, res) => {
+  const id = req.query.id;
+  if (!id) return res.redirect('/admin/accounts/create');
+  return res.redirect(`/admin/accounts/edit/${id}`);
+});
+
+// create user
+router.post('/create', restrict, isAdmin, async (req, res, next) => {
   try {
-    const { user_id, full_name, email, password, confirm_password, role } = req.body;
-    const errorMessages = {};
-    const oldData = { full_name, email, role, user_id };
+    const { full_name, email, password, role } = req.body;
+    const isJson = req.headers['content-type']?.includes('application/json');
 
-    // If no user_id => create new (password required)
-    if (!user_id) {
-      if (!password || password.length < 6) {
-        errorMessages.password = ['Password must be at least 6 characters.'];
-      }
-      if (password !== confirm_password) {
-        errorMessages.confirm_password = ['Passwords do not match.'];
-      }
-      if (Object.keys(errorMessages).length > 0) {
-        return res.render('vwAdmin/account-edit', { errorMessages, oldData });
-      }
-
-      const hash = await bcrypt.hash(password, 10);
+      // No server-side validation: trust client-side checks
+      const hash = await bcrypt.hash(password ?? '', 10);
       const newUser = { full_name, email, role, password_hash: hash };
-      await userModel.add(newUser);
-      return res.redirect('/admin/accounts');
-    }
-
-    // Update existing user: password optional
-    if (password && password.trim().length > 0) {
-      if (password.length < 6) {
-        errorMessages.password = ['Password must be at least 6 characters.'];
+      // Auto-verify instructors created by admin and email credentials
+      if (role === 'instructor') {
+        newUser.is_verified = true;
       }
-      if (password !== confirm_password) {
-        errorMessages.confirm_password = ['Passwords do not match.'];
+      let insertedId;
+      try {
+        [insertedId] = await userModel.add(newUser);
+      } catch (e) {
+        // Handle unique constraint gracefully
+        if (e && e.code === '23505') {
+          const message = 'Email is already registered. Please edit the existing user or use another email.';
+          if (isJson) return res.status(400).json({ success: false, message, code: 'email_exists' });
+          return res.redirect('/admin/accounts?error=email_exists');
+        }
+        throw e;
       }
-    }
 
-    if (Object.keys(errorMessages).length > 0) {
-      return res.render('vwAdmin/account-edit', { errorMessages, oldData, user: { user_id, full_name, email, role } });
-    }
+      // Send welcome email to instructor (non-blocking)
+      let emailWarning = null;
+      if (role === 'instructor') {
+        const emailSent = await sendInstructorAccountEmail(email, full_name, password);
+        if (!emailSent) {
+          logger.warn({ email }, 'Failed to send instructor account email - admin should inform user manually');
+          emailWarning = 'Account created successfully, but failed to send welcome email. Please inform the instructor manually.';
+        }
+      }
 
-    const patch = { full_name, email, role };
-    if (password && password.trim().length > 0) {
-      patch.password_hash = await bcrypt.hash(password, 10);
-    }
-    await userModel.patch(user_id, patch);
-    res.redirect('/admin/accounts');
+      if (isJson) {
+        return res.json({ 
+          success: true, 
+          message: emailWarning || 'Account created successfully.',
+          warning: emailWarning ? true : false
+        });
+      }
+      
+      // For non-JSON, redirect with success message (email failure is logged but not blocking)
+      return res.redirect('/admin/accounts?success=created');
+
   } catch (err) {
+  logger.error({ err }, 'Account create error');
+    if (req.headers['content-type']?.includes('application/json')) {
+      return res.status(500).json({ success: false, message: 'Server error occurred.' });
+    }
+    next(err);
+  }
+});
+
+// update existing user
+router.post('/edit/:id', restrict, isAdmin, async (req, res, next) => {
+  try {
+    const user_id = parseInt(req.params.id);
+    const { full_name, email, password, role } = req.body;
+    const isJson = req.headers['content-type']?.includes('application/json');
+
+    const current = await userModel.findById(user_id);
+    if (!current) {
+      if (isJson) return res.status(404).json({ success: false, message: 'User not found' });
+      return res.redirect('/admin/accounts?error=not_found');
+    }
+
+    // Detect promotion: specifically from student -> instructor
+    const isPromotionToInstructor = String(current.role) === 'student' && String(role) === 'instructor';
+
+    const patchData = { full_name, email, role };
+    if (password && password.trim().length > 0) {
+      patchData.password_hash = await bcrypt.hash(password, 10);
+    }
+
+    try {
+      await userModel.patch(user_id, patchData);
+    } catch (e) {
+      if (e && e.code === '23505') {
+        const message = 'Email is already used by another account.';
+        if (isJson) return res.status(400).json({ success: false, message, code: 'email_exists' });
+        return res.redirect('/admin/accounts?error=email_exists');
+      }
+      throw e;
+    }
+
+    // If promoted to instructor, notify the user via email (best-effort)
+    let warningMessage = null;
+    let promotionNote = '';
+    if (isPromotionToInstructor) {
+      try {
+        const sent = await sendInstructorPromotionEmail(email, full_name);
+        if (sent) {
+          promotionNote = ' Promotion email sent.';
+        } else {
+          warningMessage = 'Account updated. Failed to send promotion email.';
+          logger.warn({ user_id, email }, 'Failed to send instructor promotion email');
+        }
+      } catch (e) {
+        warningMessage = 'Account updated. Failed to send promotion email.';
+        logger.warn({ err: e, user_id, email }, 'Error when sending instructor promotion email');
+      }
+    }
+
+  if (isJson) return res.json({ success: true, message: `Account updated successfully.${promotionNote}`.trim(), warning: !!warningMessage, warningMessage });
+  const redirectUrl = isPromotionToInstructor ? '/admin/accounts?success=updated&promoted=1' : '/admin/accounts?success=updated';
+  res.redirect(redirectUrl);
+  } catch (err) {
+    logger.error({ err }, 'Account update error');
+    if (req.headers['content-type']?.includes('application/json')) {
+      return res.status(500).json({ success: false, message: 'Server error occurred.' });
+    }
     next(err);
   }
 });
@@ -144,6 +232,60 @@ router.post('/delete/:id', restrict, isAdmin, async (req, res, next) => {
       return res.status(500).json({ ok: false, error: 'Delete failed' });
     }
     next(err);
+  }
+});
+
+// Ban a user (permanently or temporarily)
+router.post('/ban/:id', restrict, isAdmin, async (req, res, next) => {
+  try {
+    const targetId = parseInt(req.params.id);
+    const adminId = req.session.authUser?.user_id;
+    const { type, reason, until, durationHours } = req.body || {};
+
+    const user = await userModel.findById(targetId);
+    if (!user) return res.status(404).json({ ok: false, error: 'User not found' });
+    if (user.role === 'admin') return res.status(400).json({ ok: false, error: "Cannot ban an admin account." });
+
+    let permanent = false;
+    let untilDate = null;
+    if (String(type) === 'permanent') {
+      permanent = true;
+    } else {
+      if (until) {
+        // Parse the provided datetime string as UTC
+        const parsed = new Date(until);
+        if (isNaN(parsed.getTime())) return res.status(400).json({ ok: false, error: 'Invalid until datetime' });
+        untilDate = parsed;
+      } else if (durationHours) {
+        const hours = parseFloat(durationHours);
+        if (isNaN(hours) || hours <= 0) return res.status(400).json({ ok: false, error: 'Invalid duration hours' });
+        // Create UTC timestamp for Supabase (which stores in GMT+0)
+        const nowUtc = new Date();
+        untilDate = new Date(nowUtc.getTime() + hours * 3600 * 1000);
+      } else {
+        return res.status(400).json({ ok: false, error: 'Provide until or durationHours for temporary ban' });
+      }
+    }
+
+    await userModel.banUser(targetId, { permanent, until: untilDate, reason, adminId });
+    return res.json({ ok: true });
+  } catch (err) {
+  logger.error({ err }, 'Ban error');
+    return res.status(500).json({ ok: false, error: 'Ban failed' });
+  }
+});
+
+// Unban a user
+router.post('/unban/:id', restrict, isAdmin, async (req, res) => {
+  try {
+    const targetId = parseInt(req.params.id);
+    const user = await userModel.findById(targetId);
+    if (!user) return res.status(404).json({ ok: false, error: 'User not found' });
+    await userModel.unbanUser(targetId);
+    return res.json({ ok: true });
+  } catch (err) {
+  logger.error({ err }, 'Unban error');
+    return res.status(500).json({ ok: false, error: 'Unban failed' });
   }
 });
 

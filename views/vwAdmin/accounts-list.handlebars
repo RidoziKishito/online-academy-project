@@ -3,28 +3,47 @@
   <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
       <h4 class="mb-0">Accounts</h4>
-      <a class="btn btn-primary" href="/admin/accounts/edit">
+      <a class="btn btn-primary" href="/admin/accounts/create">
         <i class="bi bi-person-plus"></i> Create New
       </a>
     </div>
     <div class="card-body">
-      <form method="get" action="/admin/accounts" class="row g-3 mb-3" id="filterForm">
-        <div class="col-md-6">
-          <label for="roleFilter" class="form-label">Filter by Role</label>
-          <select class="form-select" id="roleFilter" name="role">
-            <option value="">All Roles</option>
-            {{#each roles}}
-            <option value="{{this}}" {{#if (eq ../currentRole this)}}selected{{/if}}>{{this}}</option>
-            {{/each}}
-          </select>
+      <form method="get" action="/admin/accounts" id="filterForm">
+        <!-- Search row on top -->
+        <div class="row g-3 mb-3">
+          <div class="col-12">
+            <label for="emailSearch" class="form-label">Search by Email</label>
+            <input type="text" class="form-control" id="emailSearch" name="q" placeholder="Enter partial email (e.g. @gmail, john)" value="{{currentSearch}}" />
+          </div>
         </div>
-        <div class="col-md-6">
-          <label for="verifiedFilter" class="form-label">Filter by Verified</label>
-          <select class="form-select" id="verifiedFilter" name="is_verified">
-            <option value="">All</option>
-            <option value="true" {{#if (eq currentVerified 'true')}}selected{{/if}}>Verified</option>
-            <option value="false" {{#if (eq currentVerified 'false')}}selected{{/if}}>Not Verified</option>
-          </select>
+
+        <!-- Filters row below -->
+        <div class="row g-3 mb-3">
+          <div class="col-md-4">
+            <label for="roleFilter" class="form-label">Filter by Role</label>
+            <select class="form-select" id="roleFilter" name="role">
+              <option value="">All Roles</option>
+              {{#each roles}}
+              <option value="{{this}}" {{#if (eq ../currentRole this)}}selected{{/if}}>{{this}}</option>
+              {{/each}}
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label for="verifiedFilter" class="form-label">Filter by Verified</label>
+            <select class="form-select" id="verifiedFilter" name="is_verified">
+              <option value="">All</option>
+              <option value="true" {{#if (eq currentVerified 'true')}}selected{{/if}}>Verified</option>
+              <option value="false" {{#if (eq currentVerified 'false')}}selected{{/if}}>Not Verified</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label for="bannedFilter" class="form-label">Filter by Banned</label>
+            <select class="form-select" id="bannedFilter" name="is_banned">
+              <option value="">All</option>
+              <option value="true" {{#if (eq currentBanned 'true')}}selected{{/if}}>Banned</option>
+              <option value="false" {{#if (eq currentBanned 'false')}}selected{{/if}}>Not Banned</option>
+            </select>
+          </div>
         </div>
       </form>
     </div>
@@ -37,6 +56,7 @@
             <th>Email</th>
             <th>Role</th>
             <th>Verified</th>
+            <th>Ban</th>
             <th class="text-end">Actions</th>
           </tr>
         </thead>
@@ -54,6 +74,17 @@
                 <span class="badge bg-secondary">No</span>
               {{/if}}
             </td>
+            <td>
+              {{#if this.is_banned}}
+                {{#if this.banned_until}}
+                  <span class="badge bg-warning text-dark" title="Until {{format_date this.banned_until}}">Temp</span>
+                {{else}}
+                  <span class="badge bg-danger">Permanent</span>
+                {{/if}}
+              {{else}}
+                <span class="badge bg-success">No</span>
+              {{/if}}
+            </td>
             <td class="text-end">
               {{#if (eq this.role 'student')}}
                 <a class="btn btn-sm btn-outline-info" href="/student/public-profile?id={{this.user_id}}" title="View Profile">
@@ -64,9 +95,20 @@
                   <i class="bi bi-person"></i>
                 </a>
               {{/if}}
-              <a class="btn btn-sm btn-outline-primary" href="/admin/accounts/edit?id={{this.user_id}}" title="Edit">
+              <a class="btn btn-sm btn-outline-primary" href="/admin/accounts/edit/{{this.user_id}}" title="Edit">
                 <i class="bi bi-pencil-square"></i>
               </a>
+              {{#unless (eq this.role 'admin')}}
+                {{#if this.is_banned}}
+                  <button type="button" class="btn btn-sm btn-outline-success unban-btn" data-user-id="{{this.user_id}}" data-user-name="{{this.full_name}}">
+                    <i class="bi bi-unlock"></i>
+                  </button>
+                {{else}}
+                  <button type="button" class="btn btn-sm btn-outline-warning ban-btn" data-user-id="{{this.user_id}}" data-user-name="{{this.full_name}}">
+                    <i class="bi bi-lock"></i>
+                  </button>
+                {{/if}}
+              {{/unless}}
               <button type="button" class="btn btn-sm btn-danger delete-btn" data-user-id="{{this.user_id}}" data-user-name="{{this.full_name}}" {{#if this.is_verified}}disabled title="Cannot delete verified user"{{/if}}>
                 <i class="bi bi-trash"></i>
               </button>
@@ -85,19 +127,19 @@
         <nav aria-label="Accounts pagination">
           <ul class="pagination pagination-sm mb-0" id="paginationControls">
             <li class="page-item {{#if (eq pagination.currentPage 1)}}disabled{{/if}}">
-              <a class="page-link" href="#" data-page="{{subtract pagination.currentPage 1}}">Previous</a>
+              <a class="page-link" href="/admin/accounts?page={{subtract pagination.currentPage 1}}{{#if currentRole}}&role={{currentRole}}{{/if}}{{#if currentVerified}}&is_verified={{currentVerified}}{{/if}}{{#if currentBanned}}&is_banned={{currentBanned}}{{/if}}{{#if currentSearch}}&q={{currentSearch}}{{/if}}" data-page="{{subtract pagination.currentPage 1}}">Previous</a>
             </li>
             {{#each (generatePages pagination.currentPage pagination.totalPages)}}
               {{#if (eq this '...')}}
                 <li class="page-item disabled"><span class="page-link">...</span></li>
               {{else}}
                 <li class="page-item {{#if (eq this ../pagination.currentPage)}}active{{/if}}">
-                  <a class="page-link" href="#" data-page="{{this}}">{{this}}</a>
+                  <a class="page-link" href="/admin/accounts?page={{this}}{{#if ../currentRole}}&role={{../currentRole}}{{/if}}{{#if ../currentVerified}}&is_verified={{../currentVerified}}{{/if}}{{#if ../currentBanned}}&is_banned={{../currentBanned}}{{/if}}{{#if ../currentSearch}}&q={{../currentSearch}}{{/if}}" data-page="{{this}}">{{this}}</a>
                 </li>
               {{/if}}
             {{/each}}
             <li class="page-item {{#if (eq pagination.currentPage pagination.totalPages)}}disabled{{/if}}">
-              <a class="page-link" href="#" data-page="{{add pagination.currentPage 1}}">Next</a>
+              <a class="page-link" href="/admin/accounts?page={{add pagination.currentPage 1}}{{#if currentRole}}&role={{currentRole}}{{/if}}{{#if currentVerified}}&is_verified={{currentVerified}}{{/if}}{{#if currentBanned}}&is_banned={{currentBanned}}{{/if}}{{#if currentSearch}}&q={{currentSearch}}{{/if}}" data-page="{{add pagination.currentPage 1}}">Next</a>
             </li>
           </ul>
         </nav>
@@ -117,7 +159,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (role === 'student') {
       return `<a class="btn btn-sm btn-outline-info" href="/student/public-profile?id=${userId}" title="View Profile"><i class="bi bi-person"></i></a>`;
     } else if (role === 'instructor') {
-      return `<a class="btn btn-sm btn-outline-info" href="/instructor/${userId}" title="View Profile"><i class="bi bi-person"></i></a>`;
+      return `<a class="btn btn-sm btn-outline-info" href="/instructors/${userId}" title="View Profile"><i class="bi bi-person"></i></a>`;
     }
     return '';
   }
@@ -133,18 +175,22 @@ document.addEventListener('DOMContentLoaded', function() {
         <td>${u.email || ''}</td>
         <td>${u.role || ''}</td>
         <td>${u.is_verified ? '<span class="badge bg-success">Yes</span>' : '<span class="badge bg-secondary">No</span>'}</td>
+        <td>${u.is_banned ? (u.banned_until ? '<span class="badge bg-warning text-dark">Temp</span>' : '<span class="badge bg-danger">Permanent</span>') : '<span class="badge bg-success">No</span>'}</td>
         <td class="text-end">
           ${getProfileButton(u.role, u.user_id)}
-          <a class="btn btn-sm btn-outline-primary" href="/admin/accounts/edit?id=${u.user_id}" title="Edit">
+          <a class="btn btn-sm btn-outline-primary" href="/admin/accounts/edit/${u.user_id}" title="Edit">
             <i class="bi bi-pencil-square"></i>
           </a>
+          ${u.role === 'admin' ? '' : (u.is_banned
+            ? `<button type="button" class="btn btn-sm btn-outline-success unban-btn" data-user-id="${u.user_id}" data-user-name="${u.full_name || u.email}"><i class="bi bi-unlock"></i></button>`
+            : `<button type="button" class="btn btn-sm btn-outline-warning ban-btn" data-user-id="${u.user_id}" data-user-name="${u.full_name || u.email}"><i class="bi bi-lock"></i></button>`)}
           <button type="button" class="btn btn-sm btn-danger delete-btn" data-user-id="${u.user_id}" data-user-name="${u.full_name || u.email}" ${u.is_verified ? 'disabled title="Cannot delete verified user"' : ''}>
             <i class="bi bi-trash"></i>
           </button>
         </td>`;
       tbody.appendChild(tr);
     });
-    attachDeleteHandlers();
+    attachActionHandlers();
   }
 
   function generatePages(currentPage, totalPages) {
@@ -219,7 +265,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  function attachDeleteHandlers() {
+  function attachActionHandlers() {
     document.querySelectorAll('.delete-btn').forEach(btn => {
       btn.addEventListener('click', function() {
         const userId = this.dataset.userId;
@@ -250,6 +296,86 @@ document.addEventListener('DOMContentLoaded', function() {
         });
       });
     });
+
+    // Ban handler
+    document.querySelectorAll('.ban-btn').forEach(btn => {
+      btn.addEventListener('click', async function() {
+        const userId = this.dataset.userId;
+        const userName = this.dataset.userName || userId;
+        const { value: type } = await Swal.fire({
+          title: `Ban ${userName}?`,
+          input: 'select',
+          inputOptions: {
+            temporary: 'Temporary',
+            permanent: 'Permanent'
+          },
+          inputPlaceholder: 'Select ban type',
+          showCancelButton: true
+        });
+        if (!type) return;
+        let payload = { type };
+        if (type === 'temporary') {
+          const { value: hours } = await Swal.fire({
+            title: 'Duration (hours)',
+            input: 'number',
+            inputValue: 24,
+            inputAttributes: { min: 1 },
+            showCancelButton: true
+          });
+          if (!hours) return;
+          payload.durationHours = hours;
+        }
+        const { value: reason } = await Swal.fire({
+          title: 'Reason (optional)',
+          input: 'text',
+          inputPlaceholder: 'Enter reason',
+          showCancelButton: true
+        });
+        payload.reason = reason || null;
+        fetch(`/admin/accounts/ban/${userId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify(payload)
+        }).then(r => r.json()).then(data => {
+          if (data.ok) {
+            Swal.fire({ icon: 'success', title: 'Banned', timer: 1200, showConfirmButton: false });
+            loadUsers(currentPage);
+          } else {
+            Swal.fire({ icon: 'error', title: 'Failed', text: data.error || 'Ban failed' });
+          }
+        }).catch(() => Swal.fire({ icon: 'error', title: 'Error', text: 'Ban failed' }));
+      });
+    });
+
+    // Unban handler
+    document.querySelectorAll('.unban-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const userId = this.dataset.userId;
+        const userName = this.dataset.userName || userId;
+        Swal.fire({
+          title: 'Unban Account?',
+          html: `Unban <strong>${userName}</strong>?`,
+          icon: 'question',
+          showCancelButton: true,
+          confirmButtonText: 'Unban',
+          cancelButtonText: 'Cancel'
+        }).then(res => {
+          if (res.isConfirmed) {
+            fetch(`/admin/accounts/unban/${userId}`, { method: 'POST', headers: { 'Accept': 'application/json' }})
+              .then(r => r.json())
+              .then(data => {
+                if (data.ok) {
+                  Swal.fire({ icon: 'success', title: 'Unbanned', timer: 1200, showConfirmButton: false });
+                  loadUsers(currentPage);
+                } else {
+                  Swal.fire({ icon: 'error', title: 'Failed', text: data.error || 'Unban failed' });
+                }
+              })
+              .catch(() => Swal.fire({ icon: 'error', title: 'Error', text: 'Unban failed' }));
+          }
+        });
+      });
+    });
   }
 
   // Auto-submit form when filters change
@@ -260,9 +386,59 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 
+  // Debounced email search
+  const emailInput = document.getElementById('emailSearch');
+  if (emailInput) {
+    let timer = null;
+    emailInput.addEventListener('input', function() {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => loadUsers(1), 400);
+    });
+    emailInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        loadUsers(1);
+      }
+    });
+  }
+
+  // Clear search
+  const clearBtn = document.getElementById('clearSearch');
+  if (clearBtn && emailInput) {
+    clearBtn.addEventListener('click', function() {
+      emailInput.value = '';
+      loadUsers(1);
+    });
+  }
+
   // init
   attachPaginationHandlers();
-  attachDeleteHandlers();
+  attachActionHandlers();
+
+  // Flash messages via query params
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const success = params.get('success');
+    const promoted = params.get('promoted');
+    if (success === 'created') {
+      Swal.fire({ icon: 'success', title: 'Account created', timer: 1400, showConfirmButton: false });
+    } else if (success === 'updated') {
+      const title = promoted === '1' ? 'Account updated • Promoted to Instructor' : 'Account updated';
+      Swal.fire({ icon: 'success', title, timer: 1400, showConfirmButton: false });
+    } else if (params.get('error') === 'email_exists') {
+      Swal.fire({ icon: 'error', title: 'Email already exists', text: 'Please use another email or edit the existing account.' });
+    } else if (params.get('error') === 'not_found') {
+      Swal.fire({ icon: 'error', title: 'User not found' });
+    }
+    // Clean URL to avoid repeated toasts on refresh
+    if (success || promoted || params.get('error')) {
+      const url = new URL(window.location.href);
+      ['success','promoted','error'].forEach(k => url.searchParams.delete(k));
+      window.history.replaceState({}, '', url.toString());
+    }
+  } catch (e) {
+    // no-op
+  }
 });
 </script>
 {{/fillContent}}

@@ -16,59 +16,100 @@ export function findByCategory(categoryId) {
 }
 
 export async function updateCourseContent(courseId, chapters) {
+  // validate added: robust, transactional upsert to avoid unique (course_id, order_index) conflicts
   return db.transaction(async (trx) => {
-    try {
-      const chapterModel = await import('./chapter.model.js');
-      const lessonModel = await import('./lesson.model.js');
+    // Normalize input
+    const inputChapters = Array.isArray(chapters) ? chapters : [];
 
-      // Process each chapter
-      for (const chapter of chapters) {
-        if (chapter.chapter_id) {
-          // Update existing chapter
-          await chapterModel.patch(chapter.chapter_id, {
-            title: chapter.title,
-            order_index: chapter.order_index
-          }, trx);
-        } else {
-          // Insert new chapter
-          const [newChapterId] = await chapterModel.add({
-            course_id: courseId,
-            title: chapter.title,
-            order_index: chapter.order_index
-          }, trx);
-          chapter.chapter_id = newChapterId;
-        }
+    // 1) Temporarily free existing order_index values to avoid unique conflicts
+    await trx('chapters').where('course_id', courseId)
+      .update({ order_index: trx.raw('order_index + 10000') });
 
-        // Process lessons for this chapter
-        if (Array.isArray(chapter.lessons)) {
-          for (const lesson of chapter.lessons) {
-            const lessonData = {
-              title: lesson.title,
-              video_url: lesson.video_url,
-              duration_seconds: lesson.duration_seconds,
-              is_previewable: lesson.is_previewable,
-              order_index: lesson.order_index,
-              content: lesson.content
-            };
+    // 2) Fetch existing chapters (after bump) for mapping
+    const existing = await trx('chapters').where('course_id', courseId).select('chapter_id');
+    const existingIds = new Set(existing.map(c => c.chapter_id));
 
-            if (lesson.lesson_id) {
-              // Update existing lesson
-              await lessonModel.patch(lesson.lesson_id, lessonData, trx);
-            } else {
-              // Insert new lesson
-              await lessonModel.add({
-                ...lessonData,
-                chapter_id: chapter.chapter_id
-              }, trx);
-            }
-          }
-        }
+    // 3) Upsert chapters according to incoming order
+    for (let i = 0; i < inputChapters.length; i++) {
+      const ch = inputChapters[i] || {};
+      const desiredOrder = (typeof ch.order_index === 'number' && ch.order_index > 0) ? ch.order_index : (i + 1);
+      const title = (ch.title ?? '').toString();
+
+      const rawId = ch.chapter_id;
+      const isExistingNumeric = rawId && !String(rawId).startsWith('new-') && Number.isFinite(Number(rawId));
+
+      if (isExistingNumeric && existingIds.has(Number(rawId))) {
+        // Update existing chapter
+        await trx('chapters')
+          .where({ chapter_id: Number(rawId), course_id: courseId })
+          .update({ title, order_index: desiredOrder });
+        ch.chapter_id = Number(rawId);
+      } else {
+        // Insert new chapter
+        const inserted = await trx('chapters')
+          .insert({ course_id: courseId, title, order_index: desiredOrder })
+          .returning('chapter_id');
+        const newId = Array.isArray(inserted)
+          ? (typeof inserted[0] === 'object' ? inserted[0].chapter_id : inserted[0])
+          : inserted;
+        ch.chapter_id = Number(newId);
       }
-
-      return true;
-    } catch (err) {
-      throw err;
     }
+
+    // 4) Delete chapters not present in submission (and cascade delete their lessons)
+    const keepChapterIds = inputChapters
+      .map(ch => Number(ch.chapter_id))
+      .filter(id => Number.isFinite(id));
+
+    if (keepChapterIds.length > 0) {
+      const toDelete = await trx('chapters')
+        .where('course_id', courseId)
+        .whereNotIn('chapter_id', keepChapterIds)
+        .select('chapter_id');
+      const delIds = toDelete.map(r => r.chapter_id);
+      if (delIds.length > 0) {
+        await trx('lessons').whereIn('chapter_id', delIds).del();
+        await trx('chapters').whereIn('chapter_id', delIds).del();
+      }
+    } else {
+      // If no chapters submitted, clear all
+      const allIds = await trx('chapters').where('course_id', courseId).pluck('chapter_id');
+      if (allIds.length > 0) {
+        await trx('lessons').whereIn('chapter_id', allIds).del();
+        await trx('chapters').whereIn('chapter_id', allIds).del();
+      }
+    }
+
+    // 5) Upsert lessons per chapter by replacing the set for simplicity
+    for (const ch of inputChapters) {
+      const chapterId = Number(ch.chapter_id);
+      const lessons = Array.isArray(ch.lessons) ? ch.lessons : [];
+
+      // Replace-all strategy for clarity
+      await trx('lessons').where('chapter_id', chapterId).del();
+
+      for (let li = 0; li < lessons.length; li++) {
+        const ls = lessons[li] || {};
+        await trx('lessons').insert({
+          chapter_id: chapterId,
+          title: (ls.title ?? '').toString(),
+          video_url: ls.video_url || null,
+          duration_seconds: Number.isFinite(Number(ls.duration_seconds)) ? Number(ls.duration_seconds) : 0,
+          is_previewable: !!ls.is_previewable,
+          order_index: (typeof ls.order_index === 'number' && ls.order_index > 0) ? ls.order_index : (li + 1),
+          content: ls.content || ''
+        });
+      }
+    }
+
+    // 6) Ensure final normalized ordering 1..N
+    for (let i = 0; i < inputChapters.length; i++) {
+      await trx('chapters')
+        .where({ chapter_id: inputChapters[i].chapter_id, course_id: courseId })
+        .update({ order_index: i + 1 });
+    }
+
+    return true;
   });
 }
 

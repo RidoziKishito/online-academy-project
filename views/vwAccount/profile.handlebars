@@ -1,9 +1,9 @@
-<form action="" method="post">
+<form id="profileForm" action="" method="post">
   <div class="card">
     <div class="card-header">Profile</div>
     <div class="card-body">
       {{#if success}}
-        <div class="alert alert-success">Profile updated.</div>
+        <div class="alert alert-success">Profile updated successfully.</div>
       {{/if}}
 
       <div class="mb-3">
@@ -16,7 +16,6 @@
         <input type="email" class="form-control" id="txtEmail" name="email" value="{{authUser.email}}">
       </div>
 
-      <!-- 🖼️ Change Avatar Section -->
       <hr>
       <div class="mb-3">
         <label for="txtAvatar" class="form-label">Change Avatar</label>
@@ -43,26 +42,35 @@
   </div>
 </form>
 
-
+{{#fillContent 'js'}}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
+  const form = document.getElementById('profileForm');
   const btnCheck = document.getElementById('btnCheckAvatar');
   const input = document.getElementById('txtAvatar');
   const preview = document.getElementById('avatarPreview');
 
+  if (!form) return;
+
+  function isValidEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }
+
+  function showAlert(icon, title, text) {
+    if (window.Swal)
+      Swal.fire({ icon, title, text });
+    else
+      alert(`${title}\n${text}`);
+  }
+
+  // Preview avatar
   btnCheck.addEventListener('click', () => {
     const url = input.value.trim();
     if (!url) {
-      Swal.fire({
-        icon: 'warning',
-        title: 'Please enter an image URL!',
-        showConfirmButton: false,
-        timer: 1500
-      });
+      showAlert('warning', 'Missing Image URL', 'Please enter an image URL.');
       return;
     }
 
-  // Create a new Image to verify the URL
     const img = new Image();
     img.onload = () => {
       preview.src = url;
@@ -70,13 +78,47 @@ document.addEventListener('DOMContentLoaded', function() {
     };
     img.onerror = () => {
       preview.style.display = 'none';
-      Swal.fire({
-        icon: 'error',
-        title: 'Picture not available',
-        text: 'The provided link is invalid or image not accessible.',
-      });
+      showAlert('error', 'Invalid Image', 'The provided link is invalid or inaccessible.');
     };
     img.src = url;
   });
+
+  // Validate and submit via AJAX
+  form.addEventListener('submit', async function (e) {
+    e.preventDefault();
+
+    const fullName = document.getElementById('txtName').value.trim();
+    const email = document.getElementById('txtEmail').value.trim();
+    const avt_url = document.getElementById('txtAvatar').value.trim();
+
+    if (!fullName || !email) {
+      showAlert('error', 'Missing Information', 'Full name and email are required.');
+      return;
+    }
+
+    if (!isValidEmail(email)) {
+      showAlert('error', 'Invalid Email', 'Please enter a valid email address.');
+      return;
+    }
+
+    try {
+      const res = await fetch('/account/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fullName, email, avt_url })
+      });
+
+      const result = await res.json().catch(() => ({}));
+
+      if (res.ok && result.success) {
+        showAlert('success', 'Profile Updated', 'Your profile information has been saved successfully.');
+      } else {
+        showAlert('error', 'Update Failed', result.message || 'Unable to save profile. Please try again.');
+      }
+    } catch {
+      showAlert('error', 'Connection Error', 'Failed to communicate with the server.');
+    }
+  });
 });
 </script>
+{{/fillContent}}
