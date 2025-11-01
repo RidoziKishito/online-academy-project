@@ -50,57 +50,45 @@ router.get('/', restrict, isAdmin, async (req, res, next) => {
   }
 });
 
-// edit or create form
-router.get('/edit', restrict, isAdmin, async (req, res, next) => {
-  const id = req.query.id;
-  const role = await userModel.getRoleOptions();
-  if (!id) {
-    // render create form
-    return res.render('vwAdmin/account-edit', { role });
-  }
+// create form
+router.get('/create', restrict, isAdmin, async (req, res, next) => {
   try {
+    const role = await userModel.getRoleOptions();
+    res.render('vwAdmin/account-create', { role });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// edit form
+router.get('/edit/:id', restrict, isAdmin, async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id);
+    const role = await userModel.getRoleOptions();
     const user = await userModel.findById(id);
+    if (!user) return res.redirect('/admin/accounts?error=not_found');
     res.render('vwAdmin/account-edit', { user, role });
   } catch (err) {
     next(err);
   }
 });
 
+// backward-compat: redirect old query style to new routes
+router.get('/edit', restrict, isAdmin, async (req, res) => {
+  const id = req.query.id;
+  if (!id) return res.redirect('/admin/accounts/create');
+  return res.redirect(`/admin/accounts/edit/${id}`);
+});
+
 // patch (create or update)
-router.post('/patch', restrict, isAdmin, async (req, res, next) => {
+// create user
+router.post('/create', restrict, isAdmin, async (req, res, next) => {
   try {
-    const { user_id, full_name, email, password, confirm_password, role } = req.body;
+    const { full_name, email, password, role } = req.body;
     const isJson = req.headers['content-type']?.includes('application/json');
-    const errorMessages = {};
 
-    // === Validation ===
-    if (!full_name || !email) {
-      const msg = 'Full name and email are required.';
-      if (isJson) return res.status(400).json({ success: false, message: msg });
-      return res.render('vwAdmin/account-edit', { errorMessages: { _global: [msg] }, oldData: req.body });
-    }
-
-    // New user
-    if (!user_id) {
-      if (!password || password.length < 6)
-        errorMessages.password = ['Password must be at least 6 characters.'];
-      if (password !== confirm_password)
-        errorMessages.confirm_password = ['Passwords do not match.'];
-
-      if (Object.keys(errorMessages).length > 0) {
-        if (isJson) return res.status(400).json({ success: false, errorMessages });
-        return res.render('vwAdmin/account-edit', { errorMessages, oldData: req.body });
-      }
-
-      // Ensure email is not already registered when creating a new account
-      const existing = await userModel.findByEmail(email);
-      if (existing) {
-        errorMessages.email = ['Email is already registered. Please edit the existing user or use another email.'];
-        if (isJson) return res.status(400).json({ success: false, errorMessages, code: 'email_exists' });
-        return res.render('vwAdmin/account-edit', { errorMessages, oldData: req.body });
-      }
-
-      const hash = await bcrypt.hash(password, 10);
+      // No server-side validation: trust client-side checks
+      const hash = await bcrypt.hash(password ?? '', 10);
       const newUser = { full_name, email, role, password_hash: hash };
       // Auto-verify instructors created by admin and email credentials
       if (role === 'instructor') {
@@ -110,11 +98,11 @@ router.post('/patch', restrict, isAdmin, async (req, res, next) => {
       try {
         [insertedId] = await userModel.add(newUser);
       } catch (e) {
-        // Friendly fallback if unique constraint hit at DB level
+        // Handle unique constraint gracefully
         if (e && e.code === '23505') {
-          errorMessages.email = ['Email is already registered. Please edit the existing user or use another email.'];
-          if (isJson) return res.status(400).json({ success: false, errorMessages, code: 'email_exists' });
-          return res.render('vwAdmin/account-edit', { errorMessages, oldData: req.body });
+          const message = 'Email is already registered. Please edit the existing user or use another email.';
+          if (isJson) return res.status(400).json({ success: false, message, code: 'email_exists' });
+          return res.redirect('/admin/accounts?error=email_exists');
         }
         throw e;
       }
@@ -139,36 +127,27 @@ router.post('/patch', restrict, isAdmin, async (req, res, next) => {
       
       // For non-JSON, redirect with success message (email failure is logged but not blocking)
       return res.redirect('/admin/accounts?success=created');
-    }
 
-    // Update existing user
-    if (password) {
-      if (password.length < 6)
-        errorMessages.password = ['Password must be at least 6 characters.'];
-      if (password !== confirm_password)
-        errorMessages.confirm_password = ['Passwords do not match.'];
+  } catch (err) {
+  logger.error({ err }, 'Account create error');
+    if (req.headers['content-type']?.includes('application/json')) {
+      return res.status(500).json({ success: false, message: 'Server error occurred.' });
     }
+    next(err);
+  }
+});
 
-    if (Object.keys(errorMessages).length > 0) {
-      if (isJson) return res.status(400).json({ success: false, errorMessages });
-      return res.render('vwAdmin/account-edit', { errorMessages, oldData: req.body });
-    }
+// update existing user
+router.post('/edit/:id', restrict, isAdmin, async (req, res, next) => {
+  try {
+    const user_id = parseInt(req.params.id);
+    const { full_name, email, password, role } = req.body;
+    const isJson = req.headers['content-type']?.includes('application/json');
 
-    // Update existing user
-    // Optional: ensure email uniqueness if changed
     const current = await userModel.findById(user_id);
     if (!current) {
       if (isJson) return res.status(404).json({ success: false, message: 'User not found' });
       return res.redirect('/admin/accounts?error=not_found');
-    }
-
-    if (email && email !== current.email) {
-      const dup = await userModel.findByEmail(email);
-      if (dup && dup.user_id != user_id) {
-        errorMessages.email = ['Email is already used by another account.'];
-        if (isJson) return res.status(400).json({ success: false, errorMessages, code: 'email_exists' });
-        return res.render('vwAdmin/account-edit', { errorMessages, oldData: req.body });
-      }
     }
 
     const patchData = { full_name, email, role };
@@ -176,12 +155,21 @@ router.post('/patch', restrict, isAdmin, async (req, res, next) => {
       patchData.password_hash = await bcrypt.hash(password, 10);
     }
 
-    await userModel.patch(user_id, patchData);
+    try {
+      await userModel.patch(user_id, patchData);
+    } catch (e) {
+      if (e && e.code === '23505') {
+        const message = 'Email is already used by another account.';
+        if (isJson) return res.status(400).json({ success: false, message, code: 'email_exists' });
+        return res.redirect('/admin/accounts?error=email_exists');
+      }
+      throw e;
+    }
 
     if (isJson) return res.json({ success: true, message: 'Account updated successfully.' });
     res.redirect('/admin/accounts');
   } catch (err) {
-  logger.error({ err }, 'Account patch error');
+    logger.error({ err }, 'Account update error');
     if (req.headers['content-type']?.includes('application/json')) {
       return res.status(500).json({ success: false, message: 'Server error occurred.' });
     }
