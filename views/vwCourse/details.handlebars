@@ -433,47 +433,11 @@ document.addEventListener('DOMContentLoaded', function () {
     setTimeout(() => document.querySelector('.alert')?.remove(), 5000);
   }
 
-  /* ---------- Video preview (supports YouTube + local) ---------- */
-  (function initVideoPreview() {
-    const previewBtns = document.querySelectorAll('.preview-btn');
-    const videoModalEl = document.getElementById('videoModal');
-    const videoIframe = document.getElementById('previewVideo');
-    const ytContainer = document.getElementById('ytContainer');
-    const localContainer = document.getElementById('localContainer');
-    const localVideo = document.getElementById('previewVideoLocal');
-    if (!previewBtns.length || !videoModalEl || !videoIframe || !ytContainer || !localContainer || !localVideo) return;
-
-    function isYouTube(url) { return !!url && (url.includes('youtube.com') || url.includes('youtu.be')); }
-
-    previewBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
-        const url = btn.dataset.video;
-        if (!url) return;
-        const myModal = new bootstrap.Modal(videoModalEl);
-        if (isYouTube(url)) {
-          ytContainer.style.display = '';
-          localContainer.style.display = 'none';
-          localVideo.pause?.();
-          localVideo.removeAttribute('src');
-          videoIframe.src = url.includes('?') ? url + '&autoplay=1' : url + '?autoplay=1';
-          myModal.show();
-        } else {
-          ytContainer.style.display = 'none';
-          videoIframe.src = '';
-          localContainer.style.display = '';
-          localVideo.src = url;
-          myModal.show();
-          setTimeout(() => { try { localVideo.play(); } catch(_) {} }, 150);
-        }
-      });
-    });
-
-    videoModalEl.addEventListener('hidden.bs.modal', () => {
-      videoIframe.src = '';
-      localVideo.pause?.();
-      localVideo.removeAttribute('src');
-    });
-  })();
+  /* ---------- Video preview is handled globally in layouts/main.handlebars ---------- */
+  // The global script attaches click handlers to `.preview-btn` and manages
+  // the modal `#videoModal` for both YouTube (iframe) and local <video> URLs.
+  // This page only provides the markup: links with `data-video` and the
+  // global modal exists in the layout. No per-page init needed here.
 
   /* ---------- Wishlist toggle ---------- */
   (function initWishlist() {

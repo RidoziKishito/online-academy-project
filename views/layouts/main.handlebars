@@ -376,6 +376,11 @@
         btn.addEventListener('click', () => {
           const url = btn.dataset.video;
           if (!url) return;
+          // Guard in case Bootstrap JS hasn't finished loading yet
+          if (!(window.bootstrap && bootstrap.Modal)) {
+            console.warn('Bootstrap not loaded yet; cannot open preview modal immediately.');
+            return;
+          }
           const myModal = new bootstrap.Modal(videoModalEl);
           if (isYouTube(url)) {
             // Show iframe
