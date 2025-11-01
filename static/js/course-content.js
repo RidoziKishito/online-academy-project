@@ -146,23 +146,19 @@
     // validate added: validation helpers before saving
     function validateSerialized(chapters) {
         const errors = [];
-        if (!Array.isArray(chapters) || chapters.length === 0) {
-            errors.push('Please add at least one chapter.');
-        }
+        // Allow empty course (no chapters) and empty chapters (no lessons)
+        if (!Array.isArray(chapters)) return ['Invalid content structure.'];
         chapters.forEach((ch, cIdx) => {
             const cNum = cIdx + 1;
             const title = (ch.title || '').trim();
             if (!title) errors.push(`Chapter ${cNum}: title is required.`);
-            if (!Array.isArray(ch.lessons) || ch.lessons.length === 0) {
-                errors.push(`Chapter ${cNum}: please add at least one lesson.`);
-                return;
-            }
-            ch.lessons.forEach((ls, lIdx) => {
+            const lessons = Array.isArray(ch.lessons) ? ch.lessons : [];
+            lessons.forEach((ls, lIdx) => {
                 const lNum = lIdx + 1;
                 const lt = (ls.title || '').trim();
                 if (!lt) errors.push(`Chapter ${cNum} - Lesson ${lNum}: title is required.`);
-                const d = ls.duration_seconds;
-                if (!(Number.isInteger(d) && d >= 0)) {
+                const d = Number(ls.duration_seconds);
+                if (!Number.isFinite(d) || d < 0 || !Number.isInteger(d)) {
                     errors.push(`Chapter ${cNum} - Lesson ${lNum}: duration must be a non-negative integer.`);
                 }
             });

@@ -3,6 +3,7 @@ import express from 'express';
 import fs from 'fs';
 import path from 'path';
 import * as courseModel from '../models/courses.model.js';
+import * as progressModel from '../models/progress.model.js';
 import * as instructorModel from '../models/instructors.model.js';
 import * as categoryModel from '../models/category.model.js';
 import * as enrollmentModel from '../models/enrollment.model.js';
@@ -215,6 +216,11 @@ router.post('/delete/:id', async (req, res) => {
     const hasEnrollments = await enrollmentModel.hasEnrollmentsByCourse(courseId);
     if (hasEnrollments) {
       return res.redirect('/admin/courses?error=has_enrollments');
+    }
+    // Prevent deleting course that still has lessons
+    const lessonCount = await progressModel.countLessonsByCourse(courseId);
+    if (lessonCount > 0) {
+      return res.redirect('/admin/courses?error=has_lessons');
     }
     
     await courseModel.del(courseId);
