@@ -25,28 +25,31 @@ const transporter = nodemailer.createTransport({
   },
   tls: {
     rejectUnauthorized: false,
-    ciphers: 'SSLv3'
+    minVersion: 'TLSv1.2'
   },
-  connectionTimeout: 5000, // Reduced to 5 seconds for faster failure detection
-  greetingTimeout: 5000,
-  socketTimeout: 5000,
+  connectionTimeout: 30000, // Increased back to 30 seconds - gmail sometimes needs more time
+  greetingTimeout: 30000,
+  socketTimeout: 30000,
   pool: true, // Use connection pooling
   maxConnections: 3,
   maxMessages: 100,
-  rateLimit: 10 // Max 10 messages per second
+  rateLimit: 5, // Reduced to 5 per second to avoid rate limiting
+  debug: process.env.NODE_ENV !== 'production', // Enable debug in development
+  logger: process.env.NODE_ENV !== 'production' // Enable logger in development
 });
 
 /**
  * Send email with retry logic and better error handling
  * @param {Object} mailOptions - Nodemailer mail options
- * @param {number} maxRetries - Maximum retry attempts (default: 2)
+ * @param {number} maxRetries - Maximum retry attempts (default: 3)
  */
-async function sendMailWithRetry(mailOptions, maxRetries = 2) {
+async function sendMailWithRetry(mailOptions, maxRetries = 3) {
   let lastError;
   
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       const info = await transporter.sendMail(mailOptions);
+      logger.info({ to: mailOptions.to, messageId: info.messageId }, 'Email sent successfully');
       return info; // Success
     } catch (error) {
       lastError = error;
@@ -54,22 +57,28 @@ async function sendMailWithRetry(mailOptions, maxRetries = 2) {
         err: error, 
         attempt, 
         maxRetries,
-        to: mailOptions.to 
+        to: mailOptions.to,
+        errorCode: error.code,
+        errorResponse: error.response
       }, `Email send attempt ${attempt} failed`);
       
       // Don't retry on authentication errors
       if (error.code === 'EAUTH' || error.responseCode === 535) {
+        logger.error({ err: error }, 'Gmail authentication failed - check EMAIL_USER and EMAIL_PASS');
         throw error;
       }
       
-      // Wait before retry (exponential backoff)
+      // Wait before retry (exponential backoff: 2s, 4s, 8s)
       if (attempt < maxRetries) {
-        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+        const waitTime = 2000 * Math.pow(2, attempt - 1);
+        logger.info({ waitTime, attempt }, `Waiting before retry...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
       }
     }
   }
   
   // All retries failed
+  logger.error({ err: lastError, to: mailOptions.to }, 'All email send attempts failed');
   throw lastError;
 }
 
