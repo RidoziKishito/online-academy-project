@@ -100,10 +100,14 @@
 
                     <div class="mt-auto d-flex justify-content-end align-items-end gap-2">
                       <div class="text-end">
-                        <div class="fs-5 fw-bold">₫{{format_number current_price}}</div>
+                        {{#unless (eq original_price current_price)}}
+                        <div class="fs-5 fw-bold text-danger">₫{{format_number current_price}}</div>
                         {{#if original_price}}
                           <div class="text-muted text-decoration-line-through">₫{{format_number original_price}}</div>
                         {{/if}}
+                        {{else}}
+                          <div class="fs-5 fw-bold">₫{{format_number original_price}}</div>
+                        {{/unless}}
                       </div>
                       <a href="/courses/detail/{{course_id}}" class="btn btn-outline-primary btn-sm align-self-end">View</a>
                     </div>

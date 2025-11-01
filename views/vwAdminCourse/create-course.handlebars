@@ -30,6 +30,60 @@
         placeholder: 'What are the requirements or prerequisites for this course?'
     });
 
+    // validate added: client-side validation for create course form
+    (function addCreateCourseValidation(){
+      const form = document.querySelector('#frmAddCourse');
+      if (!form) return;
+
+      function showError(title, text){
+        if (window.Swal) return Swal.fire({ icon: 'error', title, text });
+        alert(`${title}: ${text}`);
+      }
+
+      function isPositiveNumberLike(val){
+        if (!val) return false;
+        const num = Number(String(val).replace(/[,\s]/g, ''));
+        return Number.isFinite(num) && num > 0;
+      }
+
+      function isNonEmptyHtml(editor){
+        if (!editor) return false;
+        const text = editor.root.innerText || '';
+        return text.trim().length > 0;
+      }
+
+      form.addEventListener('submit', function(e){
+        // Use capture semantics would require third arg true; here we validate early in bubble
+        const title = document.getElementById('title')?.value?.trim() || '';
+        const summary = document.getElementById('short_description')?.value?.trim() || '';
+        const img = document.getElementById('imageUrl')?.value?.trim() || '';
+        const cat = document.getElementById('categoryId')?.value || '';
+        const instructor = document.getElementById('instructorId')?.value || '';
+        const currentPrice = document.getElementById('currentPrice')?.value?.trim() || '';
+        const originalPrice = document.getElementById('originalPrice')?.value?.trim() || '';
+
+        if (!title || !summary || !img || !cat || !instructor){
+          e.preventDefault();
+          return showError('Missing information', 'Please fill all required fields (title, summary, image, category, instructor).');
+        }
+
+        if (!isNonEmptyHtml(quillDescription)){
+          e.preventDefault();
+          return showError('Invalid description', 'Course description must not be empty.');
+        }
+
+        // Price validations (if provided, must be positive numbers)
+        if (currentPrice && !isPositiveNumberLike(currentPrice)){
+          e.preventDefault();
+          return showError('Invalid price', 'Current price must be a positive number.');
+        }
+        if (originalPrice && !isPositiveNumberLike(originalPrice)){
+          e.preventDefault();
+          return showError('Invalid price', 'Original price must be a positive number.');
+        }
+      }, true);
+    })();
+
     // On submit, copy quill html to hidden inputs
     document.querySelector('#frmAddCourse').addEventListener('submit', function(e) {
         const descriptionHtml = quillDescription.root.innerHTML;

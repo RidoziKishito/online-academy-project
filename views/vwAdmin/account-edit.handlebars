@@ -62,3 +62,65 @@
     </div>
   </div>
 </div>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const form = document.querySelector('form[action="/admin/accounts/patch"]');
+  if (!form) return;
+
+  function showAlert(icon, title, text) {
+    if (window.Swal) return Swal.fire({ icon, title, text });
+    alert(`${title}\n${text}`);
+  }
+
+  function isValidEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }
+
+  form.addEventListener('submit', async function (e) {
+    e.preventDefault();
+
+    const user_id = form.querySelector('input[name="user_id"]').value.trim();
+    const full_name = form.querySelector('input[name="full_name"]').value.trim();
+    const email = form.querySelector('input[name="email"]').value.trim();
+    const password = form.querySelector('input[name="password"]').value;
+    const confirm_password = form.querySelector('input[name="confirm_password"]').value;
+    const role = form.querySelector('select[name="role"]').value;
+
+    if (!full_name || !email) {
+      return showAlert('error', 'Missing information', 'Full name and email are required.');
+    }
+    if (!isValidEmail(email)) {
+      return showAlert('error', 'Invalid email', 'Please enter a valid email address.');
+    }
+    if (!user_id) {
+      if (!password || password.length < 6)
+        return showAlert('error', 'Weak password', 'Password must be at least 6 characters.');
+      if (password !== confirm_password)
+        return showAlert('error', 'Password mismatch', 'Confirm password does not match.');
+    } else {
+      if (password && password.length < 6)
+        return showAlert('error', 'Weak password', 'New password must be at least 6 characters.');
+      if (password && password !== confirm_password)
+        return showAlert('error', 'Password mismatch', 'Confirm password does not match.');
+    }
+
+    try {
+      const res = await fetch('/admin/accounts/patch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id, full_name, email, password, confirm_password, role })
+      });
+
+      const result = await res.json();
+
+      if (res.ok && result.success) {
+        showAlert('success', 'Success', result.message || 'Account saved successfully.');
+      } else {
+        showAlert('error', 'Error', result.message || 'Unable to save account.');
+      }
+    } catch (err) {
+      showAlert('error', 'Connection error', 'Could not send data to the server.');
+    }
+  });
+});
+</script>

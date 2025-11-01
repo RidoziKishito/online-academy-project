@@ -4,7 +4,8 @@
     let draftState = {
         unsavedChanges: false,
         lastAutoSaveAt: null,
-        autoSaveInterval: null
+        autoSaveInterval: null,
+        lastInvalidWarnAt: 0 // validate added: throttle invalid alerts
     };
 
     const AUTOSAVE_DELAY = 30000; // 30 seconds
@@ -111,13 +112,63 @@
                 console.log('Auto-saved content at', new Date().toLocaleTimeString());
             } catch (err) {
                 console.error('Auto-save failed:', err);
+                // validate added: avoid spamming alerts on autosave
+                const now = Date.now();
+                if (now - draftState.lastInvalidWarnAt > 15000) {
+                    const msg = (err && err.message) || 'Auto-save failed.';
+                    if (window.Swal) {
+                        Swal.fire({ icon: 'error', title: 'Auto-save failed', text: msg });
+                    }
+                    draftState.lastInvalidWarnAt = now;
+                }
             }
         }, AUTOSAVE_DELAY);
+    }
+
+    // validate added: validation helpers before saving
+    function validateSerialized(chapters) {
+        const errors = [];
+        if (!Array.isArray(chapters) || chapters.length === 0) {
+            errors.push('Please add at least one chapter.');
+        }
+        chapters.forEach((ch, cIdx) => {
+            const cNum = cIdx + 1;
+            const title = (ch.title || '').trim();
+            if (!title) errors.push(`Chapter ${cNum}: title is required.`);
+            if (!Array.isArray(ch.lessons) || ch.lessons.length === 0) {
+                errors.push(`Chapter ${cNum}: please add at least one lesson.`);
+                return;
+            }
+            ch.lessons.forEach((ls, lIdx) => {
+                const lNum = lIdx + 1;
+                const lt = (ls.title || '').trim();
+                if (!lt) errors.push(`Chapter ${cNum} - Lesson ${lNum}: title is required.`);
+                const d = ls.duration_seconds;
+                if (!(Number.isInteger(d) && d >= 0)) {
+                    errors.push(`Chapter ${cNum} - Lesson ${lNum}: duration must be a non-negative integer.`);
+                }
+            });
+        });
+        return errors;
+    }
+
+    function showError(title, text) {
+        if (window.Swal) return Swal.fire({ icon: 'error', title, html: `<div style="text-align:left">${text}</div>` });
+        alert(`${title}:\n${text.replace(/<br\/>/g, '\n')}`);
     }
 
     async function saveContent() {
         const courseId = document.querySelector('[data-course-id]').dataset.courseId;
         const chapters = serializeContent();
+
+        // validate added: run validation before saving
+        const errs = validateSerialized(chapters);
+        if (errs.length) {
+            const body = errs.map(e => `• ${e}`).join('<br/>');
+            showError('Cannot save content', body);
+            draftState.lastInvalidWarnAt = Date.now();
+            throw new Error('Validation failed, not saving');
+        }
 
         const response = await fetch(`/instructor/api/courses/${courseId}/content`, {
             method: 'POST',
@@ -317,7 +368,12 @@
                 console.log('Content saved manually at', new Date().toLocaleTimeString());
             } catch (err) {
                 console.error('Manual save failed:', err);
-                alert('Failed to save changes. Please try again.');
+                // validate added: use SweetAlert2 if available
+                if (window.Swal) {
+                    Swal.fire({ icon: 'error', title: 'Save failed', text: err && err.message ? err.message : 'Failed to save changes. Please fix validation errors.' });
+                } else {
+                    alert('Failed to save changes. Please fix validation errors.');
+                }
             }
         });
 
