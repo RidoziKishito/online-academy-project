@@ -493,10 +493,10 @@ app.use('/auth', authRouter);
 app.use('/payment', paymentRouter); 
 
 // -- Routes của học viên (cần đăng nhập) --
-// Student-only areas
+// Student-only areas and cousre of its own instructor
 // Student has its own restrict in student.route.js
 app.use('/student', restrict, studentRouter);
-app.use('/learn', restrict, isStudent, learnRouter);
+app.use('/learn', restrict, learnRouter);
 
 // Public instructors profiles
 app.use('/instructors', instructorsRouter);

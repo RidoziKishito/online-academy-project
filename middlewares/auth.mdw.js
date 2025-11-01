@@ -1,3 +1,6 @@
+import * as courseModel from '../models/courses.model.js';
+import * as enrollModel from '../models/enrollment.model.js'
+
 export function restrict(req, res, next) {
   if (req.session.isAuthenticated) {
     return next();
@@ -31,4 +34,36 @@ export function isStudent(req, res, next) {
     return next();
   }
   res.status(403).render('403');
+}
+
+
+export async function canAccessCourse(req, res, next) {
+  try {
+    const user = req.session.authUser;
+    const courseId = req.params.courseId;
+
+    if (!user) return res.redirect('/account/signin');
+    if (!courseId) return res.status(400).send('Missing course id');
+
+    // Admin luôn qua
+    if (user.role === 'admin') return next();
+
+    // Instructor → chỉ course của mình
+    if (user.role === 'instructor') {
+      const course = await courseModel.findById(courseId);
+      if (!course) return res.status(404).render('404');
+      if (course.instructor_id === user.user_id) return next();
+    }
+
+    // Student → nếu đã enroll
+    if (user.role === 'student') {
+      const enrolled = await enrollModel.checkEnrollment(user.user_id, courseId);
+      if (enrolled) return next();
+    }
+
+    return res.status(403).render('403');
+  } catch (err) {
+    console.error(err);
+    res.status(500).render('500');
+  }
 }
