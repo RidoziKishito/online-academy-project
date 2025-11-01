@@ -2,6 +2,7 @@ import express from 'express';
 import * as userModel from '../models/user.model.js';
 import { restrict, isAdmin } from '../middlewares/auth.mdw.js';
 import bcrypt from 'bcrypt';
+import { sendInstructorAccountEmail } from '../utils/mailer.js';
 
 const router = express.Router();
 
@@ -89,7 +90,21 @@ router.post('/patch', restrict, isAdmin, async (req, res, next) => {
       }
 
       const hash = await bcrypt.hash(password, 10);
-      await userModel.add({ full_name, email, role, password_hash: hash });
+      const newUser = { full_name, email, role, password_hash: hash };
+      // Auto-verify instructors created by admin and email credentials
+      if (role === 'instructor') {
+        newUser.is_verified = true;
+      }
+      const [insertedId] = await userModel.add(newUser);
+
+      if (role === 'instructor') {
+        try {
+          await sendInstructorAccountEmail(email, full_name, password);
+        } catch (e) {
+          console.error('Send instructor account email failed:', e?.message || e);
+          // Continue; do not block admin flow; optionally add flash later
+        }
+      }
 
       if (isJson) return res.json({ success: true, message: 'Account created successfully.' });
       return res.redirect('/admin/accounts');

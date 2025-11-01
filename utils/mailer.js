@@ -178,3 +178,72 @@ export async function testEmailConfig() {
     return false;
   }
 }
+
+/**
+ * Send instructor account welcome email with credentials
+ * NOTE: Since this contains a plaintext password, strongly encourage changing it after first login.
+ * @param {string} email
+ * @param {string} fullName
+ * @param {string} rawPassword
+ */
+export async function sendInstructorAccountEmail(email, fullName = 'Instructor', rawPassword) {
+  const appName = process.env.APP_NAME || 'Online Academy';
+  const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
+  const signinUrl = `${baseUrl}/account/signin`;
+
+  const mailOptions = {
+    from: `"${appName}" <${process.env.EMAIL_USER}>`,
+    to: email,
+    subject: `Your ${appName} Instructor Account`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background-color: #0d6efd; color: white; padding: 20px; text-align: center; }
+          .content { background-color: #f8f9fa; padding: 24px; }
+          .box { background: #fff; border: 1px solid #e9ecef; border-radius: 8px; padding: 16px; }
+          .label { color: #6c757d; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
+          .value { font-size: 16px; font-weight: 600; }
+          .button { display: inline-block; background-color: #0d6efd; color: white; padding: 12px 20px; text-decoration: none; border-radius: 6px; margin: 16px 0; }
+          .footer { text-align: center; color: #666; font-size: 12px; margin-top: 20px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>Welcome, Instructor!</h1>
+          </div>
+          <div class="content">
+            <p>Hello <strong>${fullName}</strong>,</p>
+            <p>Your instructor account has been created and verified. You can log in using the credentials below:</p>
+            <div class="box">
+              <div class="label">Email</div>
+              <div class="value">${email}</div>
+              <div class="label" style="margin-top: 12px;">Temporary Password</div>
+              <div class="value">${rawPassword}</div>
+            </div>
+            <p style="margin-top:16px">Use the button below to sign in:</p>
+            <p style="text-align:center"><a class="button" href="${signinUrl}">Sign in</a></p>
+            <p><strong>Security tip:</strong> For your safety, please change this password immediately after signing in (Account → Change Password).</p>
+          </div>
+          <div class="footer">
+            <p>&copy; ${new Date().getFullYear()} ${appName}. All rights reserved.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    logger.info({ email }, 'Instructor account email sent');
+    return true;
+  } catch (error) {
+    logger.error({ err: error, email }, 'Error sending instructor account email');
+    throw new Error('Failed to send instructor account email');
+  }
+}
