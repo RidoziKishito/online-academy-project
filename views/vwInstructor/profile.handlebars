@@ -1,8 +1,10 @@
 {{#fillContent 'css'}}
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css" rel="stylesheet" />
 {{/fillContent}}
 
 {{#fillContent 'js'}}
+<script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
 <script>
     // avatar preview
     document.addEventListener('DOMContentLoaded', () => {
@@ -13,6 +15,43 @@
                 const v = avatarInput.value && avatarInput.value.trim();
                 avatarPreview.src = v || (avatarPreview.dataset.fallback || '/static/img/default-avatar.png');
             });
+        }
+
+        // Initialize Quill editor for bio
+        const bioEditorEl = document.querySelector('#bioEditor');
+        if (bioEditorEl) {
+            const quillBio = new Quill('#bioEditor', {
+                theme: 'snow',
+                placeholder: 'Write your bio...',
+                modules: {
+                    toolbar: [
+                        ['bold', 'italic', 'underline', 'strike'],
+                        [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+                        [{ 'header': [1, 2, 3, false] }],
+                        ['link'],
+                        ['clean']
+                    ]
+                }
+            });
+
+            // Load existing bio content if available
+            const bioInitialInput = document.querySelector('#bioInitialContent');
+            const existingBio = (bioInitialInput && bioInitialInput.value) || '';
+            if (existingBio && existingBio.trim()) {
+                quillBio.clipboard.dangerouslyPasteHTML(existingBio);
+            }
+
+            // Before form submit, copy Quill HTML to hidden input
+            const form = document.querySelector('form[action="/instructor/profile"]');
+            if (form) {
+                form.addEventListener('submit', function(e) {
+                    const bioHtml = quillBio.root.innerHTML;
+                    const bioInput = document.querySelector('input[name="bio"]');
+                    if (bioInput) {
+                        bioInput.value = bioHtml;
+                    }
+                });
+            }
         }
     });
 </script>
@@ -69,7 +108,9 @@
 
                         <div class="mb-3">
                             <label class="form-label">Bio</label>
-                            <textarea name="bio" class="form-control" rows="6">{{authUser.bio}}</textarea>
+                            <div id="bioEditor" style="height: 200px;"></div>
+                            <input type="hidden" id="bioInitialContent" value="{{{authUser.bio}}}" />
+                            <input type="hidden" name="bio" value="" />
                         </div>
 
                         <div class="d-flex justify-content-between">
