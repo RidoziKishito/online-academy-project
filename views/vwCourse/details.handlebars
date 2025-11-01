@@ -224,7 +224,7 @@
                         {{#if this.is_previewable}}
                           <a href="javascript:void(0)"
                             class="preview-btn text-decoration-none text-dark me-2"
-                            data-video="{{getYouTubeEmbedUrl this.video_url}}">
+                            data-video="{{#if (isYouTube this.video_url)}}{{getYouTubeEmbedUrl this.video_url}}{{else}}{{this.video_url}}{{/if}}">
                             {{this.order_index}}. {{this.title}}
                             <span class="badge bg-success ms-2 small">Preview</span>
                           </a>
@@ -445,28 +445,11 @@ document.addEventListener('DOMContentLoaded', function () {
     setTimeout(() => document.querySelector('.alert')?.remove(), 5000);
   }
 
-  /* ---------- Video preview ---------- */
-  (function initVideoPreview() {
-    const previewBtns = document.querySelectorAll('.preview-btn');
-    const videoModalEl = document.getElementById('videoModal');
-    const videoIframe = document.getElementById('previewVideo');
-    if (!previewBtns.length || !videoModalEl || !videoIframe) return;
-
-    previewBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
-        const url = btn.dataset.video;
-        if (!url) return;
-        videoIframe.src = url.includes('?') ? url + '&autoplay=1' : url + '?autoplay=1';
-        const myModal = new bootstrap.Modal(videoModalEl);
-        myModal.show();
-      });
-    });
-
-    videoModalEl.addEventListener('hidden.bs.modal', () => {
-      // stop video playback
-      videoIframe.src = '';
-    });
-  })();
+  /* ---------- Video preview is handled globally in layouts/main.handlebars ---------- */
+  // The global script attaches click handlers to `.preview-btn` and manages
+  // the modal `#videoModal` for both YouTube (iframe) and local <video> URLs.
+  // This page only provides the markup: links with `data-video` and the
+  // global modal exists in the layout. No per-page init needed here.
 
   /* ---------- Wishlist toggle ---------- */
   (function initWishlist() {

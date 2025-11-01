@@ -177,15 +177,14 @@ app.engine('handlebars', engine({
         minute: '2-digit'
       });
     },
+    // Unified duration formatter: returns H:MM:SS (if hours > 0) or M:SS
     format_duration(seconds) {
-      if (!seconds) return '0 min';
-      const hours = Math.floor(seconds / 3600);
-      const minutes = Math.floor((seconds % 3600) / 60);
-
-      if (hours > 0) {
-        return `${hours}h ${minutes}m`;
-      }
-      return `${minutes} min`;
+      seconds = Number(seconds) || 0;
+      const h = Math.floor(seconds / 3600);
+      const m = Math.floor((seconds % 3600) / 60);
+      const s = seconds % 60;
+      if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+      return `${m}:${String(s).padStart(2,'0')}`;
     },
     eq(a, b) {
       return a === b;
