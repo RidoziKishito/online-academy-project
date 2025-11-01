@@ -1,5 +1,6 @@
 import express from 'express';
 import passport, { GOOGLE_ENABLED } from '../utils/passport.js';
+import * as userModel from '../models/user.model.js';
 
 const router = express.Router();
 
@@ -19,6 +20,13 @@ router.get('/google', ensureGoogleEnabled, passport.authenticate('google', { sco
 router.get('/google/callback', ensureGoogleEnabled,
   passport.authenticate('google', { failureRedirect: '/account/signin?error=oauth' }),
   (req, res) => {
+    // Block banned accounts
+    const ban = userModel.isCurrentlyBanned(req.user);
+    if (ban.banned) {
+      const msg = ban.permanent ? 'Account is permanently banned.' : `Account is temporarily banned until ${new Date(ban.until).toLocaleString()}`;
+      return res.redirect(`/account/signin?error=ban&msg=${encodeURIComponent(msg)}`);
+    }
+
     // On success, persist session flags similar to local signin
     req.session.isAuthenticated = true;
     req.session.authUser = req.user;

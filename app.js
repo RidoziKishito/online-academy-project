@@ -20,7 +20,7 @@ dotenv.config();
 import { testEmailConfig } from './utils/mailer.js';
 testEmailConfig();
 // Import Middlewares
-import { restrict, isAdmin, isInstructor, isStudent } from './middlewares/auth.mdw.js';
+import { restrict, isAdmin, isInstructor, isStudent, enforceNotBanned } from './middlewares/auth.mdw.js';
 // Import Models (chỉ cần cho middleware)
 import * as categoryModel from './models/category.model.js';
 import * as viewModel from './models/views.model.js';
@@ -418,6 +418,9 @@ app.use(function (req, res, next) {
   res.locals.currentYear = new Date().getFullYear();
   next();
 });
+
+// Block banned users early for any subsequent route
+app.use(enforceNotBanned);
 
 // Provide Supabase configuration to templates
 app.use(function (req, res, next) {

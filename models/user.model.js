@@ -62,6 +62,33 @@ export function findAllFiltered(filters = {}) {
     const verified = filters.isVerified === 'true' || filters.isVerified === true;
     q = q.where('is_verified', verified);
   }
+
+  // Optional filter: banned status
+  if (filters.isBanned !== null && filters.isBanned !== undefined) {
+    const banned = filters.isBanned === 'true' || filters.isBanned === true;
+    if (banned) {
+      // Consider currently banned: is_banned = true AND (banned_until IS NULL OR banned_until > now())
+      q = q.where('is_banned', true)
+           .andWhere(function() {
+             this.whereNull('banned_until').orWhere('banned_until', '>', db.fn.now());
+           });
+    } else {
+      // Not currently banned: is_banned = false OR (is_banned = true AND banned_until <= now())
+      q = q.andWhere(function() {
+        this.where('is_banned', false)
+            .orWhere(function() {
+              this.where('is_banned', true).andWhereNotNull('banned_until').andWhere('banned_until', '<=', db.fn.now());
+            });
+      });
+    }
+  }
+
+  // Partial email search (case-insensitive)
+  if (filters.emailQuery) {
+    const like = `%${filters.emailQuery}%`;
+    // Use ILIKE for Postgres (case-insensitive)
+    q = q.where('email', 'ilike', like);
+  }
   
   q = q.orderBy('user_id', 'asc');
   
@@ -81,6 +108,29 @@ export function countAllFiltered(filters = {}) {
   if (filters.isVerified !== null && filters.isVerified !== undefined) {
     const verified = filters.isVerified === 'true' || filters.isVerified === true;
     q = q.where('is_verified', verified);
+  }
+
+  if (filters.isBanned !== null && filters.isBanned !== undefined) {
+    const banned = filters.isBanned === 'true' || filters.isBanned === true;
+    if (banned) {
+      q = q.where('is_banned', true)
+           .andWhere(function() {
+             this.whereNull('banned_until').orWhere('banned_until', '>', db.fn.now());
+           });
+    } else {
+      q = q.andWhere(function() {
+        this.where('is_banned', false)
+            .orWhere(function() {
+              this.where('is_banned', true).andWhereNotNull('banned_until').andWhere('banned_until', '<=', db.fn.now());
+            });
+      });
+    }
+  }
+
+  // Partial email search for count as well
+  if (filters.emailQuery) {
+    const like = `%${filters.emailQuery}%`;
+    q = q.where('email', 'ilike', like);
   }
   
   return q.count('user_id as total')
@@ -166,4 +216,44 @@ export function verifyEmail(userId) {
       otp_secret: null,
       otp_expires_at: null
     });
+}
+
+// ===== Ban / Unban helpers =====
+export function banUser(userId, { permanent = false, until = null, reason = null, adminId = null } = {}) {
+  const patch = {
+    is_banned: true,
+    banned_at: db.fn.now(),
+    banned_by: adminId,
+    ban_reason: reason || null,
+    banned_until: permanent ? null : until
+  };
+  return db(TABLE_NAME).where('user_id', userId).update(patch);
+}
+
+export function unbanUser(userId) {
+  return db(TABLE_NAME).where('user_id', userId).update({
+    is_banned: false,
+    banned_until: null,
+    ban_reason: null,
+    banned_by: null,
+    banned_at: null
+  });
+}
+
+export function getBanInfoById(userId) {
+  return db(TABLE_NAME).select('is_banned', 'banned_until', 'ban_reason', 'banned_by', 'banned_at').where('user_id', userId).first();
+}
+
+export function isCurrentlyBanned(userRow) {
+  if (!userRow) return { banned: false };
+  const { is_banned, banned_until } = userRow;
+  if (!is_banned) return { banned: false };
+  if (!banned_until) return { banned: true, permanent: true };
+  const now = new Date();
+  const until = new Date(banned_until);
+  if (until > now) {
+    return { banned: true, permanent: false, until };
+  }
+  // expired temporary ban
+  return { banned: false };
 }

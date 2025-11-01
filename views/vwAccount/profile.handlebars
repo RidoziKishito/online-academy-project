@@ -42,6 +42,7 @@
   </div>
 </form>
 
+{{#fillContent 'js'}}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
   const form = document.getElementById('profileForm');
@@ -51,12 +52,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
   if (!form) return;
 
-  // Email format check
   function isValidEmail(email) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   }
 
-  // Show alert with SweetAlert or fallback
   function showAlert(icon, title, text) {
     if (window.Swal)
       Swal.fire({ icon, title, text });
@@ -86,13 +85,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // Validate and submit via AJAX
   form.addEventListener('submit', async function (e) {
-    e.preventDefault(); // Prevent page reload
+    e.preventDefault();
 
     const fullName = document.getElementById('txtName').value.trim();
     const email = document.getElementById('txtEmail').value.trim();
     const avt_url = document.getElementById('txtAvatar').value.trim();
 
-    // Validate input
     if (!fullName || !email) {
       showAlert('error', 'Missing Information', 'Full name and email are required.');
       return;
@@ -123,3 +121,4 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 });
 </script>
+{{/fillContent}}

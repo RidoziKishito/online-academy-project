@@ -156,6 +156,25 @@ footer a:hover {
     width: 8px;
 }
 
+/* Admin Accounts: nicer search input group */
+.account-search-group .btn.btn-icon {
+    padding: 0.375rem 0.5rem;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.account-search-group .btn {
+    border-radius: 0; /* unify with input-group */
+}
+.account-search-group .input-group-text {
+    background-color: #fff;
+}
+.account-search-group .btn:last-child {
+    border-top-right-radius: 0.375rem;
+    border-bottom-right-radius: 0.375rem;
+}
+
 ::-webkit-scrollbar-thumb {
     background-color: var(--green-primary);
     border-radius: 4px;

@@ -1,5 +1,6 @@
 import * as courseModel from '../models/courses.model.js';
 import * as enrollModel from '../models/enrollment.model.js'
+import * as userModel from '../models/user.model.js'
 
 export function restrict(req, res, next) {
   if (req.session.isAuthenticated) {
@@ -7,6 +8,40 @@ export function restrict(req, res, next) {
   }
   req.session.retUrl = req.originalUrl;
   res.redirect('/account/signin');
+}
+
+// Enforce that the current session user is not banned (permanent or currently active temp ban)
+export async function enforceNotBanned(req, res, next) {
+  try {
+    if (!req.session.isAuthenticated || !req.session.authUser) return next();
+    const userId = req.session.authUser.user_id;
+    const fresh = await userModel.findById(userId);
+    if (!fresh) {
+      // user no longer exists; force signout
+      req.session.isAuthenticated = false;
+      req.session.authUser = null;
+      return res.status(403).render('403');
+    }
+
+    const info = userModel.isCurrentlyBanned(fresh);
+    if (!info.banned) return next();
+
+    // Destroy session and block access
+    req.session.isAuthenticated = false;
+    req.session.authUser = null;
+
+    const isJson = req.xhr || req.headers.accept?.includes('application/json');
+    if (isJson) {
+      return res.status(403).json({
+        ok: false,
+        error: info.permanent ? 'Account is permanently banned.' : `Account is temporarily banned until ${new Date(info.until).toLocaleString()}`
+      });
+    }
+    return res.status(403).render('403');
+  } catch (err) {
+    console.error(err);
+    return res.status(500).render('500');
+  }
 }
 
 /**

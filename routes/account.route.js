@@ -17,7 +17,13 @@ const resetLimiter = rateLimit({ windowMs: 60 * 1000, max: 10 });
 
 router.get('/signin', (req, res) => {
   if (req.query.ret) req.session.retUrl = req.query.ret;
-  res.render('vwAccount/signin', { error: false});
+  const { error, msg } = req.query;
+  const vm = { error: false };
+  if (error === 'ban') {
+    vm.error = true;
+    vm.banMessage = msg || 'Your account is banned.';
+  }
+  res.render('vwAccount/signin', vm);
 });
 
 router.post('/signup', signupLimiter, recaptcha.middleware.verify, async (req, res) => {
@@ -75,11 +81,10 @@ router.post('/signup', signupLimiter, recaptcha.middleware.verify, async (req, r
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
     await userModel.setResetToken(email, token, expiresAt);
 
-    try {
-      await sendVerifyEmail(email, token, fullName);
-    } catch (emailError) {
-      logger.error({ err: emailError, email }, 'Failed to send verification email');
-      // still let user proceed to verification page; they can request resend
+    const emailSent = await sendVerifyEmail(email, token, fullName);
+    if (!emailSent) {
+      logger.warn({ email }, 'Failed to send verification email - user can request resend');
+      // Still let user proceed to verification page; they can request resend
     }
 
     // Render verify email page
@@ -146,6 +151,16 @@ router.post('/signin', signinLimiter, async (req, res) => {
     const msg = 'Your email is not verified.';
     if (isJson) return res.status(403).json({ error: true, message: msg });
     return res.render('vwAccount/verify-email', { email: user.email, error: msg });
+  }
+
+  // Kiểm tra trạng thái bị ban
+  const banInfo = userModel.isCurrentlyBanned(user);
+  if (banInfo.banned) {
+    const msg = banInfo.permanent
+      ? 'Your account has been permanently banned.'
+      : `Your account is temporarily banned until ${new Date(banInfo.until).toLocaleString()}.`;
+    if (isJson) return res.status(403).json({ error: true, message: msg, banned: true, permanent: !!banInfo.permanent, until: banInfo.until || null });
+    return res.render('vwAccount/signin', { error: true, banMessage: msg, oldData: { email } });
   }
 
   // Lưu session
@@ -265,13 +280,12 @@ router.post('/profile', restrict, async (req, res) => {
       await userModel.setResetToken(email, token, expiresAt);
     
       // Send email with token
-      try {
-        await sendResetEmail(email, token, user.full_name);
-      } catch (emailError) {
-        logger.error({ err: emailError, email }, 'Failed to send reset email');
+      const emailSent = await sendResetEmail(email, token, user.full_name);
+      if (!emailSent) {
+        logger.error({ email }, 'Failed to send reset email');
         return res.json({
           success: false,
-          message: 'Failed to send reset email. Please try again later.'
+          message: 'Failed to send reset email. Please try again later or contact support.'
         });
       }
     
@@ -414,15 +428,16 @@ router.post('/resend-verification', async (req, res) => {
     const token = Math.random().toString(36).substring(2, 10).toUpperCase();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
     await userModel.setResetToken(email, token, expiresAt);
-    try {
-      await sendVerifyEmail(email, token, user.full_name);
-    } catch (emailError) {
-      logger.error({ err: emailError, email }, 'Resend verification email failed');
+    
+    const emailSent = await sendVerifyEmail(email, token, user.full_name);
+    if (!emailSent) {
+      logger.error({ email }, 'Resend verification email failed');
       if (req.headers.accept?.includes('application/json')) {
-        return res.json({ success: false, message: 'Failed to send verification email. Try again later.' });
+        return res.json({ success: false, message: 'Failed to send verification email. Email service may be unavailable.' });
       }
-      return res.render('vwAccount/verify-email', { email, error: 'Failed to send verification email. Try again later.' });
+      return res.render('vwAccount/verify-email', { email, error: 'Failed to send verification email. Email service may be unavailable.' });
     }
+    
     if (req.headers.accept?.includes('application/json')) {
       return res.json({ success: true });
     }

@@ -426,8 +426,9 @@
 </div>
 
 
-<!-- Note: global preview video modal is expected to exist on page (id="videoModal" and iframe id="previewVideo") -->
+{{#fillContent 'js'}}
 <script>
+// Note: global preview video modal is expected to exist on page (id="videoModal" and iframe id="previewVideo")
 document.addEventListener('DOMContentLoaded', function () {
   /* ---------- Helpers ---------- */
   function showAlert(message, type = 'success') {
@@ -663,19 +664,16 @@ document.addEventListener('DOMContentLoaded', function () {
 }); // DOMContentLoaded
 </script>
 
-
 <script>
-  // Tính view
-document.addEventListener("DOMContentLoaded", () => {
-  const courseId = "{{course.id}}"; // hoặc course.id tùy DB bạn
-  // Đợi 30 giây rồi mới tính view
+// Course view counting after delay
+document.addEventListener('DOMContentLoaded', () => {
+  const courseId = '{{course.id}}';
   setTimeout(() => {
-    fetch(`/courses/view/${courseId}`, {
-      method: "POST"
-    });
+    fetch(`/courses/view/${courseId}`, { method: 'POST' });
   }, 15000);
 });
 </script>
+{{/fillContent}}
 
 
 <style>

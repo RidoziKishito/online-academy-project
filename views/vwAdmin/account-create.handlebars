@@ -1,37 +1,32 @@
-{{!-- Admin Account Edit Only --}}
+{{!-- Admin Account Create --}}
 <div class="container py-4">
   <div class="card">
     <div class="card-header">
-      <h4 class="mb-0">Edit Account</h4>
+      <h4 class="mb-0">Create Account</h4>
     </div>
     <div class="card-body">
-      <form id="adminAccountForm" method="post" action="/admin/accounts/edit/{{user.user_id}}">
-        <input type="hidden" name="user_id" value="{{user.user_id}}" />
-
-        <div class="mb-3">
-          <label class="form-label">ID</label>
-          <input class="form-control bg-light text-muted" readonly value="{{user.user_id}}">
-        </div>
-
+      <form id="adminCreateAccountForm" method="post" action="/admin/accounts/create">
         <div class="mb-3">
           <label class="form-label">Full name</label>
-          <input name="full_name" class="form-control" value="{{#if oldData.full_name}}{{oldData.full_name}}{{else}}{{#if user}}{{user.full_name}}{{/if}}{{/if}}" required />
+          <input name="full_name" class="form-control {{#if errorMessages.full_name}}is-invalid{{/if}}" value="{{oldData.full_name}}" required />
+          {{#if errorMessages.full_name}}<div class="invalid-feedback">{{errorMessages.full_name.[0]}}</div>{{/if}}
         </div>
 
         <div class="mb-3">
           <label class="form-label">Email</label>
-          <input name="email" type="email" class="form-control" value="{{#if oldData.email}}{{oldData.email}}{{else}}{{#if user}}{{user.email}}{{/if}}{{/if}}" required />
+          <input name="email" type="email" class="form-control {{#if errorMessages.email}}is-invalid{{/if}}" value="{{oldData.email}}" required />
+          {{#if errorMessages.email}}<div class="invalid-feedback">{{errorMessages.email.[0]}}</div>{{/if}}
         </div>
 
         <div class="mb-3">
           <label class="form-label">Password</label>
-          <input name="password" type="password" class="form-control {{#if errorMessages.password}}is-invalid{{/if}}" placeholder="Leave blank to keep current password" />
+          <input name="password" type="password" class="form-control {{#if errorMessages.password}}is-invalid{{/if}}" required />
           {{#if errorMessages.password}}<div class="invalid-feedback">{{errorMessages.password.[0]}}</div>{{/if}}
         </div>
 
         <div class="mb-3">
           <label class="form-label">Confirm Password</label>
-          <input name="confirm_password" type="password" class="form-control {{#if errorMessages.confirm_password}}is-invalid{{/if}}" placeholder="Leave blank to keep current password" />
+          <input name="confirm_password" type="password" class="form-control {{#if errorMessages.confirm_password}}is-invalid{{/if}}" required />
           {{#if errorMessages.confirm_password}}<div class="invalid-feedback">{{errorMessages.confirm_password.[0]}}</div>{{/if}}
         </div>
 
@@ -39,13 +34,13 @@
           <label class="form-label">Role</label>
           <select name="role" class="form-select">
             {{#each role}}
-              <option value="{{this}}" {{#if ../oldData.role}}{{#if (eq this ../oldData.role)}}selected{{/if}}{{else}}{{#if ../user}}{{#if (eq this ../user.role)}}selected{{/if}}{{/if}}{{/if}}>{{this}}</option>
+              <option value="{{this}}" {{#if (eq this ../oldData.role)}}selected{{/if}}>{{this}}</option>
             {{/each}}
           </select>
         </div>
 
         <div class="d-flex gap-2">
-          <button class="btn btn-primary" type="submit">Save</button>
+          <button class="btn btn-primary" type="submit">Create</button>
           <a class="btn btn-outline-secondary" href="/admin/accounts">Cancel</a>
         </div>
       </form>
@@ -56,7 +51,7 @@
 {{#fillContent "js"}}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-  const form = document.getElementById('adminAccountForm');
+  const form = document.getElementById('adminCreateAccountForm');
   if (!form) return;
 
   function showAlert(icon, title, text) {
@@ -71,24 +66,22 @@ document.addEventListener('DOMContentLoaded', function () {
   form.addEventListener('submit', async function (e) {
     e.preventDefault();
 
-    const user_id = form.querySelector('input[name="user_id"]').value.trim();
     const full_name = form.querySelector('input[name="full_name"]').value.trim();
     const email = form.querySelector('input[name="email"]').value.trim();
     const password = form.querySelector('input[name="password"]').value;
     const confirm_password = form.querySelector('input[name="confirm_password"]').value;
     const role = form.querySelector('select[name="role"]').value;
 
-    // Client-side validation for edit only
     if (!full_name || !email) {
       return showAlert('error', 'Missing information', 'Full name and email are required.');
     }
     if (!isValidEmail(email)) {
       return showAlert('error', 'Invalid email', 'Please enter a valid email address.');
     }
-    if (password && password.length < 6) {
-      return showAlert('error', 'Weak password', 'New password must be at least 6 characters.');
+    if (!password || password.length < 6) {
+      return showAlert('error', 'Weak password', 'Password must be at least 6 characters.');
     }
-    if (password && password !== confirm_password) {
+    if (password !== confirm_password) {
       return showAlert('error', 'Password mismatch', 'Confirm password does not match.');
     }
 
@@ -96,15 +89,20 @@ document.addEventListener('DOMContentLoaded', function () {
       const res = await fetch(form.action, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id, full_name, email, password, confirm_password, role })
+        body: JSON.stringify({ full_name, email, password, confirm_password, role })
       });
 
       const result = await res.json();
 
       if (res.ok && result.success) {
-        showAlert('success', 'Success', result.message || 'Account saved successfully.');
+        if (result.warning) {
+          await showAlert('warning', 'Success with Warning', result.message || 'Account created, but there was an issue sending the email.');
+        } else {
+          await showAlert('success', 'Success', result.message || 'Account created successfully.');
+        }
+        window.location.href = '/admin/accounts';
       } else {
-        showAlert('error', 'Error', result.message || 'Unable to save account.');
+        showAlert('error', 'Error', result.message || 'Unable to create account.');
       }
     } catch (err) {
       showAlert('error', 'Connection error', 'Could not send data to the server.');
