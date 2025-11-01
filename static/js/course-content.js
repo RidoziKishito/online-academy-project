@@ -36,6 +36,128 @@
         return url.includes('youtube.com') || url.includes('youtu.be');
     }
 
+    // Extract YouTube video ID from various URL formats
+    function getYouTubeId(raw) {
+        if (!raw) return '';
+        try {
+            const url = new URL(raw.trim());
+            const host = url.hostname.replace('www.', '');
+            if (host.includes('youtube.com')) {
+                if (url.pathname.startsWith('/embed/')) return url.pathname.split('/embed/')[1].split(/[?&#]/)[0];
+                return url.searchParams.get('v') || '';
+            }
+            if (host === 'youtu.be') {
+                return url.pathname.slice(1).split(/[?&#]/)[0];
+            }
+            return '';
+        } catch (e) {
+            // Fallback quick parse
+            if (raw.includes('youtu.be/')) return raw.split('youtu.be/')[1].split(/[?&#]/)[0];
+            if (raw.includes('youtube.com/embed/')) return raw.split('embed/')[1].split(/[?&#]/)[0];
+            const m = raw.match(/[?&]v=([^&#]+)/);
+            return m ? m[1] : '';
+        }
+    }
+
+    // Lazy-load YouTube IFrame API
+    let ytApiPromise = null;
+    function loadYouTubeApi() {
+        if (window.YT && window.YT.Player) return Promise.resolve();
+        if (ytApiPromise) return ytApiPromise;
+        ytApiPromise = new Promise((resolve) => {
+            const tag = document.createElement('script');
+            tag.src = 'https://www.youtube.com/iframe_api';
+            document.head.appendChild(tag);
+            const prev = window.onYouTubeIframeAPIReady;
+            window.onYouTubeIframeAPIReady = function() {
+                if (typeof prev === 'function') prev();
+                resolve();
+            };
+        });
+        return ytApiPromise;
+    }
+
+    // Try to get duration (in seconds) from a YouTube URL via IFrame API
+    async function getYouTubeDurationSeconds(url) {
+        const id = getYouTubeId(url);
+        if (!id) return 0;
+        try {
+            await loadYouTubeApi();
+        } catch {
+            return 0;
+        }
+        return new Promise((resolve) => {
+            const container = document.createElement('div');
+            container.style.cssText = 'position:absolute;left:-9999px;width:0;height:0;overflow:hidden;';
+            document.body.appendChild(container);
+            let resolved = false;
+            const finish = (sec) => {
+                if (resolved) return;
+                resolved = true;
+                try { player && player.destroy && player.destroy(); } catch {}
+                container.remove();
+                resolve(Math.round(sec || 0));
+            };
+
+            let player = new YT.Player(container, {
+                videoId: id,
+                events: {
+                    onReady: () => {
+                        // Attempt immediate read; if 0, cue and wait briefly
+                        let d = 0;
+                        try { d = player.getDuration() || 0; } catch {}
+                        if (d > 0) return finish(d);
+                        try { player.cueVideoById(id); } catch {}
+                        setTimeout(() => {
+                            try { d = player.getDuration() || 0; } catch {}
+                            finish(d);
+                        }, 1200);
+                    },
+                    onError: () => finish(0)
+                }
+            });
+
+            // Safety timeout
+            setTimeout(() => finish(0), 6000);
+        });
+    }
+
+    // For non-YouTube URLs: create a temp <video> to read metadata
+    function getHtmlVideoDurationSeconds(url) {
+        return new Promise((resolve) => {
+            const v = document.createElement('video');
+            v.preload = 'metadata';
+            v.muted = true;
+            const done = (sec) => {
+                v.src = '';
+                resolve(Math.round(sec || 0));
+            };
+            v.addEventListener('loadedmetadata', () => done(v.duration || 0), { once: true });
+            v.addEventListener('error', () => done(0), { once: true });
+            v.src = url;
+        });
+    }
+
+    async function autoFillDurationIfPossible(lessonEl, url) {
+        if (!lessonEl || !url) return;
+        const durInput = lessonEl.querySelector('.lesson-duration');
+        if (!durInput) return;
+        // Don't override if user already set a positive duration
+        const current = Number(durInput.value || 0);
+        if (current > 0) return;
+        let seconds = 0;
+        try {
+            if (isYouTube(url)) seconds = await getYouTubeDurationSeconds(url);
+            else seconds = await getHtmlVideoDurationSeconds(url);
+        } catch {
+            seconds = 0;
+        }
+        if (Number.isFinite(seconds) && seconds > 0) {
+            durInput.value = String(Math.round(seconds));
+            setUnsavedChanges(true);
+        }
+    }
+
     function renderPreview(box, url) {
         if (!url) {
             box.innerHTML = `<div class="video-preview rounded d-flex align-items-center justify-content-center bg-light"><span class="text-muted">No preview available</span></div>`;
@@ -425,6 +547,8 @@
                     if (videoInput) videoInput.value = url;
                     const box = lessonEl.querySelector('.video-preview-box');
                     renderPreview(box, url);
+                    // Try to auto-detect duration for uploaded videos
+                    autoFillDurationIfPossible(lessonEl, url);
                     setUnsavedChanges(true);
                     if (window.Swal) Swal.fire({ icon: 'success', title: 'Upload complete', text: 'The video has been uploaded.' });
                 } catch (err) {
@@ -434,6 +558,27 @@
                     e.target.value = '';
                 }
             });
+        }
+
+        // When YouTube URL changes, try to auto-detect duration
+        const urlInput = lessonEl.querySelector('.lesson-video');
+        if (urlInput) {
+            urlInput.addEventListener('change', () => {
+                const url = urlInput.value && urlInput.value.trim();
+                if (url) autoFillDurationIfPossible(lessonEl, url);
+            });
+            urlInput.addEventListener('blur', () => {
+                const url = urlInput.value && urlInput.value.trim();
+                if (url) autoFillDurationIfPossible(lessonEl, url);
+            });
+            // Initial attempt on load if value exists and duration is 0
+            const initial = urlInput.value && urlInput.value.trim();
+            const durInput = lessonEl.querySelector('.lesson-duration');
+            const current = Number(durInput && durInput.value || 0);
+            if (initial && (!Number.isFinite(current) || current <= 0)) {
+                // Delay slightly to avoid jank during initial render
+                setTimeout(() => autoFillDurationIfPossible(lessonEl, initial), 300);
+            }
         }
     }
 
