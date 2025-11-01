@@ -9,7 +9,7 @@
     </div>
     <div class="card-body">
       <form method="get" action="/admin/accounts" class="row g-3 mb-3" id="filterForm">
-        <div class="col-md-6">
+        <div class="col-md-4">
           <label for="roleFilter" class="form-label">Filter by Role</label>
           <select class="form-select" id="roleFilter" name="role">
             <option value="">All Roles</option>
@@ -18,7 +18,7 @@
             {{/each}}
           </select>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-2">
           <label for="verifiedFilter" class="form-label">Filter by Verified</label>
           <select class="form-select" id="verifiedFilter" name="is_verified">
             <option value="">All</option>
@@ -26,13 +26,22 @@
             <option value="false" {{#if (eq currentVerified 'false')}}selected{{/if}}>Not Verified</option>
           </select>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-2">
           <label for="bannedFilter" class="form-label">Filter by Banned</label>
           <select class="form-select" id="bannedFilter" name="is_banned">
             <option value="">All</option>
             <option value="true" {{#if (eq currentBanned 'true')}}selected{{/if}}>Banned</option>
             <option value="false" {{#if (eq currentBanned 'false')}}selected{{/if}}>Not Banned</option>
           </select>
+        </div>
+        <div class="col-md-4">
+          <label for="emailSearch" class="form-label">Search by Email</label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input type="text" class="form-control" id="emailSearch" name="q" placeholder="Enter partial email (e.g. @gmail, john)" value="{{currentSearch}}" />
+            <button type="submit" class="btn btn-outline-secondary">Search</button>
+            <button type="button" id="clearSearch" class="btn btn-outline-danger" title="Clear search">&times;</button>
+          </div>
         </div>
       </form>
     </div>
@@ -116,19 +125,19 @@
         <nav aria-label="Accounts pagination">
           <ul class="pagination pagination-sm mb-0" id="paginationControls">
             <li class="page-item {{#if (eq pagination.currentPage 1)}}disabled{{/if}}">
-              <a class="page-link" href="#" data-page="{{subtract pagination.currentPage 1}}">Previous</a>
+              <a class="page-link" href="/admin/accounts?page={{subtract pagination.currentPage 1}}{{#if currentRole}}&role={{currentRole}}{{/if}}{{#if currentVerified}}&is_verified={{currentVerified}}{{/if}}{{#if currentBanned}}&is_banned={{currentBanned}}{{/if}}{{#if currentSearch}}&q={{currentSearch}}{{/if}}" data-page="{{subtract pagination.currentPage 1}}">Previous</a>
             </li>
             {{#each (generatePages pagination.currentPage pagination.totalPages)}}
               {{#if (eq this '...')}}
                 <li class="page-item disabled"><span class="page-link">...</span></li>
               {{else}}
                 <li class="page-item {{#if (eq this ../pagination.currentPage)}}active{{/if}}">
-                  <a class="page-link" href="#" data-page="{{this}}">{{this}}</a>
+                  <a class="page-link" href="/admin/accounts?page={{this}}{{#if ../currentRole}}&role={{../currentRole}}{{/if}}{{#if ../currentVerified}}&is_verified={{../currentVerified}}{{/if}}{{#if ../currentBanned}}&is_banned={{../currentBanned}}{{/if}}{{#if ../currentSearch}}&q={{../currentSearch}}{{/if}}" data-page="{{this}}">{{this}}</a>
                 </li>
               {{/if}}
             {{/each}}
             <li class="page-item {{#if (eq pagination.currentPage pagination.totalPages)}}disabled{{/if}}">
-              <a class="page-link" href="#" data-page="{{add pagination.currentPage 1}}">Next</a>
+              <a class="page-link" href="/admin/accounts?page={{add pagination.currentPage 1}}{{#if currentRole}}&role={{currentRole}}{{/if}}{{#if currentVerified}}&is_verified={{currentVerified}}{{/if}}{{#if currentBanned}}&is_banned={{currentBanned}}{{/if}}{{#if currentSearch}}&q={{currentSearch}}{{/if}}" data-page="{{add pagination.currentPage 1}}">Next</a>
             </li>
           </ul>
         </nav>
@@ -375,9 +384,59 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 
+  // Debounced email search
+  const emailInput = document.getElementById('emailSearch');
+  if (emailInput) {
+    let timer = null;
+    emailInput.addEventListener('input', function() {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => loadUsers(1), 400);
+    });
+    emailInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        loadUsers(1);
+      }
+    });
+  }
+
+  // Clear search
+  const clearBtn = document.getElementById('clearSearch');
+  if (clearBtn && emailInput) {
+    clearBtn.addEventListener('click', function() {
+      emailInput.value = '';
+      loadUsers(1);
+    });
+  }
+
   // init
   attachPaginationHandlers();
   attachActionHandlers();
+
+  // Flash messages via query params
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const success = params.get('success');
+    const promoted = params.get('promoted');
+    if (success === 'created') {
+      Swal.fire({ icon: 'success', title: 'Account created', timer: 1400, showConfirmButton: false });
+    } else if (success === 'updated') {
+      const title = promoted === '1' ? 'Account updated • Promoted to Instructor' : 'Account updated';
+      Swal.fire({ icon: 'success', title, timer: 1400, showConfirmButton: false });
+    } else if (params.get('error') === 'email_exists') {
+      Swal.fire({ icon: 'error', title: 'Email already exists', text: 'Please use another email or edit the existing account.' });
+    } else if (params.get('error') === 'not_found') {
+      Swal.fire({ icon: 'error', title: 'User not found' });
+    }
+    // Clean URL to avoid repeated toasts on refresh
+    if (success || promoted || params.get('error')) {
+      const url = new URL(window.location.href);
+      ['success','promoted','error'].forEach(k => url.searchParams.delete(k));
+      window.history.replaceState({}, '', url.toString());
+    }
+  } catch (e) {
+    // no-op
+  }
 });
 </script>
 {{/fillContent}}

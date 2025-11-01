@@ -2,7 +2,7 @@ import express from 'express';
 import * as userModel from '../models/user.model.js';
 import { restrict, isAdmin } from '../middlewares/auth.mdw.js';
 import bcrypt from 'bcrypt';
-import { sendInstructorAccountEmail } from '../utils/mailer.js';
+import { sendInstructorAccountEmail, sendInstructorPromotionEmail } from '../utils/mailer.js';
 import logger from '../utils/logger.js';
 
 const router = express.Router();
@@ -18,6 +18,7 @@ router.get('/', restrict, isAdmin, async (req, res, next) => {
       role: req.query.role || null,
       isVerified: req.query.is_verified || null,
       isBanned: req.query.is_banned || null,
+      emailQuery: (req.query.q && String(req.query.q).trim()) || null,
       limit,
       offset
     };
@@ -43,6 +44,7 @@ router.get('/', restrict, isAdmin, async (req, res, next) => {
       currentRole: filters.role,
       currentVerified: filters.isVerified,
       currentBanned: filters.isBanned,
+      currentSearch: filters.emailQuery,
       pagination: { currentPage: page, totalPages, totalItems: total, limit }
     });
   } catch (err) {
@@ -80,7 +82,6 @@ router.get('/edit', restrict, isAdmin, async (req, res) => {
   return res.redirect(`/admin/accounts/edit/${id}`);
 });
 
-// patch (create or update)
 // create user
 router.post('/create', restrict, isAdmin, async (req, res, next) => {
   try {
@@ -150,6 +151,9 @@ router.post('/edit/:id', restrict, isAdmin, async (req, res, next) => {
       return res.redirect('/admin/accounts?error=not_found');
     }
 
+    // Detect promotion: specifically from student -> instructor
+    const isPromotionToInstructor = String(current.role) === 'student' && String(role) === 'instructor';
+
     const patchData = { full_name, email, role };
     if (password && password.trim().length > 0) {
       patchData.password_hash = await bcrypt.hash(password, 10);
@@ -166,8 +170,27 @@ router.post('/edit/:id', restrict, isAdmin, async (req, res, next) => {
       throw e;
     }
 
-    if (isJson) return res.json({ success: true, message: 'Account updated successfully.' });
-    res.redirect('/admin/accounts');
+    // If promoted to instructor, notify the user via email (best-effort)
+    let warningMessage = null;
+    let promotionNote = '';
+    if (isPromotionToInstructor) {
+      try {
+        const sent = await sendInstructorPromotionEmail(email, full_name);
+        if (sent) {
+          promotionNote = ' Promotion email sent.';
+        } else {
+          warningMessage = 'Account updated. Failed to send promotion email.';
+          logger.warn({ user_id, email }, 'Failed to send instructor promotion email');
+        }
+      } catch (e) {
+        warningMessage = 'Account updated. Failed to send promotion email.';
+        logger.warn({ err: e, user_id, email }, 'Error when sending instructor promotion email');
+      }
+    }
+
+  if (isJson) return res.json({ success: true, message: `Account updated successfully.${promotionNote}`.trim(), warning: !!warningMessage, warningMessage });
+  const redirectUrl = isPromotionToInstructor ? '/admin/accounts?success=updated&promoted=1' : '/admin/accounts?success=updated';
+  res.redirect(redirectUrl);
   } catch (err) {
     logger.error({ err }, 'Account update error');
     if (req.headers['content-type']?.includes('application/json')) {

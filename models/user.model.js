@@ -82,6 +82,13 @@ export function findAllFiltered(filters = {}) {
       });
     }
   }
+
+  // Partial email search (case-insensitive)
+  if (filters.emailQuery) {
+    const like = `%${filters.emailQuery}%`;
+    // Use ILIKE for Postgres (case-insensitive)
+    q = q.where('email', 'ilike', like);
+  }
   
   q = q.orderBy('user_id', 'asc');
   
@@ -118,6 +125,12 @@ export function countAllFiltered(filters = {}) {
             });
       });
     }
+  }
+
+  // Partial email search for count as well
+  if (filters.emailQuery) {
+    const like = `%${filters.emailQuery}%`;
+    q = q.where('email', 'ilike', like);
   }
   
   return q.count('user_id as total')
