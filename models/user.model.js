@@ -249,9 +249,11 @@ export function isCurrentlyBanned(userRow) {
   const { is_banned, banned_until } = userRow;
   if (!is_banned) return { banned: false };
   if (!banned_until) return { banned: true, permanent: true };
-  const now = new Date();
+  
+  // Supabase stores timestamps in GMT+0, so compare directly with UTC now
+  const nowUtc = new Date();
   const until = new Date(banned_until);
-  if (until > now) {
+  if (until > nowUtc) {
     return { banned: true, permanent: false, until };
   }
   // expired temporary ban
