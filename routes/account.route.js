@@ -17,7 +17,13 @@ const resetLimiter = rateLimit({ windowMs: 60 * 1000, max: 10 });
 
 router.get('/signin', (req, res) => {
   if (req.query.ret) req.session.retUrl = req.query.ret;
-  res.render('vwAccount/signin', { error: false});
+  const { error, msg } = req.query;
+  const vm = { error: false };
+  if (error === 'ban') {
+    vm.error = true;
+    vm.banMessage = msg || 'Your account is banned.';
+  }
+  res.render('vwAccount/signin', vm);
 });
 
 router.post('/signup', signupLimiter, recaptcha.middleware.verify, async (req, res) => {
@@ -146,6 +152,16 @@ router.post('/signin', signinLimiter, async (req, res) => {
     const msg = 'Your email is not verified.';
     if (isJson) return res.status(403).json({ error: true, message: msg });
     return res.render('vwAccount/verify-email', { email: user.email, error: msg });
+  }
+
+  // Kiểm tra trạng thái bị ban
+  const banInfo = userModel.isCurrentlyBanned(user);
+  if (banInfo.banned) {
+    const msg = banInfo.permanent
+      ? 'Your account has been permanently banned.'
+      : `Your account is temporarily banned until ${new Date(banInfo.until).toLocaleString()}.`;
+    if (isJson) return res.status(403).json({ error: true, message: msg, banned: true, permanent: !!banInfo.permanent, until: banInfo.until || null });
+    return res.render('vwAccount/signin', { error: true, banMessage: msg, oldData: { email } });
   }
 
   // Lưu session

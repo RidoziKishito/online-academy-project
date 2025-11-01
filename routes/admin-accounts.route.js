@@ -161,4 +161,55 @@ router.post('/delete/:id', restrict, isAdmin, async (req, res, next) => {
   }
 });
 
+// Ban a user (permanently or temporarily)
+router.post('/ban/:id', restrict, isAdmin, async (req, res, next) => {
+  try {
+    const targetId = parseInt(req.params.id);
+    const adminId = req.session.authUser?.user_id;
+    const { type, reason, until, durationHours } = req.body || {};
+
+    const user = await userModel.findById(targetId);
+    if (!user) return res.status(404).json({ ok: false, error: 'User not found' });
+    if (user.role === 'admin') return res.status(400).json({ ok: false, error: "Cannot ban an admin account." });
+
+    let permanent = false;
+    let untilDate = null;
+    if (String(type) === 'permanent') {
+      permanent = true;
+    } else {
+      if (until) {
+        const parsed = new Date(until);
+        if (isNaN(parsed.getTime())) return res.status(400).json({ ok: false, error: 'Invalid until datetime' });
+        untilDate = parsed;
+      } else if (durationHours) {
+        const hours = parseFloat(durationHours);
+        if (isNaN(hours) || hours <= 0) return res.status(400).json({ ok: false, error: 'Invalid duration hours' });
+        untilDate = new Date(Date.now() + hours * 3600 * 1000);
+      } else {
+        return res.status(400).json({ ok: false, error: 'Provide until or durationHours for temporary ban' });
+      }
+    }
+
+    await userModel.banUser(targetId, { permanent, until: untilDate, reason, adminId });
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error('Ban error:', err);
+    return res.status(500).json({ ok: false, error: 'Ban failed' });
+  }
+});
+
+// Unban a user
+router.post('/unban/:id', restrict, isAdmin, async (req, res) => {
+  try {
+    const targetId = parseInt(req.params.id);
+    const user = await userModel.findById(targetId);
+    if (!user) return res.status(404).json({ ok: false, error: 'User not found' });
+    await userModel.unbanUser(targetId);
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error('Unban error:', err);
+    return res.status(500).json({ ok: false, error: 'Unban failed' });
+  }
+});
+
 export default router;

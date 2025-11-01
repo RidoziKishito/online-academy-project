@@ -37,6 +37,7 @@
             <th>Email</th>
             <th>Role</th>
             <th>Verified</th>
+            <th>Ban</th>
             <th class="text-end">Actions</th>
           </tr>
         </thead>
@@ -54,6 +55,17 @@
                 <span class="badge bg-secondary">No</span>
               {{/if}}
             </td>
+            <td>
+              {{#if this.is_banned}}
+                {{#if this.banned_until}}
+                  <span class="badge bg-warning text-dark" title="Until {{format_date this.banned_until}}">Temp</span>
+                {{else}}
+                  <span class="badge bg-danger">Permanent</span>
+                {{/if}}
+              {{else}}
+                <span class="badge bg-success">No</span>
+              {{/if}}
+            </td>
             <td class="text-end">
               {{#if (eq this.role 'student')}}
                 <a class="btn btn-sm btn-outline-info" href="/student/public-profile?id={{this.user_id}}" title="View Profile">
@@ -67,6 +79,15 @@
               <a class="btn btn-sm btn-outline-primary" href="/admin/accounts/edit?id={{this.user_id}}" title="Edit">
                 <i class="bi bi-pencil-square"></i>
               </a>
+              {{#if this.is_banned}}
+                <button type="button" class="btn btn-sm btn-outline-success unban-btn" data-user-id="{{this.user_id}}" data-user-name="{{this.full_name}}">
+                  <i class="bi bi-unlock"></i>
+                </button>
+              {{else}}
+                <button type="button" class="btn btn-sm btn-outline-warning ban-btn" data-user-id="{{this.user_id}}" data-user-name="{{this.full_name}}">
+                  <i class="bi bi-lock"></i>
+                </button>
+              {{/if}}
               <button type="button" class="btn btn-sm btn-danger delete-btn" data-user-id="{{this.user_id}}" data-user-name="{{this.full_name}}" {{#if this.is_verified}}disabled title="Cannot delete verified user"{{/if}}>
                 <i class="bi bi-trash"></i>
               </button>
@@ -133,18 +154,22 @@ document.addEventListener('DOMContentLoaded', function() {
         <td>${u.email || ''}</td>
         <td>${u.role || ''}</td>
         <td>${u.is_verified ? '<span class="badge bg-success">Yes</span>' : '<span class="badge bg-secondary">No</span>'}</td>
+        <td>${u.is_banned ? (u.banned_until ? '<span class="badge bg-warning text-dark">Temp</span>' : '<span class="badge bg-danger">Permanent</span>') : '<span class="badge bg-success">No</span>'}</td>
         <td class="text-end">
           ${getProfileButton(u.role, u.user_id)}
           <a class="btn btn-sm btn-outline-primary" href="/admin/accounts/edit?id=${u.user_id}" title="Edit">
             <i class="bi bi-pencil-square"></i>
           </a>
+          ${u.is_banned
+            ? `<button type="button" class="btn btn-sm btn-outline-success unban-btn" data-user-id="${u.user_id}" data-user-name="${u.full_name || u.email}"><i class="bi bi-unlock"></i></button>`
+            : `<button type="button" class="btn btn-sm btn-outline-warning ban-btn" data-user-id="${u.user_id}" data-user-name="${u.full_name || u.email}"><i class="bi bi-lock"></i></button>`}
           <button type="button" class="btn btn-sm btn-danger delete-btn" data-user-id="${u.user_id}" data-user-name="${u.full_name || u.email}" ${u.is_verified ? 'disabled title="Cannot delete verified user"' : ''}>
             <i class="bi bi-trash"></i>
           </button>
         </td>`;
       tbody.appendChild(tr);
     });
-    attachDeleteHandlers();
+    attachActionHandlers();
   }
 
   function generatePages(currentPage, totalPages) {
@@ -219,7 +244,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  function attachDeleteHandlers() {
+  function attachActionHandlers() {
     document.querySelectorAll('.delete-btn').forEach(btn => {
       btn.addEventListener('click', function() {
         const userId = this.dataset.userId;
@@ -250,6 +275,86 @@ document.addEventListener('DOMContentLoaded', function() {
         });
       });
     });
+
+    // Ban handler
+    document.querySelectorAll('.ban-btn').forEach(btn => {
+      btn.addEventListener('click', async function() {
+        const userId = this.dataset.userId;
+        const userName = this.dataset.userName || userId;
+        const { value: type } = await Swal.fire({
+          title: `Ban ${userName}?`,
+          input: 'select',
+          inputOptions: {
+            temporary: 'Temporary',
+            permanent: 'Permanent'
+          },
+          inputPlaceholder: 'Select ban type',
+          showCancelButton: true
+        });
+        if (!type) return;
+        let payload = { type };
+        if (type === 'temporary') {
+          const { value: hours } = await Swal.fire({
+            title: 'Duration (hours)',
+            input: 'number',
+            inputValue: 24,
+            inputAttributes: { min: 1 },
+            showCancelButton: true
+          });
+          if (!hours) return;
+          payload.durationHours = hours;
+        }
+        const { value: reason } = await Swal.fire({
+          title: 'Reason (optional)',
+          input: 'text',
+          inputPlaceholder: 'Enter reason',
+          showCancelButton: true
+        });
+        payload.reason = reason || null;
+        fetch(`/admin/accounts/ban/${userId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify(payload)
+        }).then(r => r.json()).then(data => {
+          if (data.ok) {
+            Swal.fire({ icon: 'success', title: 'Banned', timer: 1200, showConfirmButton: false });
+            loadUsers(currentPage);
+          } else {
+            Swal.fire({ icon: 'error', title: 'Failed', text: data.error || 'Ban failed' });
+          }
+        }).catch(() => Swal.fire({ icon: 'error', title: 'Error', text: 'Ban failed' }));
+      });
+    });
+
+    // Unban handler
+    document.querySelectorAll('.unban-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const userId = this.dataset.userId;
+        const userName = this.dataset.userName || userId;
+        Swal.fire({
+          title: 'Unban Account?',
+          html: `Unban <strong>${userName}</strong>?`,
+          icon: 'question',
+          showCancelButton: true,
+          confirmButtonText: 'Unban',
+          cancelButtonText: 'Cancel'
+        }).then(res => {
+          if (res.isConfirmed) {
+            fetch(`/admin/accounts/unban/${userId}`, { method: 'POST', headers: { 'Accept': 'application/json' }})
+              .then(r => r.json())
+              .then(data => {
+                if (data.ok) {
+                  Swal.fire({ icon: 'success', title: 'Unbanned', timer: 1200, showConfirmButton: false });
+                  loadUsers(currentPage);
+                } else {
+                  Swal.fire({ icon: 'error', title: 'Failed', text: data.error || 'Unban failed' });
+                }
+              })
+              .catch(() => Swal.fire({ icon: 'error', title: 'Error', text: 'Unban failed' }));
+          }
+        });
+      });
+    });
   }
 
   // Auto-submit form when filters change
@@ -262,7 +367,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // init
   attachPaginationHandlers();
-  attachDeleteHandlers();
+  attachActionHandlers();
 });
 </script>
 {{/fillContent}}
