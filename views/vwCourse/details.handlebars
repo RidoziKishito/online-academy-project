@@ -318,7 +318,10 @@
             <div class="card border-0 shadow-sm rounded-4 h-100">
               <div class="card-body">
                 <div class="d-flex align-items-center mb-3">
-                  <img src="{{this.avatar}}" class="rounded-circle me-3" width="50" height="50" alt="{{this.name}}">
+                  <img src="{{this.avatar}}"
+                  class="rounded-circle me-3 shadow-sm"
+                  alt="{{this.name}}"
+                  style="width:50px; height:50px; object-fit:cover; object-position:center;">
                   <div>
                     <div class="fw-semibold">{{this.name}}</div>
                     <div class="text-warning small">{{{render_stars this.rating}}}</div>
