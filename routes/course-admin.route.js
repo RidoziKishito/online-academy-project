@@ -1,5 +1,4 @@
 import express from 'express';
-// import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
 import * as courseModel from '../models/courses.model.js';
@@ -7,7 +6,7 @@ import * as progressModel from '../models/progress.model.js';
 import * as instructorModel from '../models/instructors.model.js';
 import * as categoryModel from '../models/category.model.js';
 import * as enrollmentModel from '../models/enrollment.model.js';
-import { z } from 'zod'; // Add: Import Zod
+import { z } from 'zod';
 import logger from '../utils/logger.js';
 
 const router = express.Router();
@@ -51,7 +50,6 @@ const courseSchema = z.object({
     z.boolean()
   )
 });
-// -------------------------------------------------------------
 
 
 router.get('/', async (req, res) => {
