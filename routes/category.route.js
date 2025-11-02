@@ -109,24 +109,45 @@ router.post('/del', async (req, res) => {
   if (hasCourses) {
     // If it has courses, do not allow deletion - render edit page with error
     const category = await categoryModel.findById(id);
+    const parentCategories = await categoryModel.findParentCategories();
+    const parentOptions = parentCategories.filter(c => c.category_id !== Number(id));
     return res.render('vwAdminCategory/edit', {
       category: { ...category, catid: category.category_id, catname: category.name },
+      categories: parentOptions,
       error: 'Cannot delete this category because it has courses!'
     });
   }
   
-  // If no courses, allow deletion
+  // Check if the category has child categories (is being used as a parent)
+  const hasChildren = await categoryModel.hasChildCategories(id);
+  
+  if (hasChildren) {
+    // If it has child categories, do not allow deletion
+    const category = await categoryModel.findById(id);
+    const parentCategories = await categoryModel.findParentCategories();
+    const parentOptions = parentCategories.filter(c => c.category_id !== Number(id));
+    return res.render('vwAdminCategory/edit', {
+      category: { ...category, catid: category.category_id, catname: category.name },
+      categories: parentOptions,
+      error: 'Cannot delete this category because it has subcategories!'
+    });
+  }
+  
+  // If no courses and no children, allow deletion
   try {
     await categoryModel.del(id);
     return res.redirect('/admin/categories');
   } catch (err) {
     // Safety net in case of lingering FK constraints
     const category = await categoryModel.findById(id);
+    const parentCategories = await categoryModel.findParentCategories();
+    const parentOptions = parentCategories.filter(c => c.category_id !== Number(id));
     const isFkViolation = err && (err.code === '23503' || String(err.message).includes('foreign key'));
     return res.status(400).render('vwAdminCategory/edit', {
       category: { ...category, catid: category.category_id, catname: category.name },
+      categories: parentOptions,
       error: isFkViolation
-        ? 'Cannot delete this category because it has courses!'
+        ? 'Cannot delete this category because it is referenced by other data!'
         : 'Cannot delete category due to system error, please try again.'
     });
   }

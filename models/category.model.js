@@ -106,6 +106,14 @@ export async function hasCourse(categoryId) {
     .then((row) => Number(row?.count ?? 0) > 0);
 }
 
+export async function hasChildCategories(categoryId) {
+  const row = await db(TABLE_NAME)
+    .where('parent_category_id', categoryId)
+    .count({ count: '*' })
+    .first();
+  return Number(row?.count ?? 0) > 0;
+}
+
 export async function existsByName(name) {
   // Case-insensitive check, trim spaces
   const trimmed = String(name ?? '').trim();
