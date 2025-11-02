@@ -1,45 +1,58 @@
-import { Resend } from 'resend';
+import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 import logger from './logger.js';
 
 dotenv.config();
 
-// Using Resend - modern email API service
-// Free tier: 100 emails/day, 3,000/month
-// Sign up: https://resend.com/
-// Get API key: https://resend.com/api-keys
-
-// Check if email is properly configured
-const isEmailConfigured = process.env.RESEND_API_KEY;
-if (!isEmailConfigured) {
-  logger.warn('RESEND_API_KEY not configured - email features will be disabled');
-}
-
-// Initialize Resend client
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Using nodemailer with Gmail SMTP
+// For Gmail: https://support.google.com/accounts/answer/185833 (App Passwords)
+// SMTP_HOST: smtp.gmail.com
+// SMTP_PORT: 587 (TLS) or 465 (SSL)
 
 // Email configuration
-const EMAIL_FROM = process.env.EMAIL_FROM || process.env.EMAIL_USER || 'onboarding@resend.dev';
+const SMTP_HOST = process.env.SMTP_HOST || 'smtp.gmail.com';
+const SMTP_PORT = parseInt(process.env.SMTP_PORT || '587', 10);
+const SMTP_SECURE = process.env.SMTP_SECURE === 'true'; // true for 465, false for other ports
+const EMAIL_USER = process.env.EMAIL_USER;
+const EMAIL_PASS = process.env.EMAIL_PASS;
+const EMAIL_FROM = process.env.EMAIL_FROM || EMAIL_USER;
 const APP_NAME = process.env.APP_NAME || 'Online Academy';
+
+// Check if email is properly configured
+const isEmailConfigured = EMAIL_USER && EMAIL_PASS;
+if (!isEmailConfigured) {
+  logger.warn('EMAIL_USER or EMAIL_PASS not configured - email features will be disabled');
+}
+
+// Create nodemailer transporter
+const transporter = isEmailConfigured ? nodemailer.createTransport({
+  host: SMTP_HOST,
+  port: SMTP_PORT,
+  secure: SMTP_SECURE,
+  auth: {
+    user: EMAIL_USER,
+    pass: EMAIL_PASS,
+  },
+}) : null;
 
 /**
  * Send email with retry logic and better error handling
- * @param {Object} emailData - Email data with from, to, subject, html
+ * @param {Object} emailData - Email data with from, to, subject, html, text
  * @param {number} maxRetries - Maximum retry attempts (default: 2)
  */
 async function sendMailWithRetry(emailData, maxRetries = 2) {
+  if (!transporter) {
+    throw new Error('Email not configured - missing EMAIL_USER or EMAIL_PASS');
+  }
+  
   let lastError;
   
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      const { data, error } = await resend.emails.send(emailData);
+      const info = await transporter.sendMail(emailData);
       
-      if (error) {
-        throw error;
-      }
-      
-      logger.info({ to: emailData.to, messageId: data.id }, 'Email sent successfully');
-      return data;
+      logger.info({ to: emailData.to, messageId: info.messageId }, 'Email sent successfully');
+      return info;
     } catch (error) {
       lastError = error;
       logger.warn({ 
@@ -51,8 +64,8 @@ async function sendMailWithRetry(emailData, maxRetries = 2) {
       }, `Email send attempt ${attempt} failed`);
       
       // Don't retry on authentication errors
-      if (error.message?.includes('Invalid API key') || error.message?.includes('Unauthorized')) {
-        logger.error({ err: error }, 'Resend API key invalid - check RESEND_API_KEY');
+      if (error.message?.includes('Invalid login') || error.message?.includes('authentication failed')) {
+        logger.error({ err: error }, 'SMTP authentication failed - check EMAIL_USER and EMAIL_PASS');
         throw error;
       }
       
@@ -78,7 +91,7 @@ async function sendMailWithRetry(emailData, maxRetries = 2) {
  */
 export async function sendResetEmail(email, token, fullName = 'User') {
   if (!isEmailConfigured) {
-    logger.warn({ email }, 'Cannot send reset email - RESEND_API_KEY not configured');
+    logger.warn({ email }, 'Cannot send reset email - EMAIL_USER or EMAIL_PASS not configured');
     return false;
   }
   
@@ -153,7 +166,7 @@ export async function sendResetEmail(email, token, fullName = 'User') {
  */
 export async function sendVerifyEmail(email, token, fullName = 'User') {
   if (!isEmailConfigured) {
-    logger.warn({ email }, 'Cannot send verification email - RESEND_API_KEY not configured');
+    logger.warn({ email }, 'Cannot send verification email - EMAIL_USER or EMAIL_PASS not configured');
     return false;
   }
   
@@ -219,14 +232,18 @@ export async function sendVerifyEmail(email, token, fullName = 'User') {
  */
 export async function testEmailConfig() {
   if (!isEmailConfigured) {
-    logger.warn('RESEND_API_KEY not configured - email test skipped');
+    logger.warn('EMAIL_USER or EMAIL_PASS not configured - email test skipped');
     return false;
   }
   
-  // Resend doesn't have a verify method like nodemailer
-  // We just check if API key is configured
-  logger.info('Resend API key configured - email service ready');
-  return true;
+  try {
+    await transporter.verify();
+    logger.info('SMTP connection verified - email service ready');
+    return true;
+  } catch (error) {
+    logger.error({ err: error }, 'SMTP verification failed');
+    return false;
+  }
 }
 
 /**
@@ -238,7 +255,7 @@ export async function testEmailConfig() {
  */
 export async function sendInstructorAccountEmail(email, fullName = 'Instructor', rawPassword) {
   if (!isEmailConfigured) {
-    logger.warn({ email }, 'Cannot send instructor account email - RESEND_API_KEY not configured');
+    logger.warn({ email }, 'Cannot send instructor account email - EMAIL_USER or EMAIL_PASS not configured');
     return false;
   }
   
@@ -310,7 +327,7 @@ export async function sendInstructorAccountEmail(email, fullName = 'Instructor',
  */
 export async function sendInstructorPromotionEmail(email, fullName = 'User') {
   if (!isEmailConfigured) {
-    logger.warn({ email }, 'Cannot send instructor promotion email - RESEND_API_KEY not configured');
+    logger.warn({ email }, 'Cannot send instructor promotion email - EMAIL_USER or EMAIL_PASS not configured');
     return false;
   }
   
