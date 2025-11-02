@@ -65,7 +65,7 @@ const db = knex({
     // (Render free + Supabase pooler often caps concurrent clients)
     pool: {
         min: 0,
-        max: 3,
+        max: 15,
         // Tarn (knex) pool options to fail fast and free idle clients
         acquireTimeoutMillis: 15000,
         idleTimeoutMillis: 10000,
