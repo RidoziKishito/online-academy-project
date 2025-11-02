@@ -56,7 +56,18 @@
             </div>
         </form>
     </div>
-    <table class="table table-hover">
+    <table class="table table-hover" id="adminCoursesTable" style="table-layout:fixed;">
+        <colgroup>
+            <col style="width:6%">
+            <col style="width:26%">
+            <col style="width:14%">
+            <col style="width:12%">
+            <col style="width:10%">
+            <col style="width:8%">
+            <col style="width:8%">
+            <col style="width:6%">
+            <col style="width:10%">
+        </colgroup>
         <thead>
             <tr>
                 <th scope="col" class="text-center">ID</th>
@@ -74,20 +85,28 @@
             {{#each courses}}
             <tr>
                 <th scope="row" class="text-center">{{course_id}}</th>
-                <td><a href="/courses/detail/{{course_id}}" class="text-decoration-none text-success">{{title}}</a></td>
                 <td>
-                    {{#if instructor_name}}
-                    {{instructor_name}}
-                    {{else}}
-                    <span class="text-muted">N/A</span>
-                    {{/if}}
+                    <div class="text-truncate" style="max-width:100%">
+                        <a href="/courses/detail/{{course_id}}" class="text-decoration-none text-success">{{title}}</a>
+                    </div>
                 </td>
                 <td>
-                    {{#if category_name}}
-                    <span class="badge bg-info">{{category_name}}</span>
-                    {{else}}
-                    <span class="badge bg-secondary">N/A</span>
-                    {{/if}}
+                    <div class="text-truncate" style="max-width:100%">
+                        {{#if instructor_name}}
+                        {{instructor_name}}
+                        {{else}}
+                        <span class="text-muted">N/A</span>
+                        {{/if}}
+                    </div>
+                </td>
+                <td>
+                    <div class="text-truncate" style="max-width:100%">
+                        {{#if category_name}}
+                        <span class="badge bg-info">{{category_name}}</span>
+                        {{else}}
+                        <span class="badge bg-secondary">N/A</span>
+                        {{/if}}
+                    </div>
                 </td>
                 <td>
                     {{#if (eq status 'pending')}}
@@ -231,13 +250,12 @@ document.addEventListener('DOMContentLoaded', function() {
             row.innerHTML = `
                 <th scope="row" class="text-center">${course.course_id}</th>
                 <td>      
-                    <a href="/courses/detail/${course.course_id}" 
-                    class="text-decoration-none text-success fw-semibold">
-                    ${course.title}    
-                    </a>
+                    <div class="text-truncate" style="max-width:100%">
+                        <a href="/courses/detail/${course.course_id}" class="text-decoration-none text-success">${course.title}</a>
+                    </div>
                 </td>
-                <td>${course.instructor_name || '<span class="text-muted">N/A</span>'}</td>
-                <td>${course.category_name ? '<span class="badge bg-info">' + course.category_name + '</span>' : '<span class="badge bg-secondary">N/A</span>'}</td>
+                <td><div class="text-truncate" style="max-width:100%">${course.instructor_name || '<span class="text-muted">N/A</span>'}</div></td>
+                <td><div class="text-truncate" style="max-width:100%">${course.category_name ? '<span class="badge bg-info">' + course.category_name + '</span>' : '<span class="badge bg-secondary">N/A</span>'}</div></td>
                 <td>${getStatusBadge(course.status)}</td>
                 <td>${formatNumber(course.price)}</td>
                 <td>${formatNumber(course.sale_price)}</td>
