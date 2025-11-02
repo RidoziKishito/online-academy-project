@@ -260,7 +260,7 @@ router.post('/create', async (req, res) => {
             image_url,
             large_image_url: large_image_url || null,
             requirements: requirements || null,
-            category_id: parseInt(category_id),
+            category_id: subcategory_id ? parseInt(subcategory_id) : parseInt(category_id),
             instructor_id: instructorId,
             price: normalizedPrice,
             sale_price: normalizedSalePrice,
@@ -318,11 +318,20 @@ router.post('/profile', async (req, res) => {
 router.post('/update-course/:id', async (req, res) => {
     const instructorId = req.session.authUser.user_id;
     const courseId = req.params.id;
-    const { title, full_description, price, sale_price, category_id, status, image_url } = req.body;
+    const { title, full_description, price, sale_price, category_id, subcategory_id, status, image_url } = req.body;
 
     // Check permission
     const course = await courseModel.findDetail(courseId, instructorId);
     if (!course) return res.status(403).render('403');
+
+    // Validate subcategory belongs to the selected parent category if provided
+    if (subcategory_id) {
+        const subcategory = await categoryModel.findById(subcategory_id);
+        if (!subcategory || subcategory.parent_category_id !== parseInt(category_id)) {
+            req.session.flash = { error: 'Invalid subcategory selection' };
+            return res.redirect(`/instructor/manage-course/${courseId}`);
+        }
+    }
 
     // Prepare patch data for editable fields
     const patchData = {
@@ -330,7 +339,7 @@ router.post('/update-course/:id', async (req, res) => {
         full_description: full_description ?? course.full_description,
         price: price !== undefined && price !== '' ? parseFloat(String(price).replace(/,/g, '')) : course.price,
         sale_price: sale_price !== undefined && sale_price !== '' ? parseFloat(String(sale_price).replace(/,/g, '')) : course.sale_price,
-        category_id: category_id ?? course.category_id,
+        category_id: subcategory_id ? parseInt(subcategory_id) : (category_id ?? course.category_id),
         image_url: image_url ?? course.image_url,
         updated_at: new Date()
     };
