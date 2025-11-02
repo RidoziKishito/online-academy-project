@@ -61,6 +61,9 @@ app.disable('x-powered-by');
 // Enable gzip/deflate compression
 app.use(compression());
 
+// Serve static files EARLY to avoid touching sessions/DB for assets
+app.use(express.static('static'));
+
 // Sessions with Postgres store
 app.set('trust proxy', 1)
 const PgStore = connectPgSimple(session);
@@ -120,9 +123,12 @@ const autoCreateSessionTable = (process.env.SESSION_AUTO_CREATE_TABLE || 'true')
 if (!autoCreateSessionTable) {
   logger.info('Session store will NOT auto-create the session table (createTableIfMissing=false)');
 }
+const pruneInterval = Number(process.env.SESSION_PRUNE_INTERVAL_SECONDS || '0');
 const sessionStore = new PgStore({
   pool: sessionPgPool,
   createTableIfMissing: autoCreateSessionTable,
+  // Disable auto-prune by default to reduce background DB traffic on free tiers
+  pruneSessionInterval: pruneInterval, // 0 disables pruning
 });
 
 app.use(session({
@@ -148,7 +154,6 @@ app.set('views', './views');
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json()); // Thêm dòng này để xử lý JSON body cho các API
-app.use(express.static('static')); // Serve all static files from /static folder
 
 // Import Routers
 import accountRouter from './routes/account.route.js';
