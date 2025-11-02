@@ -1,6 +1,6 @@
 # Online Academy Project
 
-Production-ready Node.js/Express + Handlebars e‑learning platform using PostgreSQL (Supabase-compatible), session store in Postgres, Resend for email, Google OAuth, reCAPTCHA, and a small connection pool tuned for Render/Supabase.
+Production-ready Node.js/Express + Handlebars e‑learning platform using PostgreSQL (Supabase-compatible), session store in Postgres, nodemailer for email (Gmail SMTP), Google OAuth, reCAPTCHA, and a small connection pool tuned for Render/Supabase.
 
 This guide covers full setup: database, environment variables, local run, seed data, and deployment.
 
@@ -9,7 +9,7 @@ This guide covers full setup: database, environment variables, local run, seed d
 - Node.js (ES Modules), Express 5, Handlebars + sections helper
 - PostgreSQL (works great with Supabase); Knex for queries
 - Sessions: express-session + connect-pg-simple
-- Email: Resend API (fallback: disabled if no key)
+- Email: nodemailer with Gmail SMTP (fallback: disabled if credentials missing)
 - Auth: Local + Google OAuth 2.0
 - reCAPTCHA v2 checkbox
 - Pino structured logging; compression, CORS
@@ -76,9 +76,14 @@ DB_SSL=false
 # CORS (comma-separated origins for production)
 # CORS_ALLOWED_ORIGINS=https://your-frontend.example.com,https://admin.example.com
 
-# Email via Resend
-RESEND_API_KEY=your_resend_api_key
-EMAIL_FROM=Your App <no-reply@yourdomain.com>
+# Email via Gmail SMTP (nodemailer)
+# Get App Password: https://myaccount.google.com/apppasswords
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURE=false
+EMAIL_USER=your-email@gmail.com
+EMAIL_PASS=your_gmail_app_password
+EMAIL_FROM=your-email@gmail.com
 APP_NAME=Online Academy
 
 # Google OAuth (optional)
@@ -96,9 +101,10 @@ RECAPTCHA_SECRET_KEY_PROD=
 ```
 
 Notes:
-- If `RESEND_API_KEY` is missing, the app logs a warning and continues with email features disabled.
+- If `EMAIL_USER` or `EMAIL_PASS` is missing, the app logs a warning and continues with email features disabled.
+- For Gmail, you must create an App Password (not your regular password): https://myaccount.google.com/apppasswords
 - If using Render/Supabase in production, prefer `DATABASE_URL` and keep `DB_SSL=true` or let the app infer SSL from `DATABASE_URL`.
-- See `RECAPTCHA_SETUP.md` and `EMAIL_CONFIG.md` for deeper setup notes.
+- See `RECAPTCHA_SETUP.md` for reCAPTCHA setup notes.
 
 4) Run locally
 
@@ -116,7 +122,7 @@ Open http://localhost:3000
 - `models/` — Database access via Knex
 - `views/` — Handlebars templates (with `{{#fillContent "js"}}` sections for page-specific scripts)
 - `middlewares/` — Auth, reCAPTCHA, etc.
-- `utils/` — db, mailer (Resend), passport, logger
+- `utils/` — db, mailer (nodemailer), passport, logger
 - `migrations/` — SQL migrations (chat tables, ban fields)
 - `supabase/` — Seed data and migrations synced from remote
 - `static/` — CSS/JS assets
@@ -131,11 +137,13 @@ Run these SQL files against your database (Supabase SQL Editor or `psql`):
 
 The app uses small connection pools suitable for Supabase/Render free tiers. Session store uses a separate tiny pg pool to avoid exhausting the main pool.
 
-## Email (Resend)
+## Email (Gmail SMTP via nodemailer)
 
-- Set `RESEND_API_KEY` and `EMAIL_FROM` in `.env`
-- The mailer includes retry with backoff; if key is missing/invalid, logs warnings but doesn’t block user flows
+- Set `EMAIL_USER`, `EMAIL_PASS`, and `EMAIL_FROM` in `.env`
+- For Gmail, create an App Password: https://myaccount.google.com/apppasswords (don't use your regular password)
+- The mailer includes retry with backoff; if credentials are missing/invalid, logs warnings but doesn't block user flows
 - Promotion and instructor onboarding emails are supported and non-blocking
+- Test your email config with: `node scripts/send-test-email.mjs your-email@example.com`
 
 ## Google OAuth
 
@@ -158,7 +166,7 @@ You can use `render.yaml` as a guide:
 	- `PORT=10000` (or the default Render port env)
 	- Either `DATABASE_URL` (preferred) or `DB_HOST/DB_PORT/DB_USER/DB_PASSWORD/DB_NAME` with `DB_SSL=true`
 	- `SESSION_SECRET`, `BASE_URL` (your public URL)
-	- `RESEND_API_KEY`, `EMAIL_FROM`, `APP_NAME`
+	- `EMAIL_USER`, `EMAIL_PASS`, `EMAIL_FROM`, `APP_NAME`
 	- `CORS_ALLOWED_ORIGINS` for your domains
 	- Optional: Google OAuth keys, reCAPTCHA keys
 - Build: `npm install`
@@ -174,7 +182,8 @@ You can use `render.yaml` as a guide:
 - CORS
 	- Set `CORS_ALLOWED_ORIGINS` in production to a comma-separated list
 - Email
-	- If emails fail, check `RESEND_API_KEY`, `EMAIL_FROM`, and your Resend domain configuration. The app logs structured errors.
+	- If emails fail, check `EMAIL_USER`, `EMAIL_PASS`, `EMAIL_FROM`, and ensure you're using a Gmail App Password (not regular password). The app logs structured errors.
+	- Test email: `node scripts/send-test-email.mjs your-email@example.com`
 
 ## Security notes
 
