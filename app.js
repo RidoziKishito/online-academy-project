@@ -15,8 +15,13 @@ import NodeCache from 'node-cache';
 
 // Load environment variables first
 // In production on Render, prefer Environment Variables or a Secret File (.env), not both.
-// We still call dotenv.config() to support local dev and Secret File deployments.
-dotenv.config();
+// You can set DISABLE_DOTENV=true in the environment to skip loading .env here.
+const disableDotenv = (process.env.DISABLE_DOTENV || '').toLowerCase() === 'true';
+if (!disableDotenv) {
+  dotenv.config();
+} else {
+  console.log('dotenv loading disabled via DISABLE_DOTENV=true');
+}
 
 import { testEmailConfig } from './utils/mailer.js';
 testEmailConfig();
@@ -80,7 +85,7 @@ if (process.env.DATABASE_URL) {
     ssl: { rejectUnauthorized: false },
     max: 2,
     idleTimeoutMillis: 10000,
-    connectionTimeoutMillis: 10000,
+    connectionTimeoutMillis: 15000,
     keepAlive: true,
     keepAliveInitialDelayMillis: 10000,
   };
@@ -107,7 +112,7 @@ if (process.env.DATABASE_URL) {
     ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
     max: 2,
     idleTimeoutMillis: 10000,
-    connectionTimeoutMillis: 10000,
+    connectionTimeoutMillis: 15000,
     keepAlive: true,
     keepAliveInitialDelayMillis: 10000,
   };

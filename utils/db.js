@@ -1,7 +1,19 @@
 import knex from 'knex';
 import dotenv from 'dotenv';
+import pg from 'pg';
 import logger from './logger.js';
-dotenv.config();
+
+// Allow disabling dotenv in production to avoid mixing with Render Env Vars
+const disableDotenv = (process.env.DISABLE_DOTENV || '').toLowerCase() === 'true';
+if (!disableDotenv) {
+    dotenv.config();
+} else {
+    logger.info('dotenv loading disabled via DISABLE_DOTENV=true');
+}
+
+// Ensure pg uses TCP keep-alive at the client level as well
+pg.defaults.keepAlive = true;
+pg.defaults.keepAliveInitialDelayMillis = 10000;
 
 // Configure database connection
 let connectionConfig;
@@ -55,7 +67,7 @@ const db = knex({
         min: 0,
         max: 3,
         // Tarn (knex) pool options to fail fast and free idle clients
-        acquireTimeoutMillis: 10000,
+        acquireTimeoutMillis: 15000,
         idleTimeoutMillis: 10000,
         reapIntervalMillis: 3000,
     },
