@@ -4,7 +4,6 @@ import hsb_sections from 'express-handlebars-sections';
 import session from 'express-session';
 import connectPgSimple from 'connect-pg-simple';
 import pg from 'pg';
-// import helmet from 'helmet'; // Removed - CSP disabled
 import cors from 'cors';
 import pinoHttp from 'pino-http';
 import compression from 'compression';
@@ -151,7 +150,6 @@ import passport from './utils/passport.js';
 import authRouter from './routes/auth.route.js';
 import rateLimit from 'express-rate-limit';
 import paymentRouter from './routes/payment.route.js';
-// logger already imported above for pino-http
 
 app.engine('handlebars', engine({
   defaultLayout: 'main',
