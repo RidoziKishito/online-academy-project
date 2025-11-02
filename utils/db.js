@@ -1,5 +1,6 @@
 import knex from 'knex';
 import dotenv from 'dotenv';
+import logger from './logger.js';
 dotenv.config();
 
 // Configure database connection
@@ -7,15 +8,32 @@ let connectionConfig;
 
 if (process.env.DATABASE_URL) {
     // Use DATABASE_URL if provided (production/Render)
-    console.log('Using DATABASE_URL for database connection');
+    logger.info('Using DATABASE_URL for database connection');
     connectionConfig = {
         connectionString: process.env.DATABASE_URL,
-        ssl: { rejectUnauthorized: false }
+        ssl: { rejectUnauthorized: false },
+        // Keep TCP connection alive to reduce idle disconnects
+        keepAlive: true,
+        keepAliveInitialDelayMillis: 10000,
     };
+    // Diagnostics: log sanitized host/port and pooler hint
+    try {
+        const u = new URL(process.env.DATABASE_URL);
+        const host = u.hostname;
+        const port = u.port || '(default)';
+        const isPooler = host.includes('pooler.supabase.com');
+        if (!isPooler) {
+            logger.warn({ host, port }, 'DATABASE_URL does not look like Supabase pooler host; consider using session pooler URL');
+        } else {
+            logger.info({ host, port }, 'DATABASE_URL points to Supabase pooler');
+        }
+    } catch (e) {
+        logger.warn('Failed to parse DATABASE_URL for diagnostics');
+    }
 } else {
     // Fallback to individual environment variables (local development)
-    console.log('Using individual DB_* variables for database connection');
-    console.log('DB_HOST:', process.env.DB_HOST);
+    logger.info('Using individual DB_* variables for database connection');
+    logger.info({ host: process.env.DB_HOST, db: process.env.DB_NAME }, 'DB_* connection parameters');
     connectionConfig = {
         host: process.env.DB_HOST,
         port: process.env.DB_PORT,
@@ -23,6 +41,8 @@ if (process.env.DATABASE_URL) {
         password: process.env.DB_PASSWORD,
         database: process.env.DB_NAME || 'postgres',
         ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
+        keepAlive: true,
+        keepAliveInitialDelayMillis: 10000,
     };
 }
 

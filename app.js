@@ -14,6 +14,8 @@ import dotenv from 'dotenv';
 import NodeCache from 'node-cache';
 
 // Load environment variables first
+// In production on Render, prefer Environment Variables or a Secret File (.env), not both.
+// We still call dotenv.config() to support local dev and Secret File deployments.
 dotenv.config();
 
 import { testEmailConfig } from './utils/mailer.js';
@@ -76,7 +78,21 @@ if (process.env.DATABASE_URL) {
     max: 2,
     idleTimeoutMillis: 10000,
     connectionTimeoutMillis: 10000,
+    keepAlive: true,
+    keepAliveInitialDelayMillis: 10000,
   };
+  try {
+    const u = new URL(process.env.DATABASE_URL);
+    const host = u.hostname;
+    const port = u.port || '(default)';
+    if (!host.includes('pooler.supabase.com')) {
+      logger.warn({ host, port }, 'Session store URL does not look like Supabase pooler host');
+    } else {
+      logger.info({ host, port }, 'Session store points to Supabase pooler');
+    }
+  } catch (e) {
+    logger.warn('Failed to parse session DATABASE_URL for diagnostics');
+  }
 } else {
   console.log('Session store using individual DB_* variables');
   sessionPoolConfig = {
@@ -89,6 +105,8 @@ if (process.env.DATABASE_URL) {
     max: 2,
     idleTimeoutMillis: 10000,
     connectionTimeoutMillis: 10000,
+    keepAlive: true,
+    keepAliveInitialDelayMillis: 10000,
   };
 }
 
@@ -98,9 +116,13 @@ sessionPgPool.on('error', (err) => {
   logger.error({ err }, 'pg session pool error');
 });
 
+const autoCreateSessionTable = (process.env.SESSION_AUTO_CREATE_TABLE || 'true').toLowerCase() !== 'false';
+if (!autoCreateSessionTable) {
+  logger.info('Session store will NOT auto-create the session table (createTableIfMissing=false)');
+}
 const sessionStore = new PgStore({
   pool: sessionPgPool,
-  createTableIfMissing: true,
+  createTableIfMissing: autoCreateSessionTable,
 });
 
 app.use(session({
