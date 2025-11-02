@@ -398,6 +398,7 @@ router.get('/detail/:id', async (req, res) => {
       price: course.price || 0,
       sale_price: course.sale_price,
       is_bestseller: course.is_bestseller || false,
+      is_complete: course.is_complete || false,
       view_count: course.view_count || 0,
       enrollment_count: course.enrollment_count || 0,
       rating_avg: course.rating_avg ? Number(parseFloat(course.rating_avg).toFixed(1)) : 0,
