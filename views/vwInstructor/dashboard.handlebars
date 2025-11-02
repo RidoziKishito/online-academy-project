@@ -35,10 +35,10 @@
                                 {{/ifEq2}}
                                 <div class="text-muted small">
                                     {{#unless (eq price sale_price)}}
-                                    <span class="text-decoration-line-through">${{price}}</span>
-                                    <span class="text-danger fw-bold">${{sale_price}}</span>
+                                    <span class="text-decoration-line-through">₫{{format_number price}}</span>
+                                    <span class="text-danger fw-bold">₫{{format_number sale_price}}</span>
                                     {{else}}
-                                    <b>₫ {{price}}</b>
+                                    <b>₫{{format_number price}}</b>
                                     {{/unless}}
                                 </div>
                             </div>

@@ -334,6 +334,7 @@ router.get('/detail/:id', async (req, res) => {
       reviewModel.getCourseRatingStats ? reviewModel.getCourseRatingStats(courseId) : null
     ]);
 
+
     const categories = categoriesRaw || {
       parent: { id: null, name: null },
       child: { id: null, name: null }
@@ -397,6 +398,7 @@ router.get('/detail/:id', async (req, res) => {
       price: course.price || 0,
       sale_price: course.sale_price,
       is_bestseller: course.is_bestseller || false,
+      is_complete: course.is_complete || false,
       view_count: course.view_count || 0,
       enrollment_count: course.enrollment_count || 0,
       rating_avg: course.rating_avg ? Number(parseFloat(course.rating_avg).toFixed(1)) : 0,
@@ -405,7 +407,7 @@ router.get('/detail/:id', async (req, res) => {
       requirements: course.requirements || [],
       sections,
       reviews: (reviewsRaw || []).map(r => ({
-        name: r.full_name,
+        name: r.user_name,
         avatar: r.avatar_url || '/img/default-avatar.png',
         rating: r.rating,
         comment: r.comment

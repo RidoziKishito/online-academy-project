@@ -56,7 +56,18 @@
             </div>
         </form>
     </div>
-    <table class="table table-hover">
+    <table class="table table-hover" id="adminCoursesTable" style="table-layout:fixed;">
+        <colgroup>
+            <col style="width:6%">   <!-- ID -->
+            <col style="width:18%">  <!-- Course (slightly narrower) -->
+            <col style="width:15%">  <!-- Instructor -->
+            <col style="width:13%">  <!-- Category -->
+            <col style="width:10%">  <!-- Status -->
+            <col style="width:9%">   <!-- Price (wider) -->
+            <col style="width:9%">   <!-- Sale price (wider) -->
+            <col style="width:9%">   <!-- Enrollment (wider) -->
+            <col style="width:12%">  <!-- Actions -->
+        </colgroup>
         <thead>
             <tr>
                 <th scope="col" class="text-center">ID</th>
@@ -64,30 +75,38 @@
                 <th scope="col">Instructor</th>
                 <th scope="col">Category</th>
                 <th scope="col">Status</th>
-                <th scope="col">Price</th>
-                <th scope="col">Sale price</th>
-                <th scope="col">Enrollment</th>
-                <th scope="col" class="text-end">Actions</th>
+                <th scope="col" >Price</th>
+                <th scope="col" >Sale price</th>
+                <th scope="col" >Enrollment</th>
+                <th scope="col" >Actions</th>
             </tr>
         </thead>
         <tbody id="coursesTableBody">
             {{#each courses}}
             <tr>
                 <th scope="row" class="text-center">{{course_id}}</th>
-                <td><a href="/courses/detail/{{course_id}}" class="text-decoration-none text-success">{{title}}</a></td>
                 <td>
-                    {{#if instructor_name}}
-                    {{instructor_name}}
-                    {{else}}
-                    <span class="text-muted">N/A</span>
-                    {{/if}}
+                    <div class="text-truncate" style="max-width:100%">
+                        <a href="/courses/detail/{{course_id}}" class="text-decoration-none text-success">{{title}}</a>
+                    </div>
                 </td>
                 <td>
-                    {{#if category_name}}
-                    <span class="badge bg-info">{{category_name}}</span>
-                    {{else}}
-                    <span class="badge bg-secondary">N/A</span>
-                    {{/if}}
+                    <div class="text-truncate" style="max-width:100%">
+                        {{#if instructor_name}}
+                        {{instructor_name}}
+                        {{else}}
+                        <span class="text-muted">N/A</span>
+                        {{/if}}
+                    </div>
+                </td>
+                <td>
+                    <div class="text-truncate" style="max-width:100%">
+                        {{#if category_name}}
+                        <span class="badge bg-info">{{category_name}}</span>
+                        {{else}}
+                        <span class="badge bg-secondary">N/A</span>
+                        {{/if}}
+                    </div>
                 </td>
                 <td>
                     {{#if (eq status 'pending')}}
@@ -100,9 +119,9 @@
                     <span class="badge bg-danger">Unknown</span>
                     {{/if}}
                 </td>
-                <td>{{format_number price}}</td>
-                <td>{{format_number sale_price}}</td>
-                <td>{{enrollment_count}}</td>
+                <td class="text-end"><span class="text-nowrap">₫{{format_number price}}</span></td>
+                <td class="text-end"><span class="text-nowrap">₫{{format_number sale_price}}</span></td>
+                <td class="text-center">{{enrollment_count}}</td>
                 <td class="text-end">
                     {{#if (eq status 'pending')}}
                     <form method="post" action="/admin/courses/approve/{{course_id}}" style="display: inline;">
@@ -231,17 +250,16 @@ document.addEventListener('DOMContentLoaded', function() {
             row.innerHTML = `
                 <th scope="row" class="text-center">${course.course_id}</th>
                 <td>      
-                    <a href="/courses/detail/${course.course_id}" 
-                    class="text-decoration-none text-success fw-semibold">
-                    ${course.title}    
-                    </a>
+                    <div class="text-truncate" style="max-width:100%">
+                        <a href="/courses/detail/${course.course_id}" class="text-decoration-none text-success">${course.title}</a>
+                    </div>
                 </td>
-                <td>${course.instructor_name || '<span class="text-muted">N/A</span>'}</td>
-                <td>${course.category_name ? '<span class="badge bg-info">' + course.category_name + '</span>' : '<span class="badge bg-secondary">N/A</span>'}</td>
+                <td><div class="text-truncate" style="max-width:100%">${course.instructor_name || '<span class="text-muted">N/A</span>'}</div></td>
+                <td><div class="text-truncate" style="max-width:100%">${course.category_name ? '<span class="badge bg-info">' + course.category_name + '</span>' : '<span class="badge bg-secondary">N/A</span>'}</div></td>
                 <td>${getStatusBadge(course.status)}</td>
-                <td>${formatNumber(course.price)}</td>
-                <td>${formatNumber(course.sale_price)}</td>
-                <td>${course.enrollment_count || 0}</td>
+                <td class="text-end"><span class="text-nowrap">₫${formatNumber(course.price)}</span></td>
+                <td class="text-end"><span class="text-nowrap">₫${formatNumber(course.sale_price)}</span></td>
+                <td class="text-end">${course.enrollment_count || 0}</td>
                 <td class="text-end">${getActionButtons(course)}</td>
             `;
             tbody.appendChild(row);

@@ -45,7 +45,10 @@
 
         <!-- Rating + Stats -->
         <div class="mb-3 small text-muted">
-          <span class="text-warning me-2">{{{render_stars course.rating_avg}}}</span>
+          <span class="text-warning me-2">
+            <span class="visually-hidden">Rating: {{course.rating_avg}} out of 5</span>
+            <span aria-hidden="true">{{{render_stars course.rating_avg}}}</span>
+          </span>
           ({{course.rating_count}} ratings) •
           <i class="bi bi-people ms-1 me-1"></i>
           <span id="enrollmentCount">{{course.enrollment_count}}</span> students •
@@ -53,13 +56,13 @@
         </div>
 
 
-        <p class="lead text-muted">{{course.short_description}}</p>
+        <div class="lead text-muted">{{{course.short_description}}}</div>
 
         <!-- Badges -->
         {{#if course.is_bestseller}}
         <span class="badge bg-warning text-dark rounded-pill px-3 py-2 me-1">🔥 Bestseller</span>
         {{/if}}
-        {{#if (not is_complete)}}  <span class="badge bg-light text-secondary ms-2">⏳ In progress</span>{{/if}}
+        {{#unless course.is_complete}}  <span class="badge bg-light text-secondary ms-2">⏳ In progress</span>{{/unless}}
 
         <!-- Instructor -->
         <div class="mt-4 d-flex align-items-center">
@@ -222,12 +225,13 @@
                     <li class="list-group-item d-flex justify-content-between align-items-center">
                       <div class="d-flex align-items-center">
                         {{#if this.is_previewable}}
-                          <a href="javascript:void(0)"
-                            class="preview-btn text-decoration-none text-dark me-2"
-                            data-video="{{#if (isYouTube this.video_url)}}{{getYouTubeEmbedUrl this.video_url}}{{else}}{{this.video_url}}{{/if}}">
+                          <button type="button"
+                            class="preview-btn btn btn-link p-0 text-decoration-none text-dark me-2"
+                            data-video="{{#if (isYouTube this.video_url)}}{{getYouTubeEmbedUrl this.video_url}}{{else}}{{this.video_url}}{{/if}}"
+                            aria-label="Preview: {{this.title}}">
                             {{this.order_index}}. {{this.title}}
                             <span class="badge bg-success ms-2 small">Preview</span>
-                          </a>
+                          </button>
                         {{else}}
                           <div class="text-decoration-none text-dark me-2">
                             {{this.order_index}}. {{this.title}}
@@ -318,10 +322,16 @@
             <div class="card border-0 shadow-sm rounded-4 h-100">
               <div class="card-body">
                 <div class="d-flex align-items-center mb-3">
-                  <img src="{{this.avatar}}" class="rounded-circle me-3" width="50" height="50" alt="{{this.name}}">
+                  <img src="{{this.avatar}}"
+                  class="rounded-circle me-3 shadow-sm"
+                  alt="{{this.name}}"
+                  style="width:50px; height:50px; object-fit:cover; object-position:center;">
                   <div>
                     <div class="fw-semibold">{{this.name}}</div>
-                    <div class="text-warning small">{{{render_stars this.rating}}}</div>
+                    <div class="text-warning small">
+                      <span class="visually-hidden">Rating: {{this.rating}} out of 5</span>
+                      <span aria-hidden="true">{{{render_stars this.rating}}}</span>
+                    </div>
                   </div>
                 </div>
                 <p class="text-muted small mb-0">{{this.comment}}</p>
@@ -345,7 +355,7 @@
           <img src="{{course.instructor_avatar}}" class="rounded-circle me-4" width="100" height="100">
           <div>
             <h5 class="fw-bold mb-1">{{course.instructor_name}}</h5>
-            <p class="text-muted small mb-2">{{course.instructor_bio}}</p>
+            <div class="text-muted small mb-2">{{{course.instructor_bio}}}</div>
             <div class="d-flex gap-2 flex-wrap">
               <a href="/instructors/{{course.instructor_id}}" class="btn btn-outline-success rounded-pill btn-sm">
                 <i class="bi bi-collection me-1"></i>View More Courses
@@ -382,7 +392,10 @@
                 <h6 class="fw-semibold text-dark">{{this.title}}</h6>
                 <p class="text-muted small mb-1">{{this.instructor_name}}</p>
                 <div class="d-flex justify-content-between align-items-center">
-                  <span class="text-warning small">{{{render_stars this.rating_avg}}}</span>
+                  <span class="text-warning small">
+                    <span class="visually-hidden">Rating: {{this.rating_avg}} out of 5</span>
+                    <span aria-hidden="true">{{{render_stars this.rating_avg}}}</span>
+                  </span>
                   <span class="fw-semibold text-danger">{{format_number this.sale_price}}</span>
                 </div>
               </div>
