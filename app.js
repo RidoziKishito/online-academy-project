@@ -124,11 +124,18 @@ sessionPgPool.on('error', (err) => {
   logger.error({ err }, 'pg session pool error');
 });
 
-const autoCreateSessionTable = (process.env.SESSION_AUTO_CREATE_TABLE || 'true').toLowerCase() !== 'false';
-if (!autoCreateSessionTable) {
+// Default behavior: in production, DO NOT auto-create the session table (avoid DB touch on boot)
+// In development, default to true for convenience
+const autoCreateSessionTable = (process.env.SESSION_AUTO_CREATE_TABLE !== undefined)
+  ? String(process.env.SESSION_AUTO_CREATE_TABLE).toLowerCase() !== 'false'
+  : !isProd;
+if (autoCreateSessionTable) {
+  logger.info('Session store will auto-create the session table if missing');
+} else {
   logger.info('Session store will NOT auto-create the session table (createTableIfMissing=false)');
 }
 const pruneInterval = Number(process.env.SESSION_PRUNE_INTERVAL_SECONDS || '0');
+logger.info({ pruneInterval }, 'Session store prune interval (seconds); 0 disables pruning');
 const sessionStore = new PgStore({
   pool: sessionPgPool,
   createTableIfMissing: autoCreateSessionTable,
