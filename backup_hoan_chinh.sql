@@ -80,6 +80,54 @@ CREATE TYPE "public"."user_role_enum" AS ENUM (
 ALTER TYPE "public"."user_role_enum" OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."trg_user_enrollments_insert"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+begin
+  -- Cập nhật enrollment_count cho course được enroll
+  update public.courses
+  set enrollment_count = (
+    select count(*) 
+    from public.user_enrollments 
+    where course_id = new.course_id
+  )
+  where course_id = new.course_id;
+
+  -- Cập nhật top 7 bestseller
+  perform public.update_bestseller_courses();
+
+  return null;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."trg_user_enrollments_insert"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."update_bestseller_courses"() RETURNS "void"
+    LANGUAGE "plpgsql"
+    AS $$
+begin
+  -- Reset toàn bộ
+  update public.courses
+  set is_bestseller = false;
+
+  -- Đặt true cho top 7 course có enrollment_count cao nhất
+  update public.courses
+  set is_bestseller = true
+  where course_id in (
+    select course_id
+    from public.courses
+    order by enrollment_count desc, view_count desc, rating_avg desc
+    limit 4
+  );
+end;
+$$;
+
+
+ALTER FUNCTION "public"."update_bestseller_courses"() OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."update_chat_session_activity"() RETURNS "trigger"
     LANGUAGE "plpgsql"
     AS $$
@@ -244,7 +292,7 @@ CREATE TABLE IF NOT EXISTS "public"."courses" (
     "fts_document" "tsvector",
     "requirements" "text",
     "status" "public"."course_status" DEFAULT 'pending'::"public"."course_status",
-    CONSTRAINT "courses_check" CHECK ((("sale_price" IS NULL) OR ("sale_price" < "price")))
+    CONSTRAINT "courses_check" CHECK ((("price" >= (0)::numeric) AND (("sale_price" IS NULL) OR ("sale_price" <= "price"))))
 );
 
 
@@ -341,6 +389,16 @@ ALTER SEQUENCE "public"."reviews_review_id_seq" OWNED BY "public"."reviews"."rev
 
 
 
+CREATE TABLE IF NOT EXISTS "public"."session" (
+    "sid" character varying NOT NULL,
+    "sess" json NOT NULL,
+    "expire" timestamp(6) without time zone NOT NULL
+);
+
+
+ALTER TABLE "public"."session" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."user_enrollments" (
     "enrollment_id" integer NOT NULL,
     "user_id" integer NOT NULL,
@@ -365,34 +423,55 @@ CREATE TABLE IF NOT EXISTS "public"."users" (
     "otp_expires_at" timestamp without time zone,
     "oauth_provider" character varying(50),
     "oauth_id" character varying(255),
-    "created_at" timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+    "created_at" timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    "is_banned" boolean DEFAULT false NOT NULL,
+    "banned_until" timestamp with time zone,
+    "ban_reason" "text",
+    "banned_by" integer,
+    "banned_at" timestamp with time zone
 );
 
 
 ALTER TABLE "public"."users" OWNER TO "postgres";
 
 
-CREATE OR REPLACE VIEW "public"."top3_week_courses" AS
+CREATE OR REPLACE VIEW "public"."top_week_courses" AS
  SELECT "c"."course_id",
     "c"."title",
+    "c"."short_description",
+    "c"."full_description",
     "c"."image_url",
-    "c"."rating_avg",
+    "c"."large_image_url",
+    ("c"."price")::integer AS "price",
     ("c"."sale_price")::integer AS "sale_price",
+    "c"."is_bestseller",
+    "c"."is_complete",
+    "c"."view_count",
+    "c"."enrollment_count",
+    "c"."requirements",
+    "c"."status",
+    "c"."created_at",
+    "c"."updated_at",
+    "round"("avg"("r"."rating"), 2) AS "rating_avg_week",
+    "count"("r"."review_id") AS "rating_count_week",
+    "cat"."category_id",
     "cat"."name" AS "category_name",
+    "u"."user_id" AS "instructor_id",
     "u"."full_name" AS "instructor_name",
-    "u"."avatar_url",
-    "count"("e"."enrollment_id") AS "enroll_count"
-   FROM ((("public"."user_enrollments" "e"
-     JOIN "public"."courses" "c" ON (("e"."course_id" = "c"."course_id")))
+    "u"."avatar_url" AS "instructor_avatar",
+    "count"(DISTINCT "e"."enrollment_id") AS "enroll_count_week"
+   FROM (((("public"."courses" "c"
      JOIN "public"."users" "u" ON (("c"."instructor_id" = "u"."user_id")))
      JOIN "public"."categories" "cat" ON (("c"."category_id" = "cat"."category_id")))
-  WHERE ("e"."enrolled_at" >= ("now"() - '7 days'::interval))
-  GROUP BY "c"."course_id", "c"."title", "c"."image_url", "c"."rating_avg", "c"."sale_price", "cat"."name", "u"."full_name", "u"."avatar_url"
-  ORDER BY ("count"("e"."enrollment_id")) DESC
+     LEFT JOIN "public"."reviews" "r" ON ((("r"."course_id" = "c"."course_id") AND ("r"."created_at" >= ("now"() - '7 days'::interval)))))
+     LEFT JOIN "public"."user_enrollments" "e" ON ((("e"."course_id" = "c"."course_id") AND ("e"."enrolled_at" >= ("now"() - '7 days'::interval)))))
+  GROUP BY "c"."course_id", "c"."title", "c"."short_description", "c"."full_description", "c"."image_url", "c"."large_image_url", "c"."price", "c"."sale_price", "c"."is_bestseller", "c"."is_complete", "c"."view_count", "c"."enrollment_count", "c"."requirements", "c"."status", "c"."created_at", "c"."updated_at", "cat"."category_id", "cat"."name", "u"."user_id", "u"."full_name", "u"."avatar_url"
+ HAVING ("count"("r"."review_id") > 0)
+  ORDER BY ("round"("avg"("r"."rating"), 2)) DESC, ("count"("r"."review_id")) DESC, ("count"(DISTINCT "e"."enrollment_id")) DESC
  LIMIT 3;
 
 
-ALTER VIEW "public"."top3_week_courses" OWNER TO "postgres";
+ALTER VIEW "public"."top_week_courses" OWNER TO "postgres";
 
 
 CREATE SEQUENCE IF NOT EXISTS "public"."user_enrollments_enrollment_id_seq"
@@ -532,7 +611,7 @@ CREATE OR REPLACE VIEW "public"."vw_newest_courses" AS
      LEFT JOIN "public"."user_enrollments" "e" ON (("e"."course_id" = "c"."course_id")))
      JOIN "public"."users" "u" ON (("c"."instructor_id" = "u"."user_id")))
      JOIN "public"."categories" "cat" ON (("c"."category_id" = "cat"."category_id")))
-  WHERE ("c"."created_at" IS NOT NULL)
+  WHERE (("c"."created_at" IS NOT NULL) AND ("c"."status" <> 'hidden'::"public"."course_status"))
   GROUP BY "c"."course_id", "c"."title", "c"."image_url", "c"."rating_avg", "c"."sale_price", "cat"."name", "u"."full_name", "u"."avatar_url", "c"."created_at"
   ORDER BY "c"."created_at" DESC
  LIMIT 10;
@@ -541,19 +620,19 @@ CREATE OR REPLACE VIEW "public"."vw_newest_courses" AS
 ALTER VIEW "public"."vw_newest_courses" OWNER TO "postgres";
 
 
-CREATE OR REPLACE VIEW "public"."vw_root_categories" AS
- SELECT "p"."category_id",
-    "p"."name",
-    "count"("c"."course_id") AS "total_courses"
-   FROM (("public"."categories" "p"
-     LEFT JOIN "public"."categories" "ch" ON (("ch"."parent_category_id" = "p"."category_id")))
-     LEFT JOIN "public"."courses" "c" ON ((("c"."category_id" = "ch"."category_id") OR ("c"."category_id" = "p"."category_id"))))
-  WHERE ("p"."parent_category_id" IS NULL)
-  GROUP BY "p"."category_id", "p"."name"
-  ORDER BY "p"."name";
+CREATE OR REPLACE VIEW "public"."vw_top_categories" AS
+ SELECT "cat"."category_id",
+    "cat"."name" AS "category_name",
+    "count"("c"."course_id") AS "total_courses",
+    "sum"(COALESCE("c"."enrollment_count", 0)) AS "total_enrollments"
+   FROM ("public"."courses" "c"
+     JOIN "public"."categories" "cat" ON (("c"."category_id" = "cat"."category_id")))
+  GROUP BY "cat"."category_id", "cat"."name"
+  ORDER BY ("sum"(COALESCE("c"."enrollment_count", 0))) DESC
+ LIMIT 5;
 
 
-ALTER VIEW "public"."vw_root_categories" OWNER TO "postgres";
+ALTER VIEW "public"."vw_top_categories" OWNER TO "postgres";
 
 
 ALTER TABLE ONLY "public"."categories" ALTER COLUMN "category_id" SET DEFAULT "nextval"('"public"."categories_category_id_seq"'::"regclass");
@@ -661,6 +740,11 @@ ALTER TABLE ONLY "public"."reviews"
 
 
 
+ALTER TABLE ONLY "public"."session"
+    ADD CONSTRAINT "session_pkey" PRIMARY KEY ("sid");
+
+
+
 ALTER TABLE ONLY "public"."users"
     ADD CONSTRAINT "uq_oauth" UNIQUE ("oauth_provider", "oauth_id");
 
@@ -706,6 +790,10 @@ ALTER TABLE ONLY "public"."users"
 
 
 
+CREATE INDEX "IDX_session_expire" ON "public"."session" USING "btree" ("expire");
+
+
+
 CREATE INDEX "course_fts_idx" ON "public"."courses" USING "gin" ("fts_document");
 
 
@@ -730,6 +818,14 @@ CREATE INDEX "idx_message_storage_messages_gin" ON "public"."message_storage" US
 
 
 
+CREATE INDEX "idx_users_banned_until" ON "public"."users" USING "btree" ("banned_until");
+
+
+
+CREATE INDEX "idx_users_is_banned" ON "public"."users" USING "btree" ("is_banned");
+
+
+
 CREATE OR REPLACE VIEW "public"."vw_most_view_courses" AS
  SELECT "c"."course_id",
     "c"."title",
@@ -744,7 +840,7 @@ CREATE OR REPLACE VIEW "public"."vw_most_view_courses" AS
      LEFT JOIN "public"."user_enrollments" "e" ON (("e"."course_id" = "c"."course_id")))
      JOIN "public"."users" "u" ON (("c"."instructor_id" = "u"."user_id")))
      JOIN "public"."categories" "cat" ON (("c"."category_id" = "cat"."category_id")))
-  WHERE ("c"."created_at" IS NOT NULL)
+  WHERE (("c"."created_at" IS NOT NULL) AND ("c"."status" <> 'hidden'::"public"."course_status"))
   GROUP BY "c"."course_id", "c"."title", "c"."image_url", "c"."rating_avg", "c"."sale_price", "cat"."name", "u"."full_name", "u"."avatar_url", "c"."created_at"
   ORDER BY "c"."view_count" DESC
  LIMIT 10;
@@ -752,6 +848,10 @@ CREATE OR REPLACE VIEW "public"."vw_most_view_courses" AS
 
 
 CREATE OR REPLACE TRIGGER "course_fts_trigger" BEFORE INSERT OR UPDATE ON "public"."courses" FOR EACH ROW EXECUTE FUNCTION "public"."update_course_fts_document"();
+
+
+
+CREATE OR REPLACE TRIGGER "trg_update_enrollment_count" AFTER INSERT ON "public"."user_enrollments" FOR EACH ROW EXECUTE FUNCTION "public"."trg_user_enrollments_insert"();
 
 
 
@@ -832,6 +932,11 @@ ALTER TABLE ONLY "public"."user_wishlist"
 
 ALTER TABLE ONLY "public"."user_wishlist"
     ADD CONSTRAINT "user_wishlist_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."users"("user_id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."users"
+    ADD CONSTRAINT "users_banned_by_fkey" FOREIGN KEY ("banned_by") REFERENCES "public"."users"("user_id") ON DELETE SET NULL;
 
 
 
@@ -1049,6 +1154,12 @@ GRANT USAGE ON SCHEMA "public" TO "service_role";
 
 
 
+GRANT ALL ON FUNCTION "public"."trg_user_enrollments_insert"() TO "anon";
+GRANT ALL ON FUNCTION "public"."trg_user_enrollments_insert"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."trg_user_enrollments_insert"() TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."unaccent"("text") TO "postgres";
 GRANT ALL ON FUNCTION "public"."unaccent"("text") TO "anon";
 GRANT ALL ON FUNCTION "public"."unaccent"("text") TO "authenticated";
@@ -1074,6 +1185,12 @@ GRANT ALL ON FUNCTION "public"."unaccent_lexize"("internal", "internal", "intern
 GRANT ALL ON FUNCTION "public"."unaccent_lexize"("internal", "internal", "internal", "internal") TO "anon";
 GRANT ALL ON FUNCTION "public"."unaccent_lexize"("internal", "internal", "internal", "internal") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."unaccent_lexize"("internal", "internal", "internal", "internal") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."update_bestseller_courses"() TO "anon";
+GRANT ALL ON FUNCTION "public"."update_bestseller_courses"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."update_bestseller_courses"() TO "service_role";
 
 
 
@@ -1194,6 +1311,12 @@ GRANT ALL ON SEQUENCE "public"."reviews_review_id_seq" TO "service_role";
 
 
 
+GRANT ALL ON TABLE "public"."session" TO "anon";
+GRANT ALL ON TABLE "public"."session" TO "authenticated";
+GRANT ALL ON TABLE "public"."session" TO "service_role";
+
+
+
 GRANT ALL ON TABLE "public"."user_enrollments" TO "anon";
 GRANT ALL ON TABLE "public"."user_enrollments" TO "authenticated";
 GRANT ALL ON TABLE "public"."user_enrollments" TO "service_role";
@@ -1206,9 +1329,9 @@ GRANT ALL ON TABLE "public"."users" TO "service_role";
 
 
 
-GRANT ALL ON TABLE "public"."top3_week_courses" TO "anon";
-GRANT ALL ON TABLE "public"."top3_week_courses" TO "authenticated";
-GRANT ALL ON TABLE "public"."top3_week_courses" TO "service_role";
+GRANT ALL ON TABLE "public"."top_week_courses" TO "anon";
+GRANT ALL ON TABLE "public"."top_week_courses" TO "authenticated";
+GRANT ALL ON TABLE "public"."top_week_courses" TO "service_role";
 
 
 
@@ -1266,9 +1389,9 @@ GRANT ALL ON TABLE "public"."vw_newest_courses" TO "service_role";
 
 
 
-GRANT ALL ON TABLE "public"."vw_root_categories" TO "anon";
-GRANT ALL ON TABLE "public"."vw_root_categories" TO "authenticated";
-GRANT ALL ON TABLE "public"."vw_root_categories" TO "service_role";
+GRANT ALL ON TABLE "public"."vw_top_categories" TO "anon";
+GRANT ALL ON TABLE "public"."vw_top_categories" TO "authenticated";
+GRANT ALL ON TABLE "public"."vw_top_categories" TO "service_role";
 
 
 
@@ -1333,4 +1456,3 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 
 
 
-RESET ALL;
