@@ -62,7 +62,7 @@
         {{#if course.is_bestseller}}
         <span class="badge bg-warning text-dark rounded-pill px-3 py-2 me-1">🔥 Bestseller</span>
         {{/if}}
-        {{#if (not is_complete)}}  <span class="badge bg-light text-secondary ms-2">⏳ In progress</span>{{/if}}
+        {{#unless course.is_complete}}  <span class="badge bg-light text-secondary ms-2">⏳ In progress</span>{{/unless}}
 
         <!-- Instructor -->
         <div class="mt-4 d-flex align-items-center">
