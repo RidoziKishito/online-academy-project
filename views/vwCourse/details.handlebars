@@ -56,7 +56,7 @@
         </div>
 
 
-        <p class="lead text-muted">{{course.short_description}}</p>
+        <div class="lead text-muted">{{{course.short_description}}}</div>
 
         <!-- Badges -->
         {{#if course.is_bestseller}}
@@ -352,7 +352,7 @@
           <img src="{{course.instructor_avatar}}" class="rounded-circle me-4" width="100" height="100">
           <div>
             <h5 class="fw-bold mb-1">{{course.instructor_name}}</h5>
-            <p class="text-muted small mb-2">{{course.instructor_bio}}</p>
+            <div class="text-muted small mb-2">{{{course.instructor_bio}}}</div>
             <div class="d-flex gap-2 flex-wrap">
               <a href="/instructors/{{course.instructor_id}}" class="btn btn-outline-success rounded-pill btn-sm">
                 <i class="bi bi-collection me-1"></i>View More Courses
