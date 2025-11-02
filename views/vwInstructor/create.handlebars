@@ -18,6 +18,7 @@
 {{/fillContent}}
 
 {{#fillContent 'js'}}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="https://cdn.jsdelivr.net/npm/cleave.js@1.6.0/dist/cleave.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
 <script>
@@ -91,7 +92,10 @@
             if (url) {
                 preview.src = url;
             } else {
-                preview.src = previewId === 'imagePreview' ? '/img/course-placeholder.jpg' : '/img/cover-placeholder.jpg';
+                // Use external placeholder to avoid local 404s
+                preview.src = previewId === 'imagePreview'
+                  ? 'https://via.placeholder.com/800x450?text=Course+Image'
+                  : 'https://via.placeholder.com/1600x600?text=Cover+Image';
             }
         });
     }
@@ -99,9 +103,23 @@
     updateImagePreview('imageUrl', 'imagePreview');
     updateImagePreview('largeImageUrl', 'largeImagePreview');
 
-    // Handle form submission
-    document.querySelector('#frmAddCourse').addEventListener('submit', function (e) {
+    function parseVnd(val){
+        if (val == null) return 0;
+        const n = String(val).replace(/[^0-9]/g, '');
+        return n ? Number(n) : 0;
+    }
+
+    function isQuillEmpty(quill){
+        const text = (quill && quill.getText && quill.getText().trim()) || '';
+        // Quill empty often returns "\n"
+        return text.length === 0;
+    }
+
+    // Handle form submission with validation + AJAX
+    document.querySelector('#frmAddCourse').addEventListener('submit', async function (e) {
         e.preventDefault();
+
+        const form = this;
 
         // Get content from editors
         const descriptionHtml = quillDescription.root.innerHTML;
@@ -110,22 +128,135 @@
         const requirementsHtml = quillRequirements.root.innerHTML;
         document.querySelector('#requirements').value = requirementsHtml;
 
-        // Validate form
-        if (this.checkValidity()) {
-            const saveType = e.submitter.value;
-            const status = saveType === 'draft' ? 'draft' : 'pending';
+        // Collect inputs
+        const title = form.elements['title']?.value?.trim() || '';
+        const shortDesc = form.elements['short_description']?.value?.trim() || '';
+        const imageUrl = form.elements['image_url']?.value?.trim() || '';
+        const categoryId = form.elements['category_id']?.value?.trim() || '';
+        const priceStr = document.getElementById('originalPrice')?.value?.trim() || '';
+        const saleStr = document.getElementById('currentPrice')?.value?.trim() || '';
+        const price = parseVnd(priceStr);
+        let sale = saleStr ? parseVnd(saleStr) : price; // default sale to price if empty
 
-            // Add status to form data
-            const statusInput = document.createElement('input');
+        const errors = [];
+
+        // Native validity first (for URL pattern, required, etc.)
+        if (!form.checkValidity()) {
+            // Aggregate simple messages
+            if (!title) errors.push('Course Title is required.');
+            if (!shortDesc) errors.push('Brief Summary is required.');
+            if (isQuillEmpty(quillDescription)) errors.push('Full Description is required.');
+            if (!imageUrl) errors.push('Course Image URL is required.');
+            if (!categoryId) errors.push('Category is required.');
+        } else {
+            // Even if HTML5 valid, enforce quill empty check
+            if (isQuillEmpty(quillDescription)) errors.push('Full Description is required.');
+        }
+
+        // Price validations
+        if (!Number.isFinite(price) || price < 0) {
+            errors.push('Original Price must be a non-negative number.');
+        }
+        if (!Number.isFinite(sale) || sale < 0) {
+            errors.push('Current Price must be a non-negative number.');
+        }
+        if (Number.isFinite(price) && Number.isFinite(sale) && sale > price) {
+            errors.push('Current Price cannot be greater than Original Price.');
+        }
+
+        if (errors.length > 0) {
+            if (window.Swal) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Please fix the following',
+                    html: `<ul style="text-align:left;margin:0;padding-left:18px;">${errors.map(e => `<li>${e}</li>`).join('')}</ul>`
+                });
+            } else {
+                alert(errors.join('\n'));
+            }
+            return;
+        }
+
+        // Build form data and submit via AJAX
+        const saveType = e.submitter?.value;
+        const status = saveType === 'draft' ? 'draft' : 'pending';
+
+        // Ensure status field exists
+        let statusInput = form.querySelector('input[name="status"]');
+        if (!statusInput){
+            statusInput = document.createElement('input');
             statusInput.type = 'hidden';
             statusInput.name = 'status';
-            statusInput.value = status;
-            this.appendChild(statusInput);
+            form.appendChild(statusInput);
+        }
+        statusInput.value = status;
 
-            // Submit the form
-            this.submit();
-        } else {
-            this.reportValidity();
+        const fd = new FormData(form);
+        // Normalize numbers to plain integer strings
+        fd.set('price', String(price));
+        fd.set('sale_price', String(sale));
+        fd.set('full_description', descriptionHtml);
+        fd.set('requirements', requirementsHtml);
+
+        // Disable submit buttons to avoid double submit
+        const submitBtns = form.querySelectorAll('button[type="submit"], button[form="frmAddCourse"]');
+        submitBtns.forEach(b => b.disabled = true);
+
+        try {
+            // Send as application/x-www-form-urlencoded so server (express.urlencoded) can parse correctly
+            const params = new URLSearchParams();
+            for (const [k, v] of fd.entries()) {
+                params.append(k, typeof v === 'string' ? v : String(v));
+            }
+            const resp = await fetch(form.action, {
+                method: 'POST',
+                body: params.toString(),
+                redirect: 'follow',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+            if (resp.redirected) {
+                // Server redirected to success page
+                if (window.Swal) {
+                    await Swal.fire({ icon: 'success', title: 'Course created', timer: 900, showConfirmButton: false });
+                }
+                window.location.href = resp.url;
+                return;
+            }
+            if (!resp.ok) {
+                const ct = resp.headers.get('content-type') || '';
+                if (ct.includes('application/json')) {
+                    const data = await resp.json().catch(() => ({}));
+                    const msg = (data && (data.message || data.error || data.errors && JSON.stringify(data.errors))) || `HTTP ${resp.status}`;
+                    throw new Error(msg);
+                }
+                if (ct.includes('text/plain')) {
+                    const text = await resp.text();
+                    throw new Error(text || `HTTP ${resp.status}`);
+                }
+                // Fallback for HTML or unknown responses: don't dump full HTML into Swal
+                throw new Error('Create failed. Please review the form and try again.');
+            }
+            // Fallback: success without redirect
+            if (window.Swal) {
+                await Swal.fire({ icon: 'success', title: 'Course created', timer: 900, showConfirmButton: false });
+            }
+            window.location.href = '/instructor';
+        } catch (err) {
+            const msgRaw = err && err.message ? String(err.message) : 'An error occurred.';
+            // Avoid showing raw HTML in the popup
+            const looksLikeHtml = /<[^>]+>/.test(msgRaw);
+            const msg = looksLikeHtml ? 'Create failed. Please check required fields or try again.' : msgRaw;
+            if (window.Swal) {
+                Swal.fire({ icon: 'error', title: 'Create failed', text: msg });
+            } else {
+                alert(msg);
+            }
+        } finally {
+            submitBtns.forEach(b => b.disabled = false);
         }
     });
 </script>
@@ -178,7 +309,7 @@
                                 <input type="url" id="imageUrl" name="image_url" class="form-control mb-2" required
                                     value="{{oldData.image_url}}" placeholder="URL of course thumbnail image">
                                 <img id="imagePreview"
-                                    src="{{#if oldData.image_url}}{{oldData.image_url}}{{else}}/img/course-placeholder.jpg{{/if}}"
+                                    src="{{#if oldData.image_url}}{{oldData.image_url}}{{else}}https://via.placeholder.com/800x450?text=Course+Image{{/if}}"
                                     alt="Course thumbnail preview" class="image-preview w-100">
                             </div>
                             <div class="col-md-6">
@@ -187,7 +318,7 @@
                                     value="{{oldData.large_image_url}}"
                                     placeholder="URL of course cover image (optional)">
                                 <img id="largeImagePreview"
-                                    src="{{#if oldData.large_image_url}}{{oldData.large_image_url}}{{else}}/img/cover-placeholder.jpg{{/if}}"
+                                    src="{{#if oldData.large_image_url}}{{oldData.large_image_url}}{{else}}https://via.placeholder.com/1600x600?text=Cover+Image{{/if}}"
                                     alt="Course cover preview" class="image-preview w-100">
                             </div>
                         </div>
