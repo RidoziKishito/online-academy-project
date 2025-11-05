@@ -317,8 +317,6 @@ Visit the live demo: https://online-academy-project.onrender.com
 
 <img width="1920" height="978" alt="image" src="https://github.com/user-attachments/assets/bc0eefb0-3ae2-40cb-bc40-02b26fde2621" />
 
-If you need screenshots for README, run the app locally and take captures of the home page, course listing, and lesson watch page.
-
 ---
 
 ## 📌 Project Notes
