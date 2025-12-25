@@ -7,16 +7,16 @@
 
 ## EXECUTIVE SUMMARY
 
-This comprehensive security audit examines the Online Academy Platform for common web vulnerabilities including CSRF, XSS, SQL Injection, File Upload, and Directory Traversal issues. The audit identifies **7 security vulnerabilities** across multiple categories.
+This comprehensive security audit examines the Online Academy Platform for common web vulnerabilities including CSRF, XSS, SQL Injection, File Upload, and Directory Traversal issues. The audit identifies **9 security vulnerabilities** across multiple categories.
 
 | Vulnerability | Count | Severity | Status |
 |---|---|---|---|
 | **CSRF (Cross-Site Request Forgery)** | 1 | HIGH | ⚠️ VULNERABLE |
 | **XSS (Cross-Site Scripting)** | 2 | HIGH | ⚠️ VULNERABLE |
-| **SQL Injection** | 3 | HIGH | ⚠️ VULNERABLE |
-| **File Upload** | 2 | MEDIUM | ⚠️ VULNERABLE |
-| **Directory Traversal** | 1 | MEDIUM | ⚠️ VULNERABLE |
-| **Total Issues Found** | **7** | **MIXED** | **⚠️ ACTION REQUIRED** |
+| **SQL Injection (LIKE Pattern Injection)** | 4 | HIGH-MEDIUM | ⚠️ VULNERABLE |
+| **File Upload** | 1 | MEDIUM | ⚠️ VULNERABLE |
+| **Directory Traversal** | 1 | MEDIUM | ✅ MITIGATED |
+| **Total Issues Found** | **9** | **MIXED** | **⚠️ ACTION REQUIRED** |
 
 ---
 
@@ -347,17 +347,531 @@ router.post('/', async (req, res) => {
 
 ---
 
-## 3. SQL INJECTION (Already Documented in SQLI_VULNERABILITIES.md)
+## 3. SQL INJECTION
 
-### Summary of SQL Injection Issues Found:
+### Vulnerability #3a: LIKE Pattern Injection in Message Search
 
-| # | Type | Location | Severity |
-|---|------|----------|----------|
-| 1 | ILIKE Injection | message.model.js:162 | HIGH |
-| 2 | FTS/ILIKE Injection | courses.model.js:196-197, 265-271 | HIGH |
-| 3 | Fuzzy Search Injection | category.model.js:60 | MEDIUM |
+#### PoC (Proof of Concept):
+```javascript
+// Attacker crafts malicious search term to bypass search logic
+const maliciousSearch = {
+    // Attack 1: Wildcard bypass - search for everything
+    searchTerm: "%",
+    // Query executed: messages::text ILIKE '%%'
+    // Result: Returns ALL messages in conversation (information disclosure)
+    
+    // Attack 2: Underscore wildcard - match any single character
+    searchTerm: "____",
+    // Query executed: messages::text ILIKE '%____%'
+    // Result: Matches ANY 4-character sequence
+    
+    // Attack 3: Combine with SQL injection attempt
+    searchTerm: "%' OR 1=1--",
+    // Query executed: messages::text ILIKE '%%' OR 1=1--%'
+    // Result: Potential SQL injection (mitigated by parameterization but bypasses search logic)
+};
 
-**Status:** See SQLI_VULNERABILITIES.md for detailed analysis and fixes.
+// Exploitation example
+fetch('/chat/search', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+        conversationId: 123,
+        searchTerm: "%"  // Returns all messages
+    })
+});
+```
+
+**Attack Flow:**
+1. User opens chat search feature
+2. Attacker enters wildcard characters (`%` or `_`)
+3. Search query includes unescaped wildcards
+4. Database returns unintended results
+5. Information disclosure: attacker sees all messages
+
+#### Vulnerability Details:
+- **Location:** models/message.model.js (Line 162)
+- **Function:** `searchMessages(conversationId, searchTerm)`
+- **Issue:** Template string interpolation in LIKE pattern without escaping special characters
+
+**Code Evidence:**
+```javascript
+// models/message.model.js (Lines 150-175)
+async searchMessages(conversationId, searchTerm) {
+    const messageStorage = await db('message_storage')
+        .where('conversation_id', conversationId)
+        .first();
+
+    if (!messageStorage || !messageStorage.messages) {
+        return [];
+    }
+
+    // Use JSONB query to search in message content
+    const results = await db('message_storage')
+        .where('conversation_id', conversationId)
+        .whereRaw("messages::text ILIKE ?", [`%${searchTerm}%`])  // ❌ VULNERABLE HERE
+        .first();
+    // ❌ Template string creates pattern BEFORE parameterization
+    // ❌ Special characters %, _ not escaped
+    // ❌ Wildcards interpreted by PostgreSQL ILIKE operator
+
+    if (!results || !results.messages) {
+        return [];
+    }
+
+    const filteredMessages = results.messages.filter(message => 
+        message.content.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    return filteredMessages;
+}
+```
+
+#### Why It's Vulnerable:
+- **Root Cause 1:** Template string interpolation creates LIKE pattern before parameter binding
+- **Root Cause 2:** No escaping of PostgreSQL wildcard characters (`%`, `_`, `\`)
+- **Root Cause 3:** Parameterized query cannot escape wildcards (they're valid SQL syntax)
+- **Root Cause 4:** ILIKE operator interprets `%` as "match any characters" and `_` as "match single character"
+
+#### Impact:
+- 🔴 **Search bypass:** Attacker can return all messages regardless of content
+- 🔴 **Information disclosure:** Unauthorized access to conversation data
+- 🔴 **Privacy violation:** Bypassing search filtering logic
+- ⚠️ **Pattern abuse:** Cannot search for literal `%` or `_` characters
+
+#### Countermeasure:
+```javascript
+// Solution 1: Escape special LIKE characters before pattern creation
+async searchMessages(conversationId, searchTerm) {
+    const messageStorage = await db('message_storage')
+        .where('conversation_id', conversationId)
+        .first();
+
+    if (!messageStorage || !messageStorage.messages) {
+        return [];
+    }
+
+    // ✅ STEP 1: Escape PostgreSQL LIKE wildcards (%, _, \)
+    const escapedTerm = searchTerm.replace(/[%_\\]/g, '\\$&');
+    // Examples:
+    //   "test%" → "test\%"
+    //   "user_" → "user\_"
+    //   "path\file" → "path\\file"
+    
+    // ✅ STEP 2: Create LIKE pattern with escaped term
+    const results = await db('message_storage')
+        .where('conversation_id', conversationId)
+        .whereRaw("messages::text ILIKE ?", [`%${escapedTerm}%`])
+        .first();
+
+    if (!results || !results.messages) {
+        return [];
+    }
+
+    // ✅ STEP 3: Filter in application layer (unchanged)
+    const filteredMessages = results.messages.filter(message => 
+        message.content.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    return filteredMessages;
+}
+
+// Solution 2: Create reusable utility function
+// In utils/db.js
+export function escapeLikePattern(str) {
+    // Escape PostgreSQL LIKE special characters: %, _, \
+    return String(str).replace(/[%_\\]/g, '\\$&');
+}
+
+// Usage in models
+import { escapeLikePattern } from '../utils/db.js';
+
+async searchMessages(conversationId, searchTerm) {
+    // ... previous code ...
+    const escapedTerm = escapeLikePattern(searchTerm);
+    const results = await db('message_storage')
+        .where('conversation_id', conversationId)
+        .whereRaw("messages::text ILIKE ?", [`%${escapedTerm}%`])
+        .first();
+    // ... rest of code ...
+}
+```
+
+---
+
+### Vulnerability #3b: LIKE Pattern Injection in User Email Search
+
+#### PoC (Proof of Concept):
+```javascript
+// Attack: Admin searches for specific email pattern
+// Attacker crafts search to expose all emails from a domain
+
+const maliciousFilters = {
+    // Attack 1: Search all Gmail users
+    emailQuery: "%@gmail.com",
+    // Query executed: WHERE email ILIKE '%%@gmail.com%'
+    // Result: Returns ALL Gmail users (not literal "%@gmail.com")
+    
+    // Attack 2: Single character wildcard
+    emailQuery: "admin_",
+    // Query executed: WHERE email ILIKE '%admin_%'
+    // Result: Matches "admin1", "admina", "admin@", etc.
+    
+    // Attack 3: Data enumeration
+    emailQuery: "____@test.com",
+    // Result: Finds all 4-character usernames at test.com
+};
+
+// Admin panel search exploitation
+// GET /admin/accounts?emailQuery=%@gmail.com
+// Returns all Gmail accounts instead of searching for literal string
+```
+
+**Attack Flow:**
+1. Admin/authorized user accesses user management
+2. Attacker enters wildcard pattern in email search
+3. Search returns broader results than intended
+4. Information disclosure: enumeration of user emails by pattern
+
+#### Vulnerability Details:
+- **Location:** models/user.model.js (Line 88)
+- **Function:** `findAllFiltered(filters)`
+- **Issue:** LIKE pattern created with unescaped user input
+
+**Code Evidence:**
+```javascript
+// models/user.model.js (Lines 85-91)
+export function findAllFiltered(filters = {}) {
+    let q = db(TABLE_NAME).select('*');
+    
+    // ... other filters ...
+    
+    // Partial email search (case-insensitive)
+    if (filters.emailQuery) {
+        const like = `%${filters.emailQuery}%`;  // ❌ VULNERABLE HERE
+        // Use ILIKE for Postgres (case-insensitive)
+        q = q.where('email', 'ilike', like);
+        // ❌ Special characters %, _ act as wildcards
+        // ❌ Cannot search for literal "%" or "_" in email addresses
+    }
+    
+    q = q.orderBy('user_id', 'asc');
+    
+    if (filters.limit) q = q.limit(filters.limit);
+    if (filters.offset) q = q.offset(filters.offset);
+    
+    return q;
+}
+```
+
+#### Why It's Vulnerable:
+- **Root Cause 1:** Template string creates LIKE pattern without escaping wildcards
+- **Root Cause 2:** PostgreSQL ILIKE treats `%` and `_` as special characters
+- **Root Cause 3:** Knex query builder escapes string values but preserves wildcards (by design)
+- **Root Cause 4:** No validation or sanitization of `emailQuery` parameter
+
+#### Impact:
+- 🟡 **Search bypass:** Broader results than admin intended
+- 🟡 **Information disclosure:** Enumerate users by email pattern
+- 🟡 **Privacy concern:** Cannot search for literal special characters
+- ⚠️ **User enumeration:** Discover email addresses matching patterns
+
+#### Countermeasure:
+```javascript
+// Solution: Escape LIKE wildcards before pattern creation
+export function findAllFiltered(filters = {}) {
+    let q = db(TABLE_NAME).select('*');
+    
+    // ... other filters ...
+    
+    // Partial email search (case-insensitive)
+    if (filters.emailQuery) {
+        // ✅ STEP 1: Escape special LIKE characters
+        const escapedQuery = filters.emailQuery.replace(/[%_\\]/g, '\\$&');
+        const like = `%${escapedQuery}%`;
+        // ✅ STEP 2: Use escaped pattern
+        q = q.where('email', 'ilike', like);
+    }
+    
+    q = q.orderBy('user_id', 'asc');
+    
+    if (filters.limit) q = q.limit(filters.limit);
+    if (filters.offset) q = q.offset(filters.offset);
+    
+    return q;
+}
+```
+
+---
+
+### Vulnerability #3c: LIKE Pattern Injection in Email Count
+
+#### PoC (Proof of Concept):
+```javascript
+// Same attack as #3b but affects count() queries
+// Admin checks "How many users with Gmail?"
+
+const filters = {
+    emailQuery: "%@gmail.com"
+};
+
+// Query: SELECT COUNT(*) WHERE email ILIKE '%%@gmail.com%'
+// Expected: Count of literal "%@gmail.com" emails (probably 0)
+// Actual: Count of ALL Gmail users (information leak)
+
+// Impact: Incorrect statistics, data enumeration
+```
+
+**Attack Flow:**
+1. Admin uses count feature to check email patterns
+2. Wildcard injection returns inflated/incorrect counts
+3. Information disclosure through statistical queries
+
+#### Vulnerability Details:
+- **Location:** models/user.model.js (Line 132)
+- **Function:** `countAllFiltered(filters)`
+- **Issue:** Same as #3b but in count operation
+
+**Code Evidence:**
+```javascript
+// models/user.model.js (Lines 130-139)
+export function countAllFiltered(filters = {}) {
+    let q = db(TABLE_NAME);
+    
+    // ... other filters ...
+    
+    // Partial email search for count as well
+    if (filters.emailQuery) {
+        const like = `%${filters.emailQuery}%`;  // ❌ VULNERABLE HERE
+        q = q.where('email', 'ilike', like);
+        // ❌ Same wildcard issue as #3b
+    }
+    
+    return q.count('user_id as total')
+        .first()
+        .then(r => parseInt(r.total || 0));
+}
+```
+
+#### Why It's Vulnerable:
+- **Root Cause 1:** Identical to #3b - no wildcard escaping
+- **Root Cause 2:** Affects COUNT queries instead of SELECT
+- **Root Cause 3:** Leads to incorrect statistical data
+
+#### Impact:
+- 🟡 **Incorrect statistics:** Wrong user counts displayed
+- 🟡 **Information disclosure:** Enumerate users by counting patterns
+- 🟡 **Data integrity:** Reports show inflated numbers
+
+#### Countermeasure:
+```javascript
+// Solution: Same escaping as #3b
+export function countAllFiltered(filters = {}) {
+    let q = db(TABLE_NAME);
+    
+    // ... other filters ...
+    
+    // Partial email search for count as well
+    if (filters.emailQuery) {
+        // ✅ Escape special LIKE characters
+        const escapedQuery = filters.emailQuery.replace(/[%_\\]/g, '\\$&');
+        const like = `%${escapedQuery}%`;
+        q = q.where('email', 'ilike', like);
+    }
+    
+    return q.count('user_id as total')
+        .first()
+        .then(r => parseInt(r.total || 0));
+}
+```
+
+---
+
+### Vulnerability #3d: LIKE Pattern Injection in Course Search
+
+#### PoC (Proof of Concept):
+```javascript
+// User searches for courses with wildcard pattern
+
+const searchQuery = {
+    // Attack 1: Broad search with wildcard
+    q: "%",
+    // Result: Returns all approved courses (not courses with "%" in title)
+    
+    // Attack 2: Pattern matching
+    q: "Python___",
+    // Result: Matches "Python 101", "Python Pro", "Python xyz"
+};
+
+// GET /courses/search?q=%
+// Expected: Find courses with literal "%" character
+// Actual: Returns ALL courses (wildcard bypass)
+```
+
+**Attack Flow:**
+1. User enters search query on course search page
+2. Backend splits query into tokens
+3. Each token used in ILIKE pattern without escaping
+4. Wildcards cause broader match than intended
+
+#### Vulnerability Details:
+- **Location:** models/courses.model.js (Line 197)
+- **Function:** `search(keyword, categoryId, sortBy, order, page, limit)`
+- **Issue:** Token used in ILIKE without wildcard escaping
+
+**Code Evidence:**
+```javascript
+// models/courses.model.js (Lines 195-198)
+for (const token of tokens) {
+    let query = db(TABLE_NAME)
+        .leftJoin('categories', 'courses.category_id', 'categories.category_id')
+        .leftJoin('users', 'courses.instructor_id', 'users.user_id')
+        .select('courses.*', 'categories.name as category_name', 'users.full_name as instructor_name')
+        .where('courses.status', 'approved');
+
+    // FTS or ILIKE for each token
+    query = query.where(function () {
+        this.whereRaw(`fts_document @@ plainto_tsquery('simple', unaccent(?))`, [token])
+            .orWhereRaw(`unaccent(lower(courses.title)) ILIKE unaccent(lower(?))`, [`%${token}%`]);  // ⚠️ VULNERABLE
+        // ❌ Token contains wildcards, pattern too broad
+    });
+```
+
+#### Why It's Vulnerable:
+- **Root Cause 1:** Same template string interpolation issue as #3a-#3c
+- **Root Cause 2:** Token from user search can contain wildcards
+- **Root Cause 3:** However, less severe due to `plainto_tsquery()` sanitization
+- **Root Cause 4:** FTS search provides fallback protection
+
+#### Impact:
+- 🟢 **Low severity:** Mitigated by FTS (Full-Text Search) fallback
+- 🟡 **Potential bypass:** ILIKE clause can be exploited if FTS fails
+- ⚠️ **Pattern abuse:** Broader matches than user intended
+
+#### Countermeasure:
+```javascript
+// Solution: Escape token for ILIKE pattern (optional but recommended)
+for (const token of tokens) {
+    let query = db(TABLE_NAME)
+        .leftJoin('categories', 'courses.category_id', 'categories.category_id')
+        .leftJoin('users', 'courses.instructor_id', 'users.user_id')
+        .select('courses.*', 'categories.name as category_name', 'users.full_name as instructor_name')
+        .where('courses.status', 'approved');
+
+    // ✅ Escape wildcards for ILIKE pattern
+    const escapedToken = token.replace(/[%_\\]/g, '\\$&');
+    
+    query = query.where(function () {
+        this.whereRaw(`fts_document @@ plainto_tsquery('simple', unaccent(?))`, [token])
+            .orWhereRaw(`unaccent(lower(courses.title)) ILIKE unaccent(lower(?))`, [`%${escapedToken}%`]);
+    });
+    
+    // ... rest of query ...
+}
+```
+
+---
+
+### Summary: SQL Injection Vulnerabilities
+
+| # | Location | Function | Severity | Impact |
+|---|----------|----------|----------|--------|
+| 3a | models/message.model.js:162 | `searchMessages()` | 🔴 HIGH | Wildcard injection in message search |
+| 3b | models/user.model.js:88 | `findAllFiltered()` | 🟡 MEDIUM | Wildcard injection in email search |
+| 3c | models/user.model.js:132 | `countAllFiltered()` | 🟡 MEDIUM | Wildcard injection in email count |
+| 3d | models/courses.model.js:197 | `search()` | 🟢 LOW | Wildcard injection (mitigated by FTS) |
+
+---
+
+### General SQL Injection Countermeasures
+
+#### 1. Create Utility Function for LIKE Escaping
+```javascript
+// utils/db.js
+/**
+ * Escape special characters in PostgreSQL LIKE/ILIKE patterns
+ * @param {string} str - User input to escape
+ * @returns {string} - Escaped string safe for LIKE patterns
+ */
+export function escapeLikePattern(str) {
+    // Escape PostgreSQL LIKE special characters: %, _, \
+    return String(str).replace(/[%_\\]/g, '\\$&');
+}
+
+// Example usage:
+// Input: "test%"    → Output: "test\\%"
+// Input: "user_"    → Output: "user\\_"
+// Input: "path\\file" → Output: "path\\\\file"
+```
+
+#### 2. Apply to All LIKE/ILIKE Queries
+```javascript
+import { escapeLikePattern } from '../utils/db.js';
+
+// ✅ Correct usage in search functions
+async function searchByEmail(emailQuery) {
+    const escaped = escapeLikePattern(emailQuery);
+    const like = `%${escaped}%`;
+    return db('users').where('email', 'ilike', like);
+}
+
+// ✅ Correct usage in whereRaw
+async function searchMessages(searchTerm) {
+    const escaped = escapeLikePattern(searchTerm);
+    return db('messages')
+        .whereRaw('content ILIKE ?', [`%${escaped}%`]);
+}
+```
+
+#### 3. Add Test Cases for Wildcard Protection
+```javascript
+// tests/security/sql-injection.test.js
+describe('SQL Injection Protection - LIKE Patterns', () => {
+    it('should escape % in search term', async () => {
+        const result = await searchMessages(1, '100%');
+        // Must find exact "100%" not "100" followed by any characters
+        expect(result).toHaveLength(1);
+        expect(result[0].content).toContain('100%');
+    });
+    
+    it('should escape _ in search term', async () => {
+        const result = await searchMessages(1, 'test_user');
+        // Must find exact "test_user" not "test" + any single character + "user"
+        expect(result.every(m => m.content.includes('test_user'))).toBe(true);
+    });
+    
+    it('should handle backslash in search', async () => {
+        const result = await searchMessages(1, 'path\\file');
+        // Must handle literal backslash
+        expect(result[0].content).toContain('path\\file');
+    });
+    
+    it('should prevent wildcard injection in email search', async () => {
+        const filters = { emailQuery: '%@gmail.com' };
+        const result = await findAllFiltered(filters);
+        // Should search for literal "%@gmail.com" not all Gmail addresses
+        expect(result.every(u => u.email === '%@gmail.com')).toBe(true);
+    });
+});
+```
+
+#### 4. Review All LIKE/ILIKE Usage
+```bash
+# Audit commands to find potential vulnerabilities
+grep -rn "ILIKE\|LIKE" models/
+grep -rn "\.where.*ilike\|\.where.*like" models/
+grep -rn "\`%\${" models/
+grep -rn "whereRaw.*ILIKE\|whereRaw.*LIKE" models/
+```
+
+#### 5. Best Practices
+- ✅ **Always escape user input** in LIKE patterns
+- ✅ **Use parameterized queries** with Knex query builder
+- ✅ **Prefer Full-Text Search** over LIKE for text search when possible
+- ✅ **Validate and sanitize** all user input before database operations
+- ✅ **Test with malicious input** (fuzz testing with wildcards)
+- ❌ **Never concatenate** user input directly into SQL strings
+- ❌ **Never trust** client-side validation alone
 
 ---
 
@@ -635,12 +1149,14 @@ filename: function (req, file, cb) {
 | # | Category | Issue | Location | Severity | Status |
 |---|----------|-------|----------|----------|--------|
 | 1 | CSRF | Missing CSRF Protection | Multiple POST routes | 🔴 HIGH | ⚠️ VULNERABLE |
-| 2 | XSS | Unescaped HTML (Triple Braces) | Template files | 🔴 HIGH | ⚠️ VULNERABLE |
-| 3 | XSS | Unsanitized Contact Form | contact.route.js | 🔴 HIGH | ⚠️ VULNERABLE |
-| 4 | SQLi | ILIKE Injection | message.model.js | 🔴 HIGH | ⚠️ VULNERABLE |
-| 5 | SQLi | FTS/ILIKE Injection | courses.model.js | 🔴 HIGH | ⚠️ VULNERABLE |
-| 6 | SQLi | Fuzzy Search Injection | category.model.js | 🟡 MEDIUM | ⚠️ VULNERABLE |
-| 7 | File Upload | Insufficient Validation | instructor-dashboard.route.js | 🟡 MEDIUM | ⚠️ VULNERABLE |
+| 2a | XSS | Unescaped HTML (Triple Braces) | Template files | 🔴 HIGH | ⚠️ VULNERABLE |
+| 2b | XSS | Unsanitized Contact Form | contact.route.js | 🔴 HIGH | ⚠️ VULNERABLE |
+| 3a | SQLi | LIKE Pattern Injection | message.model.js:162 | 🔴 HIGH | ⚠️ VULNERABLE |
+| 3b | SQLi | Email Search LIKE Injection | user.model.js:88 | 🟡 MEDIUM | ⚠️ VULNERABLE |
+| 3c | SQLi | Email Count LIKE Injection | user.model.js:132 | 🟡 MEDIUM | ⚠️ VULNERABLE |
+| 3d | SQLi | Course Search LIKE Injection | courses.model.js:197 | 🟢 LOW | ⚠️ VULNERABLE |
+| 4 | File Upload | Insufficient Validation | instructor-dashboard.route.js | 🟡 MEDIUM | ⚠️ VULNERABLE |
+| 5 | Directory Traversal | Path Traversal Prevention | instructor-dashboard.route.js | 🟢 LOW | ✅ MITIGATED |
 
 ---
 
